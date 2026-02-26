@@ -1,0 +1,4 @@
+shared/.claude.env
+node_modules/
+.DS_Store
+obsidian-vault/projects/*/
