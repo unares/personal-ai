@@ -1,4 +1,5 @@
 FROM node:20-alpine
 WORKDIR /app
 COPY . .
-CMD ["sh", "/app/DevSandbox-Template/first-run-wizard.sh"]
+RUN npm install -g serve
+CMD ["sh", "-c", "sh DevSandbox-Template/first-run-wizard.sh && serve -s . -l 3000"]

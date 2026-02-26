@@ -2,13 +2,6 @@
 set -e
 echo "🚀 Installing Personal AI (One Thing) v0.1..."
 
-if [ ! -f shared/.claude.env ]; then
-  echo "Paste your Anthropic API key (console.anthropic.com → API keys):"
-  read -r ANTHROPIC_KEY
-  echo "ANTHROPIC_API_KEY=$ANTHROPIC_KEY" > shared/.claude.env
-  echo "✅ Key stored securely (gitignored forever)."
-fi
-
 docker compose up -d --build
 
 # Create founder sandbox if missing

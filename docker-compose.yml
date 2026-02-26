@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   dashboard:
     build: ./dashboard
@@ -9,10 +8,7 @@ services:
     build: ./ai-workspace
     container_name: personal-ai-platform-dev
     ports: ["3003:3000"]
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
-      - ./shared/.claude.env:/app/.claude.env:ro
       - ./shared:/app/shared:ro
       - ./obsidian-vault/projects/personal-ai-platform-dev:/app/vault
   clarity-architect:
