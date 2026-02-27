@@ -2,31 +2,30 @@
 
 ## Sandbox Purpose & Scope (MVP Sandbox)
 This is a focused MVP Sandbox for building one thing at a time.  
-- Can be used directly by human founder (normal Mac Terminal).  
-- Can be called autonomously by Personal AI [project/company]-AIOO Agent (NanoClaw) for coding tasks.  
-- Scope: ship MVPs fast. Never bloat. Do One Thing.
+- Human founder: normal Mac Terminal + Claude Code.  
+- Autonomous: callable by [project/company]-AIOO Agent (NanoClaw) for coding tasks.  
+- Scope: Ship MVPs fast. Do One Thing. Never bloat.
 
-## Full .md Stack (always loaded)
+## Full .md Stack (always loaded – root files)
 - CLAUDE.md (this – rules + constitution)
-- MVP_SANDBOX_GUIDE.md (high-level purpose)
-- NEXT_THING.md (near-term features – consult always, keep ≤8 items, newest on top)
-- CHRONICLE.md (brain-dump → blog/narrative pipeline)
-- PARKING_LOT.md (long-term ideas – EXCLUDE from context unless explicitly asked)
+- MVP_SANDBOX_GUIDE.md (high-level purpose & scope)
+- NEXT_THING.md (near-term features – consult always)
+- PARKING_LOT.md (long-term ideas – EXCLUDE from context unless /parkinglot)
 - CONTEXT_STACK.md (quick reference)
 - SANDBOX_FACTORY.md (factory rules)
 
 ## Context Rules
-- Default context = CLAUDE.md + NEXT_THING.md + CHRONICLE.md + MVP_SANDBOX_GUIDE.md
+- Default context = CLAUDE.md + NEXT_THING.md + MVP_SANDBOX_GUIDE.md
 - Never include PARKING_LOT.md unless user or command says “/parkinglot”
-- Keep NEXT_THING.md short. When >8 items: auto-retire oldest to PARKING_LOT.md and reshuffle (newest on top).
+- Keep NEXT_THING.md proportional to scope (short for small, longer for big features)
 
-## Custom Commands (use these in any prompt)
+## Custom Commands
 - /nextthing add: <idea> → append to top of NEXT_THING.md
-- /nextthing prioritize → reorder + suggest what to do next
+- /nextthing prioritize → reorder + suggest next action
 - /parking add: <idea> → append to PARKING_LOT.md
 - /parking retire oldest → move oldest from NEXT_THING to Parking Lot
 
 ## Memory
-Use claude-mem plugin for persistent memory across sessions.
+claude-mem is pre-installed and ready (git is installed).
 
 Do One Thing. Keep clean. Ship MVPs.
