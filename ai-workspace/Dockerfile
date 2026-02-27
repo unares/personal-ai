@@ -1,6 +1,7 @@
 FROM node:20-alpine
 RUN apk add --no-cache bash git
-RUN mkdir -p /usr/local/bin && cat > /usr/local/bin/claude << 'INNER'
+RUN mkdir -p /usr/local/bin
+RUN cat > /usr/local/bin/claude << 'INNER'
 #!/bin/bash
 echo -e "\033[32m═══════════════════════════════════════════════════════════════\033[0m"
 echo -e "\033[32m✅ personal-ai-mvp-sandbox (MVP Sandbox)\033[0m"

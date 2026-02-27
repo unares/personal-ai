@@ -26,6 +26,6 @@ This is a focused MVP Sandbox for building one thing at a time.
 - /parking retire oldest → move oldest from NEXT_THING to Parking Lot
 
 ## Memory
-claude-mem is pre-installed and ready (git is installed).
+claude-mem is pre-installed and ready (git baked in).
 
 Do One Thing. Keep clean. Ship MVPs.
