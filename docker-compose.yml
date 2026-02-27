@@ -4,13 +4,16 @@ services:
     ports: ["3002:3000"]
     volumes:
       - ./obsidian-vault:/app/vault
-  personal-ai-platform-dev:
+
+  personal-ai-mvp-sandbox:
     build: ./ai-workspace
-    container_name: personal-ai-platform-dev
+    container_name: personal-ai-mvp-sandbox
+    hostname: personal-ai-mvp-sandbox      # ← THIS GIVES YOU THE CLEAN PROMPT
     ports: ["3003:3000"]
     volumes:
       - ./shared:/app/shared:ro
-      - ./obsidian-vault/projects/personal-ai-platform-dev:/app/vault
+      - ./obsidian-vault/projects/personal-ai-mvp-sandbox:/app/vault
+
   clarity-architect:
     build: ./clarity-architect
     ports: ["3004:3000"]

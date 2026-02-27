@@ -1,15 +1,11 @@
 #!/bin/bash
 set -e
-echo "🚀 Installing Personal AI (One Thing) v0.1..."
-
+echo "🚀 Installing Personal AI (Mission Control) v0.1..."
 docker compose up -d --build
-
-# Create founder sandbox if missing
-if [ ! -d "obsidian-vault/projects/personal-ai-platform-dev" ]; then
-  mkdir -p obsidian-vault/projects/personal-ai-platform-dev
-  cp -r ai-workspace/DevSandbox-Template/. obsidian-vault/projects/personal-ai-platform-dev/ 2>/dev/null || true
+if [ ! -d "obsidian-vault/projects/personal-ai-mvp-sandbox" ]; then
+  mkdir -p obsidian-vault/projects/personal-ai-mvp-sandbox
+  cp -r ai-workspace/mvp-sandbox-template/. obsidian-vault/projects/personal-ai-mvp-sandbox/ 2>/dev/null || true
 fi
-
-echo "✅ Dashboard: http://localhost:3002"
-echo "✅ Your live sandbox: personal-ai-platform-dev (port 3003)"
+echo "✅ Mission Control: http://localhost:3002"
+echo "✅ Sandbox: docker compose exec -it personal-ai-mvp-sandbox bash"
 open http://localhost:3002 2>/dev/null || true
