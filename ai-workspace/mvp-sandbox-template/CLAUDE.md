@@ -1,31 +1,28 @@
 # Personal AI – mvp-sandbox Constitution v0.1
 
-## Sandbox Purpose & Scope (MVP Sandbox)
-This is a focused MVP Sandbox for building one thing at a time.  
-- Human founder: normal Mac Terminal + Claude Code.  
-- Autonomous: callable by [project/company]-AIOO Agent (NanoClaw) for coding tasks.  
-- Scope: Ship MVPs fast. Do One Thing. Never bloat.
+## Sandbox Purpose & Scope
+Human founder or autonomous AIOO/NanoClaw calls.  
+Scope: Ship MVPs fast. Do One Thing. Never bloat.
 
 ## Full .md Stack (always loaded – root files)
-- CLAUDE.md (this – rules + constitution)
-- MVP_SANDBOX_GUIDE.md (high-level purpose & scope)
-- NEXT_THING.md (near-term features – consult always)
-- PARKING_LOT.md (long-term ideas – EXCLUDE from context unless /parkinglot)
-- CONTEXT_STACK.md (quick reference)
-- SANDBOX_FACTORY.md (factory rules)
+- CLAUDE.md (this)
+- NORTHSTAR.md (long-term vision)
+- SCOPE.md (strict boundaries)
+- NEXT_THING.md (near-term features)
+- PARKING_LOT.md (excluded unless /parkinglot)
+- CONTEXT_STACK.md
+- SANDBOX_FACTORY.md
 
 ## Context Rules
-- Default context = CLAUDE.md + NEXT_THING.md + MVP_SANDBOX_GUIDE.md
-- Never include PARKING_LOT.md unless user or command says “/parkinglot”
-- Keep NEXT_THING.md proportional to scope (short for small, longer for big features)
+- Default = CLAUDE.md + NORTHSTAR.md + SCOPE.md + NEXT_THING.md
+- Never include PARKING_LOT.md unless explicitly asked
+- NORTHSTAR and SCOPE are populated by AIOO when spinning new sandboxes
 
 ## Custom Commands
-- /nextthing add: <idea> → append to top of NEXT_THING.md
-- /nextthing prioritize → reorder + suggest next action
-- /parking add: <idea> → append to PARKING_LOT.md
-- /parking retire oldest → move oldest from NEXT_THING to Parking Lot
+- /nextthing add: <idea>
+- /parking add: <idea>
 
 ## Memory
-claude-mem is pre-installed and ready (git baked in).
+claude-mem is auto-installed on first run.
 
 Do One Thing. Keep clean. Ship MVPs.
