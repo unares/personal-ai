@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm *)", "Bash(node *)", "Bash(docker *)",
+      "Edit(/app/**)", "Write(/app/**)", "Read(/app/**)"
+    ]
+  }
+}
