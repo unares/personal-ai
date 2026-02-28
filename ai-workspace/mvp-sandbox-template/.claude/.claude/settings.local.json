@@ -10,7 +10,9 @@
       "Bash(find /app -name \"settings.json\" -o -name \"settings.local.json\" | xargs ls -la 2>/dev/null)",
       "WebSearch",
       "Bash(exit)",
-      "Bash(chmod +x /app/.claude/hooks/post-edit-lint.sh)"
+      "Bash(chmod +x /app/.claude/hooks/post-edit-lint.sh)",
+      "Bash(ls /app/*.md 2>/dev/null || echo \"No .md files in /app root\")",
+      "Bash(chmod +x /app/mvp-sandbox-template/.claude/hooks/statusline.sh /app/mvp-sandbox-template/.claude/hooks/post-edit-lint.sh)"
     ]
   }
 }
