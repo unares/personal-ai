@@ -1,18 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm *)",
-      "Bash(node *)",
-      "Bash(docker *)",
-      "Edit(/app/**)",
-      "Write(/app/**)",
-      "Read(/app/**)",
-      "Bash(find /app -name \"settings.json\" -o -name \"settings.local.json\" | xargs ls -la 2>/dev/null)",
-      "WebSearch",
-      "Bash(exit)",
-      "Bash(chmod +x /app/.claude/hooks/post-edit-lint.sh)",
-      "Bash(ls /app/*.md 2>/dev/null || echo \"No .md files in /app root\")",
-      "Bash(chmod +x /app/mvp-sandbox-template/.claude/hooks/statusline.sh /app/mvp-sandbox-template/.claude/hooks/post-edit-lint.sh)"
+      "Bash(find /app -type f \\\\\\( -name \"*.md\" -o -name \"*.json\" -o -name \"*.sh\" -o -name \"*.yml\" -o -name \"*.yaml\" -o -name \"*.js\" -o -name \"*.ts\" -o -name \"*.tsx\" -o -name \"*.py\" -o -name \"*.sql\" -o -name \"*.sqlite\" \\\\\\) 2>/dev/null | sort)",
+      "Bash(find /app/mvp-sandbox-template -type f ! -path \"*/.git/*\" ! -path \"*/.claude/*\" 2>/dev/null | sort)",
+      "Bash(cat /root/.claude/projects/-app/0b96e0aa-2ab0-4af9-a2b8-79c2c86d8c9d/tool-results/toolu_01Fi9cpeYDkv73wvWh9CeKDj.txt 2>/dev/null | python3 -c \"\nimport sys, json\ndata = sys.stdin.read\\(\\)\n# Try to parse as JSON\ntry:\n    obj = json.loads\\(data\\)\n    # Extract text content\n    for item in obj:\n        if isinstance\\(item, dict\\):\n            if item.get\\('type'\\) == 'tool_result':\n                for c in item.get\\('content', []\\):\n                    if c.get\\('type'\\) == 'text':\n                        print\\(c['text'][:8000]\\)\n            elif item.get\\('type'\\) == 'text':\n                print\\(item['text'][:8000]\\)\nexcept:\n    # Just print the raw text\n    print\\(data[:8000]\\)\n\")",
+      "Bash(node -e \"\nconst fs = require\\('fs'\\);\nconst data = fs.readFileSync\\('/root/.claude/projects/-app/0b96e0aa-2ab0-4af9-a2b8-79c2c86d8c9d/tool-results/toolu_01Fi9cpeYDkv73wvWh9CeKDj.txt', 'utf8'\\);\ntry {\n  const obj = JSON.parse\\(data\\);\n  obj.forEach\\(item => {\n    if \\(item.type === 'tool_result'\\) {\n      \\(item.content || []\\).forEach\\(c => {\n        if \\(c.type === 'text'\\) console.log\\(c.text.slice\\(0, 10000\\)\\);\n      }\\);\n    } else if \\(item.type === 'text'\\) {\n      console.log\\(item.text.slice\\(0, 10000\\)\\);\n    }\n  }\\);\n} catch\\(e\\) {\n  console.log\\(data.slice\\(0, 10000\\)\\);\n}\n\")",
+      "Bash(mount | grep /app && ls -la /app/ && touch /app/test-write 2>&1 || echo \"ROOT /app not writable\")",
+      "Bash(chmod +x /app/mvp-sandbox-template/bake-template.sh && echo \"✅ chmod done\")",
+      "Bash(chmod +x /app/mvp-sandbox-template/templates/clark/.claude/hooks/northstar-watcher.sh)",
+      "Bash(chmod +x /app/mvp-sandbox-template/templates/aioo/.claude/hooks/compact-northstar.sh)",
+      "Bash(\\\\\n./bake-template.sh aioo test-procenteo procenteo && \\\\\necho \"\" && echo \"=== Instance contents ===\" && \\\\\nls -la instances/aioo-test-procenteo/ && \\\\\ncat instances/aioo-test-procenteo/.instance.env && \\\\\necho \"\" && echo \"NORTHSTAR injected:\" && \\\\\nhead -2 instances/aioo-test-procenteo/NORTHSTAR.md && \\\\\nrm -rf instances/aioo-test-procenteo && echo \"\" && echo \"✅ bake-template test passed, cleaned up\")"
     ]
   }
 }
