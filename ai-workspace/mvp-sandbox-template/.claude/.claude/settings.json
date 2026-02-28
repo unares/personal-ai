@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(*)",
+      "Edit(**)",
+      "Write(**)",
+      "Read(**)",
+      "WebSearch",
+      "WebFetch(*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-lint.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "spinnerTipsEnabled": true,
+  "spinnerTipsOverride": [
+    "Try /yolo to skip all permission prompts",
+    "Try /nextthing add: to queue up your next task",
+    "Try /parking add: to park something for later",
+    "Run /compact to free context when running long",
+    "Run /context to see what's eating tokens",
+    "Run /clear for a fresh start between tasks",
+    "Run /handoff to save state before ending a session",
+    "Ask Claude to use subagents for parallel work"
+  ]
+}

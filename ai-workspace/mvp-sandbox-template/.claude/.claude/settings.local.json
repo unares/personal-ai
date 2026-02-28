@@ -1,8 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm *)", "Bash(node *)", "Bash(docker *)",
-      "Edit(/app/**)", "Write(/app/**)", "Read(/app/**)"
+      "Bash(npm *)",
+      "Bash(node *)",
+      "Bash(docker *)",
+      "Edit(/app/**)",
+      "Write(/app/**)",
+      "Read(/app/**)",
+      "Bash(find /app -name \"settings.json\" -o -name \"settings.local.json\" | xargs ls -la 2>/dev/null)",
+      "WebSearch",
+      "Bash(exit)",
+      "Bash(chmod +x /app/.claude/hooks/post-edit-lint.sh)"
     ]
   }
 }
