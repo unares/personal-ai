@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(echo*)",
+      "Bash(pwd*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Edit(**)",
+      "Write(**)",
+      "Bash(rm*)",
+      "Bash(git*)",
+      "Bash(npm*)",
+      "Bash(node*)",
+      "Bash(sudo*)",
+      "Bash(curl*)",
+      "Bash(wget*)"
+    ]
+  },
+  "spinnerTipsEnabled": true,
+  "spinnerTipsOverride": [
+    "Clarity before action. What is the One Thing?",
+    "Read Distilled/ context before advising.",
+    "You are the Philosophical Brain, not the executor.",
+    "Surface patterns across entities.",
+    "Run /compact when approaching 70% context."
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Edit(**)",
+      "Write(**)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(mkdir*)",
+      "Bash(cp*)",
+      "Bash(mv*)",
+      "Bash(echo*)",
+      "Bash(touch*)",
+      "Bash(date*)",
+      "Bash(pwd*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(sudo*)",
+      "Bash(git push*)",
+      "Bash(npm*)",
+      "Bash(curl*|*bash*)",
+      "Bash(wget*|*bash*)"
+    ]
+  },
+  "spinnerTipsEnabled": true,
+  "spinnerTipsOverride": [
+    "Do One Thing. Drive execution.",
+    "Read NORTHSTAR.md first — always.",
+    "Log decisions to /vault/Logs/aioo.log",
+    "Spawn App Builders for building, not yourself.",
+    "Run /compact at 70% context."
+  ]
+}

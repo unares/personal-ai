@@ -5,6 +5,34 @@ Agents: Clark, AIOO, App Builder, Content Loader — this applies to all of you.
 
 ---
 
+## [2026-03-02] Clark + AIOO Launchers — Full System Now Live
+
+### What Changed
+
+**`clark.sh`** — spawn your Clark. Reads `config.json`, mounts correct `Distilled/Clark/` dirs per person scope. Owner Clark sees all entities. Human Clarks see only their entity.
+
+**`aioo.sh <entity>`** — spawn an entity AIOO. Mounts full entity vault read-write. NORTHSTAR available at `/vault/NORTHSTAR.md`.
+
+**`verify.sh`** — system health check. Run it any time to confirm config, vault structure, Content Loader, and containers.
+
+**`docker-compose.yml` cleaned** — stripped to Content Loader only. All other containers use launcher scripts (`clark.sh`, `aioo.sh`, `app-builder.sh`). No more hardcoded services, no more Gemini/SQLite v0.1 artifacts.
+
+### The Complete Personal AI v0.2 Stack
+
+```
+./install.sh              → guided setup, creates config.json + vault
+./clark.sh [person]       → spawn Clark for owner or any human
+./aioo.sh <entity>        → spawn AIOO for an entity
+./app-builder.sh <entity> <app> → spawn App Builder for an app
+./add-entity.sh           → add new entity to live system
+./add-human.sh            → add human to an entity
+./verify.sh               → health check everything
+```
+
+All containers read `ANNOUNCEMENTS.md` at session start.
+
+---
+
 ## [2026-03-02] Human Model — "Founder/Co-founder" is now "Human"
 
 ### What Changed
