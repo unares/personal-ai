@@ -5,6 +5,118 @@ Agents: Clark, AIOO, App Builder, Content Loader — this applies to all of you.
 
 ---
 
+## [2026-03-02] Human Model — "Founder/Co-founder" is now "Human"
+
+### What Changed
+
+**"Founder" and "Co-founder" are replaced by "Human" everywhere.**
+**`add-founder.sh` → `add-human.sh`.**
+**A Human gets a Clark AND full AIOO access — not just read-only context.**
+**Solo prompt is now simply: `Is [entity] a solo entity? [y/n]`**
+
+### Why Human
+
+"Founder" and "Co-founder" describe legal roles and origin stories. They impose hierarchy (who founded first?) and imply a startup context that not every entity has.
+
+"Human" is simpler and more accurate. Inside Personal AI, the relevant distinction is not who founded what — it is whether another **human** is jointly responsible for an entity. If yes, they get a Clark and AIOO access. That's it.
+
+The system doesn't care about equity splits, titles, or founding dates. It cares about: who has agency over this entity? Those are the Humans.
+
+### What Humans Get
+
+When a Human is added to an entity they receive:
+
+| Access | What | Mode |
+|--------|------|------|
+| `clark-{name}` | Their personal AI compass | Scoped to entity Distilled/ |
+| AIOO access | Full co-driver of the entity AIOO | Read + directive |
+
+Previously co-founders only got a Clark scoped to `Distilled/Clark/`. Humans now get full AIOO co-access — they can direct the entity's AI Operating Officer, not just read its summaries.
+
+### New Confirmation Flow
+
+During setup or `add-human.sh`:
+```
+Is [entity] a solo entity? [y/n]:  n
+Human's first name:  mateusz
+
+You and Mateusz will be jointly responsible for
+the procenteo entity. Mateusz gets a Clark and
+full access to the procenteo AIOO.
+
+Do you want to proceed? [y/n]:
+```
+
+### config.json Schema (updated)
+
+```json
+{
+  "clarks": [
+    { "name": "clark-mateusz", "projects": ["procenteo"], "aioo_access": true }
+  ],
+  "entities": [
+    {
+      "name": "procenteo",
+      "solo": false,
+      "human": "mateusz",
+      "human_clark": "clark-mateusz"
+    }
+  ]
+}
+```
+
+Fields `"cofounder"` and `"cofounders_clark"` are retired. Content Loader reads `entities` (falling back to `projects` for backward compatibility).
+
+---
+
+## [2026-03-02] Entity Model — "Company/Project" is now "Entity"
+
+### What Changed
+
+**The term "Company/Project" is replaced by "Entity" everywhere.**
+**New scripts: `add-entity.sh` and `add-founder.sh`.**
+**Co-founder setup can now be skipped during install and added later.**
+
+### Why Entity
+
+"Company" implies a legal structure. "Project" implies a deliverable. Neither captures what OneThing, Procenteo, and Inisio actually are inside Personal AI: **autonomous organizational units**, each with their own vault, their own AIOO, their own northstar, and their own set of Apps being built under them.
+
+An Entity is the right abstraction. It is the owner of a vault. It is what an AIOO operates. It is what Apps are built under. It can be a company, a research project, a side hustle, or a personal initiative — the system doesn't care. It treats it as an Entity.
+
+### Vocabulary Reference (updated)
+
+| Old term | New term |
+|----------|----------|
+| Company / Project | **Entity** |
+| Add company | `./add-entity.sh` |
+| Co-founder (setup only) | `./add-founder.sh` (anytime) |
+| `config.json: "projects": []` | `config.json: "entities": []` |
+| `Raw/MVPs/` | `Raw/Apps/` |
+
+### New Scripts
+
+**`add-entity.sh`** — add a new entity to a running system:
+- Reads `config.json`, validates no duplicates
+- Asks entity name + solo/co-founder/skip
+- Appends to `entities[]` and updates owner clark's project list
+- Creates vault dirs, seeds northstar, restarts Content Loader
+
+**`add-founder.sh`** — add a co-founder to any entity at any time:
+- Lists existing entities, prompts which one
+- Asks co-founder's first name
+- Creates `clark-{name}` scoped to that entity only
+- Updates `config.json`, no vault dir changes needed
+
+### Skip & Add Later
+
+During `./install.sh`, the co-founder prompt now accepts `[k]` to skip:
+```
+Solo founder, co-founder, or skip for now? [s/c/k]:
+```
+Choosing `k` creates the entity as solo for now. Run `./add-founder.sh` anytime to add the co-founder's Clark. The entity record is updated automatically.
+
+---
+
 ## [2026-03-02] v0.2 Architecture Shipped — App Builder Era Begins
 
 ### What Changed

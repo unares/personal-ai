@@ -1,14 +1,14 @@
 #!/bin/bash
 # Personal AI v0.2 — App Builder Launcher
-# Usage: ./app-builder.sh <company> <app-name>
+# Usage: ./app-builder.sh <entity> <app-name>
 # Example: ./app-builder.sh onething plusone
 set -euo pipefail
 
-COMPANY="${1:?Usage: app-builder.sh <company> <app-name>}"
-APP="${2:?Usage: app-builder.sh <company> <app-name>}"
+ENTITY="${1:?Usage: app-builder.sh <entity> <app-name>}"
+APP="${2:?Usage: app-builder.sh <entity> <app-name>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
-CONTAINER="app-${COMPANY}-${APP}"
+CONTAINER="app-${ENTITY}-${APP}"
 IMAGE="personal-ai-app-builder"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
@@ -16,7 +16,6 @@ G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
 # ── UI helpers ─────────────────────────────────────────────────────────────
 W=64
 LINE=$(printf '═%.0s' $(seq 1 $W))
-THIN=$(printf '─%.0s' $(seq 1 $W))
 
 banner_main() {
   printf "${B}${G}╔${LINE}╗\n"
@@ -33,7 +32,7 @@ step_banner() {
   for i in $(seq 1 $empty); do bar="${bar}░"; done
   shift 3
   printf "${B}${G}╔${LINE}╗\n"
-  printf "║  [Step %s/%s]  %s  %-20s  ${D}%s${G}║\n" "$step" "$total" "$bar" "$title" ""
+  printf "║  [Step %s/%s]  %s  %-20s║\n" "$step" "$total" "$bar" "$title"
   printf "╠${LINE}╣\n"
   while [ $# -gt 0 ]; do
     printf "║  ${C}▸${G} %-$((W-5))s║\n" "$1"
@@ -46,23 +45,23 @@ clear
 banner_main
 printf "  You are setting up an isolated build environment for:\n\n"
 printf "  App:     ${B}${APP}${R}\n"
-printf "  Company: ${B}${COMPANY}${R}\n"
+printf "  Entity:  ${B}${ENTITY}${R}\n"
 printf "  Container will be named: ${B}${CONTAINER}${R}\n\n"
 printf "  ${D}The App Builder is a self-contained Claude Code workspace\n"
-printf "  named after the app it builds. It inherits your company\n"
+printf "  named after the app it builds. It inherits the entity\n"
 printf "  northstar and context, and grows with the app over time.${R}\n\n"
 
-# ── Validate company ───────────────────────────────────────────────────────
-if [ ! -d "$VAULT_PATH/$COMPANY" ]; then
-  printf "  ${Y}Error:${R} company '${COMPANY}' not found in chronicle-vault.\n"
+# ── Validate entity ────────────────────────────────────────────────────────
+if [ ! -d "$VAULT_PATH/$ENTITY" ]; then
+  printf "  ${Y}Error:${R} entity '${ENTITY}' not found in chronicle-vault.\n"
   printf "  Available: $(ls "$VAULT_PATH" | grep -v Logs | tr '\n' ' ')\n\n"
   exit 1
 fi
 
-NS_FILE=$(find "$VAULT_PATH/$COMPANY" -maxdepth 1 -name "*_NORTHSTAR.md" | head -1)
-printf "  ${G}✓${R} Company vault found\n"
+NS_FILE=$(find "$VAULT_PATH/$ENTITY" -maxdepth 1 -name "*_NORTHSTAR.md" | head -1)
+printf "  ${G}✓${R} Entity vault found\n"
 [ -n "$NS_FILE" ] && printf "  ${G}✓${R} Northstar: ${D}$(basename "$NS_FILE")${R}\n" \
-  || printf "  ${Y}!${R} No northstar yet — edit chronicle-vault/${COMPANY}/*_NORTHSTAR.md\n"
+  || printf "  ${Y}!${R} No northstar yet — edit chronicle-vault/${ENTITY}/*_NORTHSTAR.md\n"
 printf "\n"
 
 # ── Step 1: GitHub ─────────────────────────────────────────────────────────
@@ -115,7 +114,7 @@ fi
 step_banner 2 3 "Launching App Builder" \
   "App Builder  = Claude Code container dedicated to one app" \
   "Workspace    = /workspace/ — your isolated build space" \
-  "Distilled    = company context prepared by Content Loader (read-only)"
+  "Distilled    = entity context prepared by Content Loader (read-only)"
 
 if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
   printf "  Building App Builder image (first time only, ~2 min)...\n\n"
@@ -127,26 +126,26 @@ NORTHSTAR_TMP=$(mktemp /tmp/northstar-XXXXXX)
 if [ -n "$NS_FILE" ]; then
   cp "$NS_FILE" "$NORTHSTAR_TMP"
 else
-  printf "# NORTHSTAR\n\nEdit chronicle-vault/${COMPANY}/*_NORTHSTAR.md\n" > "$NORTHSTAR_TMP"
+  printf "# NORTHSTAR\n\nEdit chronicle-vault/${ENTITY}/*_NORTHSTAR.md\n" > "$NORTHSTAR_TMP"
 fi
 
 docker run -d --name "$CONTAINER" \
-  -v "$VAULT_PATH/$COMPANY/Distilled:/vault/Distilled:ro" \
-  -v "$VAULT_PATH/$COMPANY/Logs:/vault/Logs" \
+  -v "$VAULT_PATH/$ENTITY/Distilled:/vault/Distilled:ro" \
+  -v "$VAULT_PATH/$ENTITY/Logs:/vault/Logs" \
   -v "$SCRIPT_DIR/app-builder-image/CLAUDE.md:/workspace/CLAUDE.md:ro" \
   -v "$NORTHSTAR_TMP:/workspace/NORTHSTAR.md:ro" \
-  -e "COMPANY=$COMPANY" \
+  -e "ENTITY=$ENTITY" \
   -e "APP=$APP" \
   "$IMAGE" > /dev/null
 
 docker exec "$CONTAINER" git init /workspace > /dev/null 2>&1 || true
 docker exec "$CONTAINER" git -C /workspace config user.email "app@personal-ai" > /dev/null 2>&1 || true
-docker exec "$CONTAINER" git -C /workspace config user.name "${COMPANY}-${APP}" > /dev/null 2>&1 || true
+docker exec "$CONTAINER" git -C /workspace config user.name "${ENTITY}-${APP}" > /dev/null 2>&1 || true
 [ -n "$GITHUB_REMOTE" ] && docker exec "$CONTAINER" git -C /workspace remote add origin "$GITHUB_REMOTE" > /dev/null 2>&1 || true
 
 printf "  ${G}✓${R} Container started\n"
 printf "  ${G}✓${R} CLAUDE.md + NORTHSTAR.md loaded\n"
-printf "  ${G}✓${R} Company context mounted (read-only)\n"
+printf "  ${G}✓${R} Entity context mounted (read-only)\n"
 [ -n "$GITHUB_REMOTE" ] && printf "  ${G}✓${R} GitHub remote wired\n"
 printf "\n"
 
