@@ -17,14 +17,14 @@ step_banner() {
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
   shift 3
-  printf "${B}${G}╔${LINE}╗\n"
-  printf "║  [Step %s/%s]  %s  %-20s║\n" "$step" "$total" "$bar" "$title"
-  printf "╠${LINE}╣\n"
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  [Step %s/%s]  %s  %s\n" "$step" "$total" "$bar" "$title"
+  printf "╠${LINE}\n"
   while [ $# -gt 0 ]; do
-    printf "║  ${C}▸${G} %-$((W-5))s║\n" "$1"
+    printf "║  ${C}▸${G} %s\n" "$1"
     shift
   done
-  printf "╚${LINE}╝${R}\n\n"
+  printf "╚${LINE}${R}\n\n"
 }
 
 lower() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'; }
@@ -50,9 +50,9 @@ ask_raw() {
 }
 
 clear
-printf "${B}${G}╔${LINE}╗\n"
-printf "║  %-$((W-2))s║\n" "Personal AI v0.2 — Add Human"
-printf "╚${LINE}╝${R}\n\n"
+printf "${B}${G}╔${LINE}\n"
+printf "║  Personal AI v0.2 — Add Human\n"
+printf "╚${LINE}${R}\n\n"
 
 if [ ! -f "$CONFIG_PATH" ]; then
   printf "  ${Y}Error:${R} config.json not found. Run ./install.sh first.\n\n"
@@ -143,9 +143,9 @@ NODEEOF
 printf "  ${G}✓${R} ${HU_CLARK} added — Clark + AIOO access for ${ENTITY_NAME}\n"
 printf "  ${G}✓${R} config.json updated\n\n"
 
-printf "${B}${G}╔${LINE}╗\n"
-printf "║  %-$((W-2))s║\n" "Human added."
-printf "╚${LINE}╝${R}\n\n"
+printf "${B}${G}╔${LINE}\n"
+printf "║  Human added.\n"
+printf "╚${LINE}${R}\n\n"
 printf "  Human:    ${B}${HU_NAME}${R}\n"
 printf "  Clark:    ${B}${HU_CLARK}${R}\n"
 printf "  Entity:   ${B}${ENTITY_NAME}${R}\n"

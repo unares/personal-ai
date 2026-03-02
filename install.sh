@@ -17,14 +17,14 @@ step_banner() {
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
   shift 3
-  printf "${B}${G}╔${LINE}╗\n"
-  printf "║  [Step %s/%s]  %s  %-20s║\n" "$step" "$total" "$bar" "$title"
-  printf "╠${LINE}╣\n"
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  [Step %s/%s]  %s  %s\n" "$step" "$total" "$bar" "$title"
+  printf "╠${LINE}\n"
   while [ $# -gt 0 ]; do
-    printf "║  ${C}▸${G} %-$((W-5))s║\n" "$1"
+    printf "║  ${C}▸${G} %s\n" "$1"
     shift
   done
-  printf "╚${LINE}╝${R}\n\n"
+  printf "╚${LINE}${R}\n\n"
 }
 
 upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
@@ -51,17 +51,17 @@ ask_raw() {
 }
 
 clear
-printf "${B}${G}╔${LINE}╗\n"
-printf "║  %-$((W-2))s║\n" "Personal AI v0.2 — Setup Wizard"
-printf "║  %-$((W-2))s║\n" "Do One Thing. Earn Full Autonomy."
-printf "╚${LINE}╝${R}\n"
+printf "${B}${G}╔${LINE}\n"
+printf "║  Personal AI v0.2 — Setup Wizard\n"
+printf "║  Do One Thing. Earn Full Autonomy.\n"
+printf "╚${LINE}${R}\n"
 printf "\n  ${D}4 steps · ~2 minutes${R}\n\n"
 
 # ── Step 1: Owner ──────────────────────────────────────────────────────────
 step_banner 1 4 "Your Identity" \
-  "Clark    = Clarity Architect — your personal AI compass" \
-  "Northstar = your locked long-term vision, read by every agent" \
-  "Vault     = your private, isolated, Markdown memory layer"
+  "Clark  = Clarity Architect, your Philosophical Brain" \
+  "Entity = a company or major project (brand name)" \
+  "AIOO   = AI Operating Officer, your Productivity Brain"
 
 ask_raw OWNER_RAW "Your first name"
 OWNER_NAME=$(lower "$OWNER_RAW")
@@ -74,9 +74,9 @@ printf "  an entity will only see that entity.${R}\n\n"
 
 # ── Step 2: Entities ────────────────────────────────────────────────────────
 step_banner 2 4 "Your Entities" \
-  "Entity   = a company or major project (e.g. OneThing, Procenteo)" \
   "Human    = another person jointly responsible for an entity" \
-  "AIOO     = AI Operating Officer — drives execution for an entity"
+  "Northstar = your locked long-term vision, read by all agents" \
+  "Vault     = your private, isolated, memory layer"
 
 ENTITIES_JSON=""
 ENTITIES_ARRAY=""
@@ -95,7 +95,8 @@ while true; do
 
   printf "\n"
   while true; do
-    read -rp "  Is ${B}${PROJ_NAME}${R} a solo entity? [y/n]: " IS_SOLO
+    printf "  Is ${B}${PROJ_NAME}${R} a solo project/company? [y/n]: "
+    read -r IS_SOLO
     case "$IS_SOLO" in y*|Y*|n*|N*) break;; esac
     printf "  ${Y}Please enter y or n.${R}\n"
   done
@@ -162,7 +163,7 @@ done
 # ── Step 3: Generate ────────────────────────────────────────────────────────
 step_banner 3 4 "Creating Vault & Config" \
   "config.json = source of truth — drives all agents and tools" \
-  "Northstar   = seeded blank, edit it to define your vision" \
+  "Northstar   = seeded blank — edit it to define your vision" \
   "Logs/       = every agent action recorded, scoped per entity"
 
 printf "{\n  \"owner\": \"${OWNER_NAME}\",\n  \"vaultPath\": \"${VAULT_PATH}\",\n  \"clarks\": [\n${CLARKS_JSON}\n  ],\n  \"entities\": [${ENTITIES_JSON}\n  ]\n}\n" > "$CONFIG_PATH"
@@ -193,10 +194,10 @@ for PROJ in "${ENTITY_NAMES[@]}"; do
   printf "  │   ├── Raw/{Daily, Apps, People}\n"
   printf "  │   ├── Distilled/{Clark, AIOO}\n"
   printf "  │   ├── Archive/Raw/\n"
-  printf "  │   ├── Logs/           ${D}← ${PROJ} activity log${R}\n"
+  printf "  │   ├── Logs/\n"
   printf "  │   └── $(upper "$PROJ")_NORTHSTAR.md\n"
 done
-printf "  └── Logs/               ${D}← system-wide Content Loader log${R}\n\n"
+printf "  └── Logs/\n\n"
 
 # ── Step 4: Start Content Loader ───────────────────────────────────────────
 step_banner 4 4 "Starting Content Loader" \
@@ -206,9 +207,9 @@ step_banner 4 4 "Starting Content Loader" \
 cd "$SCRIPT_DIR"
 docker compose --profile seed up -d --build content-loader 2>&1 | grep -E "✔|Built|Started|Error|WARN|error" || true
 
-printf "\n${B}${G}╔${LINE}╗\n"
-printf "║  %-$((W-2))s║\n" "Setup complete. Personal AI v0.2 is live."
-printf "╚${LINE}╝${R}\n\n"
+printf "\n${B}${G}╔${LINE}\n"
+printf "║  Setup complete. Personal AI v0.2 is live.\n"
+printf "╚${LINE}${R}\n\n"
 ENTITY_LIST=$(IFS=', '; echo "${ENTITY_NAMES[*]}")
 printf "  Owner:    ${B}${OWNER_NAME}${R} (${OWNER_CLARK})\n"
 printf "  Entities: ${B}${ENTITY_LIST}${R}\n"

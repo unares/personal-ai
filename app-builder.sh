@@ -18,10 +18,10 @@ W=64
 LINE=$(printf '═%.0s' $(seq 1 $W))
 
 banner_main() {
-  printf "${B}${G}╔${LINE}╗\n"
-  printf "║  %-$((W-2))s║\n" "Personal AI v0.2 — App Builder"
-  printf "║  %-$((W-2))s║\n" "Do One Thing. Earn Full Autonomy."
-  printf "╚${LINE}╝${R}\n\n"
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  Personal AI v0.2 — App Builder\n"
+  printf "║  Do One Thing. Earn Full Autonomy.\n"
+  printf "╚${LINE}${R}\n\n"
 }
 
 step_banner() {
@@ -31,14 +31,14 @@ step_banner() {
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
   shift 3
-  printf "${B}${G}╔${LINE}╗\n"
-  printf "║  [Step %s/%s]  %s  %-20s║\n" "$step" "$total" "$bar" "$title"
-  printf "╠${LINE}╣\n"
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  [Step %s/%s]  %s  %s\n" "$step" "$total" "$bar" "$title"
+  printf "╠${LINE}\n"
   while [ $# -gt 0 ]; do
-    printf "║  ${C}▸${G} %-$((W-5))s║\n" "$1"
+    printf "║  ${C}▸${G} %s\n" "$1"
     shift
   done
-  printf "╚${LINE}╝${R}\n\n"
+  printf "╚${LINE}${R}\n\n"
 }
 
 clear
@@ -168,6 +168,6 @@ printf "     ${D}Re-attach: docker exec -it ${CONTAINER} claude${R}\n\n"
 printf "  ${B}5. Stop the App Builder when done for the day:${R}\n"
 printf "     ${D}docker stop ${CONTAINER} && docker rm ${CONTAINER}${R}\n\n"
 
-printf "${B}${G}╔${LINE}╗\n"
-printf "║  ${B}${CONTAINER}${G} is live.%-$((W-4-${#CONTAINER}))s║\n" ""
-printf "╚${LINE}╝${R}\n\n"
+printf "${B}${G}╔${LINE}\n"
+printf "║  ${B}${CONTAINER}${G} is live.\n"
+printf "╚${LINE}${R}\n\n"

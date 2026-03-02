@@ -18,14 +18,14 @@ step_banner() {
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
   shift 3
-  printf "${B}${G}╔${LINE}╗\n"
-  printf "║  [Step %s/%s]  %s  %-20s║\n" "$step" "$total" "$bar" "$title"
-  printf "╠${LINE}╣\n"
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  [Step %s/%s]  %s  %s\n" "$step" "$total" "$bar" "$title"
+  printf "╠${LINE}\n"
   while [ $# -gt 0 ]; do
-    printf "║  ${C}▸${G} %-$((W-5))s║\n" "$1"
+    printf "║  ${C}▸${G} %s\n" "$1"
     shift
   done
-  printf "╚${LINE}╝${R}\n\n"
+  printf "╚${LINE}${R}\n\n"
 }
 
 upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
@@ -52,9 +52,9 @@ ask_raw() {
 }
 
 clear
-printf "${B}${G}╔${LINE}╗\n"
-printf "║  %-$((W-2))s║\n" "Personal AI v0.2 — Add Entity"
-printf "╚${LINE}╝${R}\n\n"
+printf "${B}${G}╔${LINE}\n"
+printf "║  Personal AI v0.2 — Add Entity\n"
+printf "╚${LINE}${R}\n\n"
 
 if [ ! -f "$CONFIG_PATH" ]; then
   printf "  ${Y}Error:${R} config.json not found. Run ./install.sh first.\n\n"
@@ -91,7 +91,8 @@ AIOO_NAME="aioo-${PROJ_NAME}"
 
 printf "\n"
 while true; do
-  read -rp "  Is ${B}${PROJ_NAME}${R} a solo entity? [y/n]: " IS_SOLO
+  printf "  Is ${B}${PROJ_NAME}${R} a solo project/company? [y/n]: "
+  read -r IS_SOLO
   case "$IS_SOLO" in y*|Y*|n*|N*) break;; esac
   printf "  ${Y}Please enter y or n.${R}\n"
 done
@@ -200,9 +201,9 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "content-loader"; then
   printf "  ${G}✓${R} Content Loader restarted\n"
 fi
 
-printf "\n${B}${G}╔${LINE}╗\n"
-printf "║  %-$((W-2))s║\n" "Done. ${PROJ_NAME} is live."
-printf "╚${LINE}╝${R}\n\n"
+printf "\n${B}${G}╔${LINE}\n"
+printf "║  Done. ${PROJ_NAME} is live.\n"
+printf "╚${LINE}${R}\n\n"
 printf "  Entity:   ${B}${PROJ_NAME}${R}\n"
 printf "  AIOO:     ${B}${AIOO_NAME}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}/${PROJ_NAME}${R}\n\n"
