@@ -1,0 +1,16 @@
+# Runtime generated — never commit these
+chronicle-vault/
+instances/
+shared/chronicle.db
+shared/chronicle.db-shm
+shared/chronicle.db-wal
+shared/.claude.env
+*.env.local
+
+# Node
+node_modules/
+npm-debug.log
+
+# OS
+.DS_Store
+*.swp

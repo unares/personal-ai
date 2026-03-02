@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Personal AI — Mission Control</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>Mission Control</h1>
+      <div id="project-tabs" class="project-tabs"></div>
+    </div>
+    <div class="header-right">
+      <button id="spawn-btn" class="btn btn-primary">+ New Sandbox</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── Little Guys Panel ─────────────────────────────────── -->
+    <section id="little-guys-panel">
+      <div id="little-guys-stage">
+
+        <!-- Clark figurine -->
+        <div id="clark-guy" class="guy" data-role="clark" title="Clarity Architect — Clark">
+          <div class="guy-body">
+            <svg class="silhouette" viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="30" cy="18" rx="14" ry="14" class="head"/>
+              <path d="M10 100 Q10 55 30 50 Q50 55 50 100Z" class="body"/>
+              <line x1="10" y1="65" x2="0" y2="85" class="arm"/>
+              <line x1="50" y1="65" x2="60" y2="85" class="arm"/>
+            </svg>
+          </div>
+          <div class="guy-label">Clark</div>
+          <div class="guy-role">Clarity Architect</div>
+          <div class="status-dot" id="clark-status"></div>
+        </div>
+
+        <!-- Star artifact (Northstar link) -->
+        <div id="star-zone">
+          <svg class="link-line" id="link-line-left" viewBox="0 0 80 10">
+            <line x1="0" y1="5" x2="80" y2="5" stroke-dasharray="4 3"/>
+          </svg>
+          <button id="star-artifact" class="artifact star-artifact" title="View Northstar">
+            <span class="star-icon">★</span>
+            <span class="artifact-label">Northstar</span>
+          </button>
+          <svg class="link-line" id="link-line-right" viewBox="0 0 80 10">
+            <line x1="0" y1="5" x2="80" y2="5" stroke-dasharray="4 3"/>
+          </svg>
+        </div>
+
+        <!-- AIOO figurine -->
+        <div id="aioo-guy" class="guy" data-role="aioo" title="AI Operating Officer — AIOO">
+          <div class="guy-body">
+            <svg class="silhouette" viewBox="0 0 60 100" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="30" cy="18" rx="14" ry="14" class="head"/>
+              <path d="M10 100 Q10 55 30 50 Q50 55 50 100Z" class="body"/>
+              <line x1="10" y1="65" x2="0" y2="85" class="arm"/>
+              <line x1="50" y1="65" x2="60" y2="85" class="arm"/>
+            </svg>
+          </div>
+          <div class="guy-label">AIOO</div>
+          <div class="guy-role">AI Operating Officer</div>
+          <div class="status-dot" id="aioo-status"></div>
+        </div>
+
+        <!-- Factory artifact (spawn mvp-builder) -->
+        <div id="factory-zone">
+          <svg class="link-line factory-link" viewBox="0 0 10 60">
+            <line x1="5" y1="0" x2="5" y2="60" stroke-dasharray="4 3"/>
+          </svg>
+          <button id="factory-artifact" class="artifact factory-artifact" title="Spawn mvp-builder">
+            <span class="factory-icon">⚙</span>
+            <span class="artifact-label">Factory</span>
+          </button>
+        </div>
+
+        <!-- WhatsApp connection badge -->
+        <div id="whatsapp-badge" title="Clark ↔ AIOO message channel">
+          <span class="wa-icon">💬</span>
+          <span id="wa-status" class="wa-status">connected</span>
+        </div>
+
+      </div>
+
+      <!-- Color picker -->
+      <div id="color-picker" class="color-picker">
+        <span class="cp-label">Color:</span>
+        <button class="chip" data-color="indigo"  style="--c:#6366f1" title="Indigo"></button>
+        <button class="chip" data-color="amber"   style="--c:#f59e0b" title="Amber"></button>
+        <button class="chip" data-color="emerald" style="--c:#10b981" title="Emerald"></button>
+        <button class="chip" data-color="rose"    style="--c:#f43f5e" title="Rose"></button>
+      </div>
+    </section>
+
+    <!-- ── Bottom panels ─────────────────────────────────────── -->
+    <div id="bottom-panels">
+
+      <!-- Activity feed -->
+      <section id="activity-panel">
+        <h2>Activity <span id="activity-project-label"></span></h2>
+        <ul id="event-list"></ul>
+      </section>
+
+      <!-- Sandbox list -->
+      <section id="sandbox-panel">
+        <h2>Sandboxes</h2>
+        <table id="sandbox-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Role</th><th>Project</th>
+              <th>Cost $</th><th>Events</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="sandbox-tbody"></tbody>
+        </table>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ── Northstar Modal ───────────────────────────────────────── -->
+  <div id="northstar-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="star-icon-sm">★</span>
+        <h2 id="northstar-title">Northstar</h2>
+        <button id="close-modal" aria-label="Close">×</button>
+      </div>
+      <pre id="northstar-content"></pre>
+    </div>
+  </div>
+
+  <!-- ── Spawn Modal ───────────────────────────────────────────── -->
+  <div id="spawn-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Spawn New Sandbox</h2>
+        <button id="close-spawn-modal" aria-label="Close">×</button>
+      </div>
+      <form id="spawn-form">
+        <label>Role
+          <select id="spawn-role" required>
+            <option value="mvp-builder">mvp-builder</option>
+            <option value="aioo">aioo</option>
+            <option value="clark">clark</option>
+          </select>
+        </label>
+        <label>Name
+          <input id="spawn-name" type="text" placeholder="e.g. my-builder" required pattern="[a-z0-9-]+">
+        </label>
+        <label>Project
+          <select id="spawn-project">
+            <option value="personal-ai">personal-ai</option>
+            <option value="procenteo">procenteo</option>
+            <option value="inisio">inisio</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-primary">Spawn</button>
+        <div id="spawn-result"></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

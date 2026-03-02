@@ -1,0 +1,8 @@
+{
+  "name": "content-loader",
+  "version": "0.1.0",
+  "description": "Chronicle vault watcher — raw archival + distilled stubs",
+  "main": "content-loader.js",
+  "scripts": { "start": "node content-loader.js" },
+  "dependencies": { "chokidar": "^3.6.0" }
+}

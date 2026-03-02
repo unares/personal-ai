@@ -1,0 +1,192 @@
+version: "3.9"
+
+# Personal AI v0.2 — Sandbox Factory
+# Usage:
+#   docker compose --profile mission-control up -d
+#   docker compose --profile qmd up -d
+#   docker compose --profile aioo up -d
+#   docker compose --profile clark up -d
+#   docker compose --profile seed up -d    # Content Loader (Seed MVP)
+
+x-common-volumes: &common-volumes
+  - chronicle:/app/shared/chronicle.db
+  - northstar-summaries:/app/shared/northstar-summaries
+
+services:
+
+  # ─── Mission Control ────────────────────────────────────────────────────────
+  mission-control:
+    profiles: [mission-control]
+    build:
+      context: ./templates/mission-control
+    container_name: mission-control
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - chronicle:/app/shared/chronicle.db
+      - northstar-summaries:/app/shared/northstar-summaries
+      - ./templates:/app/templates:ro
+    environment:
+      - TEMPLATES_DIR=/app/templates
+      - DB_PATH=/app/shared/chronicle.db
+      - PORT=3000
+    restart: unless-stopped
+
+  # ─── QMD Skill (MCP context query server) ───────────────────────────────────
+  qmd:
+    profiles: [qmd]
+    build:
+      context: ./qmd
+    container_name: qmd
+    ports:
+      - "3001:3001"
+    volumes:
+      - chronicle:/app/shared/chronicle.db
+      - vault:/app/vault:ro
+    environment:
+      - VAULT_PATH=/app/vault
+      - DB_PATH=/app/shared/chronicle.db
+      - PORT=3001
+    restart: unless-stopped
+
+  # ─── Content Loader (Seed MVP) ──────────────────────────────────────────────
+  content-loader:
+    profiles: [seed]
+    build:
+      context: ./content-loader
+    container_name: content-loader
+    volumes:
+      - chronicle-vault:/vault
+    environment:
+      - VAULT_PATH=/vault
+    restart: unless-stopped
+
+  # ─── AIOO Instances ─────────────────────────────────────────────────────────
+  aioo-personal-ai:
+    profiles: [aioo]
+    build: { context: . }
+    container_name: aioo-personal-ai
+    hostname: aioo-personal-ai
+    volumes:
+      - aioo-personal-ai-data:/app
+      - chronicle:/app/shared/chronicle.db
+      - northstar-summaries:/app/shared/northstar-summaries
+      - vault-personal-ai:/app/vault/projects/personal-ai
+    environment:
+      - ROLE=aioo
+      - PROJECT_ID=personal-ai
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-pro-exp}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    env_file:
+      - ./shared/.claude.env
+    command: ["sleep", "infinity"]
+
+  aioo-procenteo:
+    profiles: [aioo]
+    build: { context: . }
+    container_name: aioo-procenteo
+    hostname: aioo-procenteo
+    volumes:
+      - aioo-procenteo-data:/app
+      - chronicle:/app/shared/chronicle.db
+      - northstar-summaries:/app/shared/northstar-summaries
+      - vault-procenteo:/app/vault/projects/procenteo
+    environment:
+      - ROLE=aioo
+      - PROJECT_ID=procenteo
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-pro-exp}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    env_file:
+      - ./shared/.claude.env
+
+  aioo-inisio:
+    profiles: [aioo]
+    build: { context: . }
+    container_name: aioo-inisio
+    hostname: aioo-inisio
+    volumes:
+      - aioo-inisio-data:/app
+      - chronicle:/app/shared/chronicle.db
+      - northstar-summaries:/app/shared/northstar-summaries
+      - vault-inisio:/app/vault/projects/inisio
+    environment:
+      - ROLE=aioo
+      - PROJECT_ID=inisio
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-pro-exp}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    env_file:
+      - ./shared/.claude.env
+
+  # ─── Clark Instances ────────────────────────────────────────────────────────
+  clark-founder:
+    profiles: [clark]
+    build: { context: . }
+    container_name: clark-founder
+    hostname: clark-founder
+    volumes:
+      - clark-founder-data:/app
+      - northstar-summaries:/app/shared/northstar-summaries:ro
+    environment:
+      - ROLE=clark
+      - PERSON_ID=founder
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-pro-exp}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    env_file:
+      - ./shared/.claude.env
+
+# ─── Named Volumes ───────────────────────────────────────────────────────────
+volumes:
+  chronicle:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/shared
+
+  northstar-summaries:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/shared/northstar-summaries
+
+  vault:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/vault
+
+  vault-personal-ai:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/vault/projects/personal-ai
+
+  vault-procenteo:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/vault/projects/procenteo
+
+  vault-inisio:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/vault/projects/inisio
+
+  chronicle-vault:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/chronicle-vault
+
+  aioo-personal-ai-data: {}
+  aioo-procenteo-data: {}
+  aioo-inisio-data: {}
+  clark-founder-data: {}
