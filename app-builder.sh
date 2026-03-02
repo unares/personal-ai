@@ -26,7 +26,7 @@ banner_main() {
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step * 16 / total)) empty=$((16 - step * 16 / total))
+  local filled=$((step >= total ? 16 : step * 16 / total)) empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
