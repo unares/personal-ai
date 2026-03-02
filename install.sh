@@ -7,6 +7,25 @@ VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
 CONFIG_PATH="$SCRIPT_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
+W=64
+LINE=$(printf '═%.0s' $(seq 1 $W))
+
+step_banner() {
+  local step=$1 total=$2 title="$3"
+  local filled=$((step * 16 / total)) empty=$((16 - step * 16 / total))
+  local bar="" i
+  for i in $(seq 1 $filled); do bar="${bar}█"; done
+  for i in $(seq 1 $empty); do bar="${bar}░"; done
+  shift 3
+  printf "${B}${G}╔${LINE}╗\n"
+  printf "║  [Step %s/%s]  %s  %-20s║\n" "$step" "$total" "$bar" "$title"
+  printf "╠${LINE}╣\n"
+  while [ $# -gt 0 ]; do
+    printf "║  ${C}▸${G} %-$((W-5))s║\n" "$1"
+    shift
+  done
+  printf "╚${LINE}╝${R}\n\n"
+}
 
 upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
 lower() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'; }
@@ -47,19 +66,17 @@ ask_raw() {
 }
 
 clear
-printf "${B}${G}"
-printf "╔══════════════════════════════════════════════════════╗\n"
-printf "║       Personal AI v0.2 — Setup Wizard               ║\n"
-printf "║       Do One Thing. Earn Full Autonomy.              ║\n"
-printf "╚══════════════════════════════════════════════════════╝${R}\n"
+printf "${B}${G}╔${LINE}╗\n"
+printf "║  %-$((W-2))s║\n" "Personal AI v0.2 — Setup Wizard"
+printf "║  %-$((W-2))s║\n" "Do One Thing. Earn Full Autonomy."
+printf "╚${LINE}╝${R}\n"
 printf "\n  ${D}4 steps · ~2 minutes${R}\n\n"
 
 # ── Step 1: Owner ──────────────────────────────────────────────────────────
-printf "${B}${C}[Step 1/4] Your Identity${R}\n"
-printf "  %.0s─" {1..53}; printf "\n"
-printf "  ${D}This creates your personal Clark — your Clarity Architect.\n"
-printf "  Clark reads your project summaries and helps you stay\n"
-printf "  focused on the One Thing that matters most.${R}\n\n"
+step_banner 1 4 "Your Identity" \
+  "Clark    = Clarity Architect — your personal AI compass" \
+  "Northstar = your locked long-term vision, read by every agent" \
+  "Vault     = your private, isolated, Markdown memory layer"
 
 ask_raw OWNER_RAW "Your first name"
 OWNER_NAME=$(lower "$OWNER_RAW")
@@ -71,12 +88,10 @@ printf "  read access to all company vaults you create. Co-founders\n"
 printf "  you add will only see their own company.${R}\n\n"
 
 # ── Step 2: Companies ──────────────────────────────────────────────────────
-printf "${B}${C}[Step 2/4] Your Companies${R}\n"
-printf "  %.0s─" {1..53}; printf "\n"
-printf "  ${D}Each company gets an isolated vault (your private Obsidian-\n"
-printf "  style memory) and an AIOO — your AI Operating Officer that\n"
-printf "  drives execution and keeps the project northstar sharp.\n"
-printf "  Add one company at a time. You can add more later.${R}\n\n"
+step_banner 2 4 "Your Companies" \
+  "Company  = one project/startup you are building" \
+  "AIOO     = AI Operating Officer — drives execution for a company" \
+  "Vault    = isolated Markdown memory for each company"
 
 PROJECTS_JSON=""
 PROJECTS_ARRAY=""
@@ -151,8 +166,10 @@ for CF_ENTRY in "${COFOUNDER_CLARKS[@]}"; do
 done
 
 # ── Step 3: Generate ───────────────────────────────────────────────────────
-printf "${B}${C}[Step 3/4] Creating Vault & Config${R}\n"
-printf "  %.0s─" {1..53}; printf "\n\n"
+step_banner 3 4 "Creating Vault & Config" \
+  "config.json = source of truth — drives all agents and tools" \
+  "Northstar   = seeded blank, edit it to define your vision" \
+  "Logs/       = every agent action recorded, scoped per company"
 
 # Write config.json
 printf "{\n  \"owner\": \"${OWNER_NAME}\",\n  \"vaultPath\": \"${VAULT_PATH}\",\n  \"clarks\": [\n${CLARKS_JSON}\n  ],\n  \"projects\": [${PROJECTS_JSON}\n  ]\n}\n" > "$CONFIG_PATH"
@@ -189,22 +206,20 @@ done
 printf "  └── Logs/               ${D}← system-wide Content Loader log${R}\n\n"
 
 # ── Step 4: Start Content Loader ───────────────────────────────────────────
-printf "${B}${C}[Step 4/4] Starting Content Loader${R}\n"
-printf "  %.0s─" {1..53}; printf "\n\n"
-printf "  ${D}Content Loader watches all your vaults in isolation.\n"
-printf "  Drop any .md file into Raw/ — it archives and distills\n"
-printf "  it for Clark and AIOO within 2 seconds.${R}\n\n"
+step_banner 4 4 "Starting Content Loader" \
+  "Content Loader = watches Raw/ and distills notes for agents" \
+  "Raw/           = drop any .md — archived + distilled in 2s" \
+  "Distilled/     = cleaned summaries read by Clark and AIOO"
 cd "$SCRIPT_DIR"
 docker compose --profile seed up -d --build content-loader 2>&1 | grep -E "✔|Built|Started|Error|WARN|error" || true
 
-printf "\n${B}${G}"
-printf "╔══════════════════════════════════════════════════════╗\n"
-printf "║  Setup complete. Personal AI v0.2 is live.          ║\n"
-printf "╚══════════════════════════════════════════════════════╝${R}\n\n"
+printf "\n${B}${G}╔${LINE}╗\n"
+printf "║  %-$((W-2))s║\n" "Setup complete. Personal AI v0.2 is live."
+printf "╚${LINE}╝${R}\n\n"
 PROJ_LIST=$(IFS=', '; echo "${PROJECT_NAMES[*]}")
 printf "  Owner:     ${B}${OWNER_NAME}${R} (${OWNER_CLARK})\n"
 printf "  Companies: ${B}${PROJ_LIST}${R}\n"
 printf "  Vault:     ${B}${VAULT_PATH}${R}\n\n"
 printf "  Drop notes:    chronicle-vault/{company}/Raw/\n"
-printf "  Spawn builder: ${B}./mvp-builder.sh <company> <mvp-name>${R}\n"
+printf "  Spawn builder: ${B}./app-builder.sh <company> <app-name>${R}\n"
 printf "  Add company:   ${B}./add-company.sh${R}  ${D}(coming soon)${R}\n\n"
