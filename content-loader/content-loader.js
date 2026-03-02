@@ -4,17 +4,18 @@ const fs = require('fs');
 const path = require('path');
 
 const VAULT = process.env.VAULT_PATH || '/vault';
-const RAW = path.join(VAULT, 'Raw');
-const ARCHIVE = path.join(VAULT, 'Archive', 'Raw');
-const DISTILL_CLARK = path.join(VAULT, 'Distilled', 'Clark');
-const DISTILL_AIOO = path.join(VAULT, 'Distilled', 'AIOO');
+const CONFIG_PATH = process.env.CONFIG_PATH || '/app/config.json';
 const LOG_FILE = path.join(VAULT, 'Logs', 'content-loader.log');
 const STUB_LIMIT = 500;
 
-function log(msg) {
-  const line = `${new Date().toISOString()} ${msg}\n`;
+function log(company, msg, companyLogFile) {
+  const line = `${new Date().toISOString()} [${company}] ${msg}\n`;
   fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
   fs.appendFileSync(LOG_FILE, line);
+  if (companyLogFile) {
+    fs.mkdirSync(path.dirname(companyLogFile), { recursive: true });
+    fs.appendFileSync(companyLogFile, line);
+  }
   process.stdout.write(line);
 }
 
@@ -22,39 +23,59 @@ function dateBucket() {
   return new Date().toISOString().slice(0, 13).replace('T', '-');
 }
 
-function archive(filePath) {
-  const rel = path.relative(RAW, filePath);
-  const dest = path.join(ARCHIVE, dateBucket(), rel);
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(filePath, dest);
-  log(`ARCHIVE ${rel} -> ${dest}`);
-}
+function watchProject(project) {
+  const name = project.name;
+  const rawDir    = path.join(VAULT, name, 'Raw');
+  const archDir   = path.join(VAULT, name, 'Archive', 'Raw');
+  const clarkDir  = path.join(VAULT, name, 'Distilled', 'Clark');
+  const aiooDir   = path.join(VAULT, name, 'Distilled', 'AIOO');
+  const coLog     = path.join(VAULT, name, 'Logs', 'content-loader.log');
 
-function distillStub(filePath) {
-  const rel = path.relative(RAW, filePath);
-  const raw = fs.readFileSync(filePath, 'utf8');
-  const preview = raw.slice(0, STUB_LIMIT);
-  const stub = `<!-- source: Raw/${rel} | ${new Date().toISOString()} -->\n${preview}\n\n[STUB - full distill pipeline TBD]\n`;
-  for (const dir of [DISTILL_CLARK, DISTILL_AIOO]) {
-    const dest = path.join(dir, rel);
-    fs.mkdirSync(path.dirname(dest), { recursive: true });
-    fs.writeFileSync(dest, stub);
-    log(`DISTILL ${rel} -> ${dest}`);
+  for (const d of [rawDir, archDir, clarkDir, aiooDir, path.join(VAULT, name, 'Logs')]) {
+    fs.mkdirSync(d, { recursive: true });
   }
+
+  function onChange(filePath) {
+    if (!filePath.endsWith('.md')) return;
+    try {
+      const rel    = path.relative(rawDir, filePath);
+      const bucket = path.join(archDir, dateBucket(), rel);
+      fs.mkdirSync(path.dirname(bucket), { recursive: true });
+      fs.copyFileSync(filePath, bucket);
+      log(name, `ARCHIVE ${rel}`, coLog);
+
+      const raw  = fs.readFileSync(filePath, 'utf8');
+      const stub = `<!-- source: ${name}/Raw/${rel} | ${new Date().toISOString()} -->\n${raw.slice(0, STUB_LIMIT)}\n\n[STUB - full distill pipeline TBD]\n`;
+
+      for (const dir of [clarkDir, aiooDir]) {
+        const dest = path.join(dir, rel);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, stub);
+        log(name, `DISTILL ${rel} -> ${path.relative(VAULT, dest)}`, coLog);
+      }
+    } catch (e) {
+      log(name, `ERROR ${filePath}: ${e.message}`, coLog);
+    }
+  }
+
+  log(name, `Watching ${rawDir}`, coLog);
+  chokidar.watch(rawDir, { ignoreInitial: false, persistent: true })
+    .on('add', onChange)
+    .on('change', onChange);
 }
 
-function onChange(filePath) {
-  if (!filePath.endsWith('.md')) return;
-  try { archive(filePath); distillStub(filePath); }
-  catch (e) { log(`ERROR ${filePath}: ${e.message}`); }
+// Load config and start watchers
+let config;
+try {
+  config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+} catch (e) {
+  console.error(`Content Loader: cannot read config at ${CONFIG_PATH}: ${e.message}`);
+  process.exit(1);
 }
 
-// Ensure base directories exist
-for (const d of [RAW, ARCHIVE, DISTILL_CLARK, DISTILL_AIOO]) {
-  fs.mkdirSync(d, { recursive: true });
-}
+fs.mkdirSync(path.join(VAULT, 'Logs'), { recursive: true });
+log('system', `Content Loader started — ${config.projects.length} companies`);
 
-log('Content Loader started. Watching ' + RAW);
-chokidar.watch(RAW, { ignoreInitial: false, persistent: true })
-  .on('add', onChange)
-  .on('change', onChange);
+for (const project of config.projects) {
+  watchProject(project);
+}

@@ -1,11 +1,7 @@
 # Runtime generated — never commit these
 chronicle-vault/
 instances/
-shared/chronicle.db
-shared/chronicle.db-shm
-shared/chronicle.db-wal
-shared/.claude.env
-*.env.local
+config.json
 
 # Node
 node_modules/
