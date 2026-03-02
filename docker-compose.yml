@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Personal AI v0.2 — Sandbox Factory
 # Usage:
 #   docker compose --profile mission-control up -d
