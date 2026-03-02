@@ -22,6 +22,9 @@ Claude Code Opus 4.6 (planning) / Sonnet 4.6 (execution agents).
 - /vault/Distilled/Clark/ — Clark summaries for this company
 - /vault/Distilled/AIOO/ — AIOO summaries for this company
 
+## System Updates
+Check /workspace/ANNOUNCEMENTS.md at session start for system-wide changes.
+
 ## Git Rules
 - Always work on a branch, never commit directly to main.
 - Never force push.
