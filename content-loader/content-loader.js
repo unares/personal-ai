@@ -1,81 +1,138 @@
 'use strict';
+
 const chokidar = require('chokidar');
 const fs = require('fs');
 const path = require('path');
+const { classify, categoryToDir } = require('./classifier');
+const { selfHeal, detectPredictions } = require('./self-heal');
+const { detectConflicts } = require('./conflict');
+const { generateFrontmatter, writeDistilled, sourceHash } = require('./frontmatter');
+const { createApi } = require('./api');
+const { initDb, indexFile, logConflict, logPrediction } = require('./db');
+const { buildIndex } = require('./db-search');
+const { startPostProcessor } = require('./post-process');
+const { initDistillSchema } = require('./distill');
+const { initStorySchema } = require('./story-blog');
+const { initAccessSchema } = require('./access');
+const cache = require('./cache');
 
 const VAULT = process.env.VAULT_PATH || '/vault';
-const CONFIG_PATH = process.env.CONFIG_PATH || '/app/config.json';
-const LOG_FILE = path.join(VAULT, 'Logs', 'content-loader.log');
-const STUB_LIMIT = 500;
+const PORT = process.env.CL_PORT || 27125;
+const CONFIG_PATH = process.env.CONFIG_PATH || path.join(__dirname, 'config.json');
+const CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
 
-function log(company, msg, companyLogFile) {
-  const line = `${new Date().toISOString()} [${company}] ${msg}\n`;
-  fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
-  fs.appendFileSync(LOG_FILE, line);
-  if (companyLogFile) {
-    fs.mkdirSync(path.dirname(companyLogFile), { recursive: true });
-    fs.appendFileSync(companyLogFile, line);
-  }
-  process.stdout.write(line);
+function log(entity, message) {
+  const logDir = path.join(VAULT, entity, 'Logs');
+  fs.mkdirSync(logDir, { recursive: true });
+  const line = `[${new Date().toISOString()}] ${message}\n`;
+  fs.appendFileSync(path.join(logDir, 'content-loader.log'), line);
+  console.log(`[${entity}] ${message}`);
 }
 
-function dateBucket() {
-  return new Date().toISOString().slice(0, 13).replace('T', '-');
+function archiveRaw(filePath, entity) {
+  const bucket = new Date().toISOString().substring(0, 13).replace('T', '-');
+  const archiveDir = path.join(VAULT, entity, 'Archive', 'Raw', bucket);
+  fs.mkdirSync(archiveDir, { recursive: true });
+  const dest = path.join(archiveDir, path.basename(filePath));
+  fs.copyFileSync(filePath, dest);
+  return path.relative(VAULT, dest);
 }
 
-function watchProject(project) {
-  const name = project.name;
-  const rawDir    = path.join(VAULT, name, 'Raw');
-  const archDir   = path.join(VAULT, name, 'Archive', 'Raw');
-  const clarkDir  = path.join(VAULT, name, 'Distilled', 'Clark');
-  const aiooDir   = path.join(VAULT, name, 'Distilled', 'AIOO');
-  const coLog     = path.join(VAULT, name, 'Logs', 'content-loader.log');
+function processFile(filePath, entity) {
+  if (!filePath.endsWith('.md')) return;
 
-  for (const d of [rawDir, archDir, clarkDir, aiooDir, path.join(VAULT, name, 'Logs')]) {
-    fs.mkdirSync(d, { recursive: true });
-  }
+  const content = fs.readFileSync(filePath, 'utf8');
+  if (!content.trim()) return;
 
-  function onChange(filePath) {
-    if (!filePath.endsWith('.md')) return;
-    try {
-      const rel    = path.relative(rawDir, filePath);
-      const bucket = path.join(archDir, dateBucket(), rel);
-      fs.mkdirSync(path.dirname(bucket), { recursive: true });
-      fs.copyFileSync(filePath, bucket);
-      log(name, `ARCHIVE ${rel}`, coLog);
+  const relPath = path.relative(path.join(VAULT, entity, 'Raw'), filePath);
+  const { content: healed, corrections } = selfHeal(content);
+  const predictions = detectPredictions(healed);
+  const classification = classify(healed);
 
-      const raw  = fs.readFileSync(filePath, 'utf8');
-      const stub = `<!-- source: ${name}/Raw/${rel} | ${new Date().toISOString()} -->\n${raw.slice(0, STUB_LIMIT)}\n\n[STUB - full distill pipeline TBD]\n`;
-
-      for (const dir of [clarkDir, aiooDir]) {
-        const dest = path.join(dir, rel);
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        fs.writeFileSync(dest, stub);
-        log(name, `DISTILL ${rel} -> ${path.relative(VAULT, dest)}`, coLog);
-      }
-    } catch (e) {
-      log(name, `ERROR ${filePath}: ${e.message}`, coLog);
+  for (const cat of classification.all_detected) {
+    const conflicts = detectConflicts(
+      healed, categoryToDir(cat), entity, VAULT
+    );
+    const fm = generateFrontmatter({
+      filePath: relPath, content, entity,
+      classification: { ...classification, primary: cat },
+      predictions, corrections, conflicts
+    });
+    const correctionComment = corrections.length > 0
+      ? `\n<!-- Context Loader corrected [${new Date().toISOString()}]: ${corrections.join('; ')} -->\n`
+      : '';
+    const body = healed + correctionComment;
+    const outPath = writeDistilled(
+      fm, body, cat, entity, path.basename(filePath), VAULT
+    );
+    indexFile({
+      entity, sourceFile: relPath, sourceHash: fm.sourceHash,
+      category: categoryToDir(cat), distilledPath: outPath,
+      trustScore: fm.trustScore, frontmatter: fm.yaml,
+      bodyPreview: body.substring(0, 1500),
+      meaningDensity: fm.meaningDensity, hypeScore: fm.hypeScore
+    });
+    for (const c of conflicts) {
+      logConflict({
+        entity, sourceFile: relPath, conflictType: c.type,
+        existingClaim: c.existing_claim, newClaim: c.new_claim,
+        existingFile: c.existing_file, recommendation: c.recommendation,
+        confidence: c.confidence
+      });
     }
+    for (const p of predictions) {
+      logPrediction({
+        entity, sourceFile: relPath,
+        predictionType: p.type, predictionText: p.text
+      });
+    }
+    log(entity, `DISTILL ${relPath} -> ${outPath}`);
   }
 
-  log(name, `Watching ${rawDir}`, coLog);
-  chokidar.watch(rawDir, { ignoreInitial: false, persistent: true })
-    .on('add', onChange)
-    .on('change', onChange);
+  cache.invalidate(entity);
+  const archivePath = archiveRaw(filePath, entity);
+  log(entity, `ARCHIVE ${relPath} -> ${archivePath}`);
+
+  const extras = [];
+  if (predictions.length > 0) extras.push(`${predictions.length} prediction(s)`);
+  if (corrections.length > 0) extras.push(`${corrections.length} correction(s)`);
+  const suffix = extras.length > 0 ? ` | ${extras.join(', ')}` : '';
+  log(entity, `Processed ${relPath} -> ${classification.all_detected.map(categoryToDir).join(', ')}${suffix}`);
 }
 
-// Load config and start watchers
-let config;
-try {
-  config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-} catch (e) {
-  console.error(`Content Loader: cannot read config at ${CONFIG_PATH}: ${e.message}`);
-  process.exit(1);
+function startWatchers() {
+  for (const entity of CONFIG.entities) {
+    const rawPath = path.join(VAULT, entity.name, 'Raw');
+    fs.mkdirSync(rawPath, { recursive: true });
+
+    const watcher = chokidar.watch(rawPath, {
+      ignoreInitial: true,
+      awaitWriteFinish: { stabilityThreshold: 500 }
+    });
+
+    watcher
+      .on('add', (fp) => processFile(fp, entity.name))
+      .on('change', (fp) => processFile(fp, entity.name))
+      .on('error', (e) => log(entity.name, `WATCHER ERROR: ${e.message}`));
+
+    log(entity.name, `Watching ${rawPath}`);
+  }
 }
 
-fs.mkdirSync(path.join(VAULT, 'Logs'), { recursive: true });
-log('system', `Content Loader started — ${config.projects.length} companies`);
-
-for (const project of config.projects) {
-  watchProject(project);
+function main() {
+  initDb(VAULT);
+  initDistillSchema();
+  initStorySchema();
+  initAccessSchema();
+  const entityNames = CONFIG.entities.map(e => e.name);
+  buildIndex(VAULT, entityNames);
+  startWatchers();
+  startPostProcessor(entityNames, 30000);
+  cache.startCompactionSchedule();
+  const app = createApi(CONFIG, VAULT);
+  app.listen(PORT, () => {
+    console.log(`Context Loader v0.2 listening on port ${PORT}`); // v0.2 Phase 4
+  });
 }
+
+main();

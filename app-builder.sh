@@ -26,7 +26,8 @@ banner_main() {
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step >= total ? 16 : step * 16 / total)) empty=$((16 - filled))
+  local filled=$((step >= total ? 16 : step * 16 / total))
+  local empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
@@ -71,6 +72,7 @@ step_banner 1 3 "GitHub Repository" \
   "PAT     = Personal Access Token — GitHub password for HTTPS"
 
 GITHUB_REMOTE=""
+GITHUB_TOKEN=""
 printf "  Does ${B}${APP}${R} already have a GitHub repo? [y/n]: "
 read -r HAS_REPO
 printf "\n"
@@ -96,8 +98,6 @@ else
   printf "  2. Name it after your app, choose visibility\n"
   printf "  3. Leave ALL init options unchecked (no README, no .gitignore)\n"
   printf "  4. Click Create — copy the HTTPS URL from the next screen\n\n"
-  printf "  ${D}Need a PAT? GitHub → Settings → Developer Settings\n"
-  printf "  → Personal Access Tokens (classic) → repo scope.${R}\n\n"
   printf "  Paste the URL (or Enter to skip): "
   read -r GITHUB_REMOTE
   if [ -n "$GITHUB_REMOTE" ]; then
@@ -107,6 +107,24 @@ else
   else
     printf "  ${D}Skipped — set it later inside the container:${R}\n"
     printf "  ${D}git remote add origin https://github.com/username/repo.git${R}\n\n"
+  fi
+fi
+
+# ── GitHub PAT ─────────────────────────────────────────────────────────────
+if [ -n "$GITHUB_REMOTE" ]; then
+  printf "  ${B}GitHub Personal Access Token${R}\n"
+  printf "  ${D}Claude Code needs this to push/pull inside the container.${R}\n"
+  printf "  ${D}The token is passed as an environment variable — never stored in files.${R}\n\n"
+  printf "  ${D}Need one? GitHub → Settings → Developer Settings${R}\n"
+  printf "  ${D}→ Personal Access Tokens (classic) → repo scope.${R}\n\n"
+  printf "  PAT (paste, then Enter): "
+  read -rs GITHUB_TOKEN
+  printf "\n"
+  if [ -n "$GITHUB_TOKEN" ]; then
+    printf "  ${G}✓${R} PAT received (not echoed for security)\n\n"
+  else
+    printf "  ${Y}!${R} No PAT — git push/pull won't work until you set one.\n"
+    printf "  ${D}Inside the container: export GITHUB_TOKEN=ghp_your_token${R}\n\n"
   fi
 fi
 
@@ -129,13 +147,15 @@ else
   printf "# NORTHSTAR\n\nEdit chronicle-vault/${ENTITY}/*_NORTHSTAR.md\n" > "$NORTHSTAR_TMP"
 fi
 
+DOCKER_ENV_ARGS=(-e "ENTITY=$ENTITY" -e "APP=$APP")
+[ -n "$GITHUB_TOKEN" ] && DOCKER_ENV_ARGS+=(-e "GITHUB_TOKEN=$GITHUB_TOKEN")
+
 docker run -d --name "$CONTAINER" \
   -v "$VAULT_PATH/$ENTITY/Distilled:/vault/Distilled:ro" \
   -v "$VAULT_PATH/$ENTITY/Logs:/vault/Logs" \
   -v "$SCRIPT_DIR/app-builder-image/CLAUDE.md:/workspace/CLAUDE.md:ro" \
   -v "$NORTHSTAR_TMP:/workspace/NORTHSTAR.md:ro" \
-  -e "ENTITY=$ENTITY" \
-  -e "APP=$APP" \
+  "${DOCKER_ENV_ARGS[@]}" \
   "$IMAGE" > /dev/null
 
 docker exec "$CONTAINER" git init /workspace > /dev/null 2>&1 || true
@@ -147,6 +167,7 @@ printf "  ${G}✓${R} Container started\n"
 printf "  ${G}✓${R} CLAUDE.md + NORTHSTAR.md loaded\n"
 printf "  ${G}✓${R} Entity context mounted (read-only)\n"
 [ -n "$GITHUB_REMOTE" ] && printf "  ${G}✓${R} GitHub remote wired\n"
+[ -n "$GITHUB_TOKEN" ] && printf "  ${G}✓${R} GitHub PAT configured — git push/pull ready\n"
 printf "\n"
 
 # ── Step 3: What's next ────────────────────────────────────────────────────

@@ -1,7 +1,9 @@
 FROM node:20-alpine
-RUN apk add --no-cache bash
-WORKDIR /app/content-loader
-COPY package.json .
-RUN npm install --production
-COPY content-loader.js .
+WORKDIR /app
+COPY package*.json ./
+RUN apk add --no-cache build-base python3
+RUN npm ci --production
+COPY *.js ./
+COPY config.json ./
+EXPOSE 27125
 CMD ["node", "content-loader.js"]
