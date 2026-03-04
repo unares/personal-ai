@@ -1,5 +1,5 @@
 #!/bin/bash
-# Personal AI v0.2 — Guided Setup Wizard
+# Personal AI v0.4 — Guided Setup Wizard
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,7 +53,7 @@ ask_raw() {
 
 clear
 printf "${B}${G}╔${LINE}\n"
-printf "║  Personal AI v0.2 — Setup Wizard\n"
+printf "║  Personal AI v0.4 — Setup Wizard\n"
 printf "║  Do One Thing. Earn Full Autonomy.\n"
 printf "╚${LINE}${R}\n"
 printf "\n  ${D}4 steps · ~2 minutes${R}\n\n"
@@ -213,16 +213,49 @@ step_banner 4 4 "Starting Context Extractor" \
   "Raw/              = drop any .md — archived + distilled in 2s" \
   "Distilled/        = cleaned summaries read by Clark and AIOO"
 cd "$REPO_DIR"
-docker compose --profile seed up -d --build context-extractor 2>&1 | grep -E "✔|Built|Started|Error|WARN|error" || true
+# Create Docker network
+printf "  Creating Docker network...\n"
+docker network create personal-ai-net 2>/dev/null && ok "personal-ai-net created" || printf "  ${D}  personal-ai-net already exists${R}\n"
+
+# Start Context Extractor (simple mode) + LiteLLM proxy
+printf "  Starting services...\n"
+docker compose --profile seed up -d --build 2>&1 | grep -E "✔|Built|Started|Error|WARN|error" || true
+
+# Build NanoClaw-enhanced agent images
+printf "\n  Building agent images (first time only, ~3 min each)...\n"
+docker build -t personal-ai-aioo "$REPO_DIR/aioo/" 2>&1 | tail -1 || true
+docker build -t personal-ai-clark "$REPO_DIR/clark/" 2>&1 | tail -1 || true
+docker build -t personal-ai-app-builder "$REPO_DIR/app-builder/" 2>&1 | tail -1 || true
+printf "  ${G}✓${R} Agent images built\n"
+
+# Optional: WhatsApp setup
+printf "\n  ${B}WhatsApp Setup (optional)${R}\n"
+printf "  ${D}WhatsApp enables messaging with your agents from your phone.${R}\n"
+while true; do
+  read -rp "  Set up WhatsApp now? [y/n]: " WA_SETUP
+  case "$WA_SETUP" in y*|Y*|n*|N*) break;; esac
+done
+if [[ "$WA_SETUP" == "y"* || "$WA_SETUP" == "Y"* ]]; then
+  "$REPO_DIR/setup/setup-whatsapp.sh"
+else
+  printf "  ${D}Skipped — run setup/setup-whatsapp.sh later to enable.${R}\n"
+fi
+
+# Run verification
+printf "\n  Running verification...\n\n"
+"$REPO_DIR/setup/verify.sh" || true
 
 printf "\n${B}${G}╔${LINE}\n"
-printf "║  Setup complete. Personal AI v0.2 is live.\n"
+printf "║  Setup complete. Personal AI v0.4 is live.\n"
 printf "╚${LINE}${R}\n\n"
 ENTITY_LIST=$(IFS=', '; echo "${ENTITY_NAMES[*]}")
 printf "  Owner:    ${B}${OWNER_NAME}${R} (${OWNER_CLARK})\n"
 printf "  Entities: ${B}${ENTITY_LIST}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}${R}\n\n"
-printf "  Drop notes:    memory-vault/{entity}/Raw/\n"
-printf "  Spawn builder: ${B}./app-builder/app-builder.sh <entity> <app-name>${R}\n"
-printf "  Add entity:    ${B}./setup/add-entity.sh${R}\n"
-printf "  Add human:     ${B}./setup/add-human.sh${R}\n\n"
+printf "  Start AIOO:     ${B}./aioo/aioo.sh <entity>${R}\n"
+printf "  Start Clark:    ${B}./clark/clark.sh${R}\n"
+printf "  Spawn builder:  ${B}./app-builder/app-builder.sh <entity> <app-name>${R}\n"
+printf "  Drop notes:     memory-vault/{entity}/Raw/\n"
+printf "  Add entity:     ${B}./setup/add-entity.sh${R}\n"
+printf "  Add human:      ${B}./setup/add-human.sh${R}\n"
+printf "  Verify system:  ${B}./setup/verify.sh${R}\n\n"
