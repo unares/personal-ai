@@ -181,12 +181,19 @@ step_banner 3 3 "Creating Vault" \
   "Distilled/ = summaries auto-generated for Clark and AIOO" \
   "Logs/      = all agent activity for this entity"
 
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Daily"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Apps"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/People"
+OWNER=$(node -e "const c=require('${CONFIG_PATH}'); console.log(c.owner)")
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/${OWNER}/{Clark,Submissions,HITLs,Coding}"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/AIOO"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Clark"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Other"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Processing"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Clark"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/AIOO"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Archive/Raw"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/${OWNER}"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/shared"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/personal-story"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Archive"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Bin"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Logs"
 printf "  ${G}✓${R} ${PROJ_NAME}/ vault created\n"
 

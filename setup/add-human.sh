@@ -141,7 +141,12 @@ if (existing) {
 fs.writeFileSync(process.env.CONFIG_PATH, JSON.stringify(c, null, 2) + '\n');
 NODEEOF
 
+# Create human-specific vault subdirs
+VAULT_PATH="$REPO_DIR/memory-vault"
+mkdir -p "$VAULT_PATH/$ENTITY_NAME/Raw/${HU_NAME}/{Clark,Submissions,HITLs,Coding}"
+mkdir -p "$VAULT_PATH/$ENTITY_NAME/Distilled/${HU_NAME}"
 printf "  ${G}✓${R} ${HU_CLARK} added — Clark + AIOO access for ${ENTITY_NAME}\n"
+printf "  ${G}✓${R} Raw/${HU_NAME}/ and Distilled/${HU_NAME}/ created\n"
 printf "  ${G}✓${R} config.json updated\n\n"
 
 printf "${B}${G}╔${LINE}\n"

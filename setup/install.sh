@@ -170,14 +170,19 @@ step_banner 3 4 "Creating Vault & Config" \
 printf "{\n  \"owner\": \"${OWNER_NAME}\",\n  \"vaultPath\": \"${VAULT_PATH}\",\n  \"clarks\": [\n${CLARKS_JSON}\n  ],\n  \"entities\": [${ENTITIES_JSON}\n  ]\n}\n" > "$CONFIG_PATH"
 printf "  ${G}✓${R} config.json written\n"
 
-mkdir -p "$VAULT_PATH/Logs"
 for PROJ in "${ENTITY_NAMES[@]}"; do
-  mkdir -p "$VAULT_PATH/$PROJ/Raw/Daily"
-  mkdir -p "$VAULT_PATH/$PROJ/Raw/Apps"
-  mkdir -p "$VAULT_PATH/$PROJ/Raw/People"
+  mkdir -p "$VAULT_PATH/$PROJ/Raw/${OWNER_NAME}/{Clark,Submissions,HITLs,Coding}"
+  mkdir -p "$VAULT_PATH/$PROJ/Raw/AIOO"
+  mkdir -p "$VAULT_PATH/$PROJ/Raw/Clark"
+  mkdir -p "$VAULT_PATH/$PROJ/Raw/Other"
+  mkdir -p "$VAULT_PATH/$PROJ/Processing"
   mkdir -p "$VAULT_PATH/$PROJ/Distilled/Clark"
   mkdir -p "$VAULT_PATH/$PROJ/Distilled/AIOO"
-  mkdir -p "$VAULT_PATH/$PROJ/Archive/Raw"
+  mkdir -p "$VAULT_PATH/$PROJ/Distilled/${OWNER_NAME}"
+  mkdir -p "$VAULT_PATH/$PROJ/Distilled/shared"
+  mkdir -p "$VAULT_PATH/$PROJ/Distilled/personal-story"
+  mkdir -p "$VAULT_PATH/$PROJ/Distilled/Archive"
+  mkdir -p "$VAULT_PATH/$PROJ/Bin"
   mkdir -p "$VAULT_PATH/$PROJ/Logs"
   NS_FILE="$(upper "$PROJ")_NORTHSTAR.md"
   if [ ! -f "$VAULT_PATH/$PROJ/$NS_FILE" ]; then
@@ -192,13 +197,15 @@ printf "   scoped per entity + one global system log)${R}\n\n"
 printf "  memory-vault/\n"
 for PROJ in "${ENTITY_NAMES[@]}"; do
   printf "  ${Y}├── ${PROJ}/${R}\n"
-  printf "  │   ├── Raw/{Daily, Apps, People}\n"
-  printf "  │   ├── Distilled/{Clark, AIOO}\n"
-  printf "  │   ├── Archive/Raw/\n"
+  printf "  │   ├── Raw/${OWNER_NAME}/{Clark, Submissions, HITLs, Coding}\n"
+  printf "  │   ├── Raw/{AIOO, Clark, Other}\n"
+  printf "  │   ├── Processing/\n"
+  printf "  │   ├── Distilled/{Clark, AIOO, ${OWNER_NAME}, shared, personal-story, Archive}\n"
+  printf "  │   ├── Bin/\n"
   printf "  │   ├── Logs/\n"
   printf "  │   └── $(upper "$PROJ")_NORTHSTAR.md\n"
 done
-printf "  └── Logs/\n\n"
+printf "\n"
 
 # ── Step 4: Start Context Extractor ────────────────────────────────────────
 step_banner 4 4 "Starting Context Extractor" \

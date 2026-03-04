@@ -54,7 +54,6 @@ if [ ! -d "$VAULT_PATH" ]; then
   fail "memory-vault/ missing — run ./install.sh"
 else
   ok "memory-vault/ exists"
-  [ -d "$VAULT_PATH/Logs" ] && ok "Logs/ exists" || fail "memory-vault/Logs/ missing"
 
   if command -v node > /dev/null 2>&1 && [ -f "$CONFIG_PATH" ]; then
     ENTITIES=$(node -e "const c=require('${CONFIG_PATH}'); const e=c.entities||c.projects||[]; console.log(e.map(x=>x.name).join(' '))")
@@ -65,7 +64,7 @@ else
         continue
       fi
       ok "${ENTITY}/ vault exists"
-      for SUBDIR in "Raw/Daily" "Raw/Apps" "Raw/People" "Distilled/Clark" "Distilled/AIOO" "Archive/Raw" "Logs"; do
+      for SUBDIR in "Raw/AIOO" "Raw/Clark" "Raw/Other" "Processing" "Distilled/Clark" "Distilled/AIOO" "Distilled/shared" "Distilled/personal-story" "Distilled/Archive" "Bin" "Logs"; do
         [ -d "$ENTITY_VAULT/$SUBDIR" ] || fail "${ENTITY}/${SUBDIR}/ missing"
       done
       NS=$(find "$ENTITY_VAULT" -maxdepth 1 -name "*_NORTHSTAR.md" 2>/dev/null | head -1)
