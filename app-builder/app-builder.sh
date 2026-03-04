@@ -157,7 +157,12 @@ fi
 DOCKER_ENV_ARGS=(-e "ENTITY=$ENTITY" -e "APP=$APP")
 [ -n "$GITHUB_TOKEN" ] && DOCKER_ENV_ARGS+=(-e "GITHUB_TOKEN=$GITHUB_TOKEN")
 
+# Ensure Docker network exists (for Context Extractor API access)
+docker network create personal-ai-net 2>/dev/null || true
+
+# AIOO can also spawn App Builders automatically via /spawn-app-builder skill.
 docker run -d --name "$CONTAINER" \
+  --network personal-ai-net \
   -v "$VAULT_PATH/$ENTITY/Distilled:/vault/Distilled:ro" \
   -v "$VAULT_PATH/$ENTITY/Logs:/vault/Logs" \
   -v "$SCRIPT_DIR/CLAUDE.md:/workspace/CLAUDE.md:ro" \

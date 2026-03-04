@@ -1,4 +1,7 @@
 FROM node:20-alpine
+
+LABEL com.personal-ai.role="app-builder"
+
 RUN apk add --no-cache bash git
 RUN npm install -g @anthropic-ai/claude-code
 RUN mkdir -p /root/.claude /workspace
