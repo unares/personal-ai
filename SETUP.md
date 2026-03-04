@@ -1,4 +1,4 @@
-# Personal AI v0.3 — Setup Guide
+# Personal AI v0.4 — Setup Guide
 
 > Do One Thing. Earn Full Autonomy.
 
@@ -167,3 +167,33 @@ cd ~/personal-ai && ./setup/install.sh
 ```
 
 Zero code changes required. Docker Compose handles the rest.
+
+---
+
+## Mission Alignment
+Setup is the gateway to "Do One Thing." A clean install means agents start focused from minute one. Every step — identity, entities, vault, agents — narrows scope toward the One Thing.
+
+## Scope
+First-time setup and ongoing administration. Does NOT define agent behavior (see agent CLAUDE.md files) or vault structure (see MEMORY_VAULT.md).
+
+## Interfaces
+- **Read by**: Humans setting up Personal AI
+- **Written by**: Human (system architect)
+- **Depends on**: setup/ scripts, Docker, config.json
+
+## Outcomes
+- Working Personal AI instance in under 10 minutes
+- Every entity has vault, northstar, and scoped agents
+- Context Extractor running and processing immediately
+
+## Gamification Hooks
+- [ ] Setup completion speed: time from first command to working system → onboarding efficiency
+- [ ] First-note-to-distill time: seconds from dropping a note to seeing it in Distilled/ → pipeline latency
+- [ ] Entity completeness: % of entities with all required directories and northstar → coverage score
+- [ ] Human engagement: number of humans added per entity → team adoption signal
+
+## Document History
+| Date | Change | Author |
+|------|--------|--------|
+| 2026-03-04 | v0.3: Initial setup guide | System |
+| 2026-03-04 | v0.4: Added constitution pattern, gamification hooks | System |
