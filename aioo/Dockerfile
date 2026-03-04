@@ -8,9 +8,10 @@ RUN npm install -g @anthropic-ai/claude-code
 
 # Clone NanoClaw (orchestrator for WhatsApp + container spawning)
 WORKDIR /opt/nanoclaw
-RUN git clone --depth 1 https://github.com/qwibitai/nanoclaw.git . && \
-    npm ci --production && \
-    npm run build 2>/dev/null || true
+RUN git clone --depth 1 --branch v1.2.0 https://github.com/qwibitai/nanoclaw.git . && \
+    npm ci && \
+    npm run build && \
+    npm prune --production
 
 # Create directory structure
 RUN mkdir -p /root/.claude /vault /workspace \
