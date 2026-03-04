@@ -2,6 +2,7 @@
 memory-vault/
 instances/
 config.json
+.env
 
 # Node
 node_modules/

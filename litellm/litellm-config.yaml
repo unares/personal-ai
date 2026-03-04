@@ -1,0 +1,35 @@
+model_list:
+  # Gemini 3.1 Pro — used for planning/reasoning via hybrid router
+  - model_name: gemini-planning
+    litellm_params:
+      model: gemini/gemini-3.1-pro-latest
+      api_key: os.environ/GEMINI_API_KEY
+
+  # Gemini Flash — used for classifier (dirt cheap, <200 tokens, sub-300ms)
+  - model_name: gemini-classifier
+    litellm_params:
+      model: gemini/gemini-3.1-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  # Claude passthrough — for when NanoClaw needs native Claude execution
+  - model_name: claude-native
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6-20250514
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # Default model NanoClaw expects — routed to Gemini for cost savings
+  - model_name: claude-sonnet-4-6-20250514
+    litellm_params:
+      model: gemini/gemini-3.1-pro-latest
+      api_key: os.environ/GEMINI_API_KEY
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  num_retries: 3
+  request_timeout: 120
+  fallbacks:
+    - model: claude-sonnet-4-6-20250514
+      fallback_models:
+        - claude-native
