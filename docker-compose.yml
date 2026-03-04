@@ -1,31 +1,58 @@
-# Personal AI v0.3 — Compose Services
-# Only always-on services live here.
-# Clark, AIOO, and App Builder containers are spawned via:
+# Personal AI v0.4 — Compose Services
+# Always-on services: Context Extractor, LiteLLM Proxy
+# Agent containers spawned via launcher scripts:
 #   ./clark/clark.sh                       — spawn your Clark
 #   ./aioo/aioo.sh <entity>                — spawn an entity AIOO
 #   ./app-builder/app-builder.sh <entity> <app>  — spawn an App Builder
 #
 # Usage:
-#   docker compose --profile seed up -d          # start Context Extractor
-#   docker compose --profile seed down           # stop Context Extractor
+#   docker compose --profile seed up -d          # start always-on services
+#   docker compose --profile seed down           # stop always-on services
 
 services:
 
   # ── Context Extractor ──────────────────────────────────────────────────────
   # Watches all entity Raw/ dirs and distills notes for Clark and AIOO.
-  # Reads config.json to discover entities at startup.
+  # CX_MODE=simple (default) uses minimal pipeline; CX_MODE=advanced for full.
   context-extractor:
     profiles: [seed]
     build:
       context: ./context-extractor
     container_name: context-extractor
+    networks:
+      - personal-ai-net
     volumes:
       - memory-vault:/vault
       - ./config.json:/app/config.json:ro
     environment:
       - VAULT_PATH=/vault
       - CONFIG_PATH=/app/config.json
+      - CX_MODE=simple
     restart: unless-stopped
+
+  # ── LiteLLM Proxy ─────────────────────────────────────────────────────────
+  # Routes LLM requests: Gemini 3.1 Pro for planning, Claude for execution.
+  # NanoClaw agents connect via ANTHROPIC_BASE_URL=http://litellm-proxy:4000
+  litellm-proxy:
+    profiles: [seed]
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm-proxy
+    networks:
+      - personal-ai-net
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm/litellm-config.yaml:/app/config.yaml
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-litellm-local}
+    restart: unless-stopped
+
+networks:
+  personal-ai-net:
+    driver: bridge
+    name: personal-ai-net
 
 volumes:
   memory-vault:

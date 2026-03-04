@@ -1,5 +1,5 @@
 #!/bin/bash
-# Personal AI v0.2 — System Verification
+# Personal AI v0.4 — System Verification
 # Usage: ./verify.sh
 # Checks config, vault, Context Extractor, and running containers.
 set -euo pipefail
@@ -24,7 +24,7 @@ section() { printf "\n  ${B}── %s ──${R}\n" "$1"; }
 
 clear
 printf "${B}${G}╔${LINE}\n"
-printf "║  Personal AI v0.2 — System Verify\n"
+printf "║  Personal AI v0.4 — System Verify\n"
 printf "╚${LINE}${R}\n\n"
 
 # ── Config ─────────────────────────────────────────────────────────────────
@@ -96,11 +96,28 @@ if ! command -v docker > /dev/null 2>&1; then
 else
   ok "docker available"
 
+  # Docker network
+  if docker network inspect personal-ai-net > /dev/null 2>&1; then
+    ok "personal-ai-net network exists"
+  else
+    warn "personal-ai-net network missing — run: docker network create personal-ai-net"
+  fi
+
   # Context Extractor
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^context-extractor$"; then
     ok "context-extractor running"
+    # Check CX mode
+    CX_MODE=$(docker exec context-extractor sh -c 'echo $CX_MODE' 2>/dev/null || echo "unknown")
+    [ "$CX_MODE" = "simple" ] && ok "context-extractor mode: simple" || printf "  ${D}  context-extractor mode: ${CX_MODE}${R}\n"
   else
     warn "context-extractor not running — start with: docker compose --profile seed up -d"
+  fi
+
+  # LiteLLM Proxy
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^litellm-proxy$"; then
+    ok "litellm-proxy running"
+  else
+    printf "  ${D}  litellm-proxy not running (optional — for hybrid LLM routing)${R}\n"
   fi
 
   # Clark containers
@@ -121,6 +138,36 @@ else
   for IMG in personal-ai-clark personal-ai-aioo personal-ai-app-builder; do
     docker image inspect "$IMG" > /dev/null 2>&1 && ok "image ${IMG}" || printf "  ${D}  image ${IMG} not built yet${R}\n"
   done
+
+  # Network connectivity — check containers are on personal-ai-net
+  for CNAME in context-extractor litellm-proxy; do
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${CNAME}$"; then
+      ON_NET=$(docker inspect "$CNAME" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null)
+      echo "$ON_NET" | grep -q "personal-ai-net" && ok "${CNAME} on personal-ai-net" || warn "${CNAME} not on personal-ai-net"
+    fi
+  done
+fi
+
+# ── NanoClaw Config ──────────────────────────────────────────────────────
+section "NanoClaw Config"
+
+for CFG in nanoclaw-config/aioo/CLAUDE.md nanoclaw-config/clark/CLAUDE.md; do
+  [ -f "$REPO_DIR/$CFG" ] && ok "$CFG" || warn "$CFG missing"
+done
+
+for SKILL_DIR in nanoclaw-config/skills/query-vault nanoclaw-config/skills/vault-search nanoclaw-config/skills/distill-now nanoclaw-config/skills/chronicle-log nanoclaw-config/aioo/skills/hybrid-router nanoclaw-config/aioo/skills/spawn-app-builder; do
+  [ -f "$REPO_DIR/$SKILL_DIR/SKILL.md" ] && ok "$SKILL_DIR/SKILL.md" || warn "$SKILL_DIR/SKILL.md missing"
+done
+
+# ── Environment ──────────────────────────────────────────────────────────
+section "Environment"
+
+if [ -f "$REPO_DIR/.env" ]; then
+  ok ".env file exists"
+  grep -q "ANTHROPIC_API_KEY" "$REPO_DIR/.env" && ok "ANTHROPIC_API_KEY configured" || warn "ANTHROPIC_API_KEY not set in .env"
+  grep -q "GEMINI_API_KEY" "$REPO_DIR/.env" && ok "GEMINI_API_KEY configured (hybrid routing)" || printf "  ${D}  GEMINI_API_KEY not set (hybrid routing disabled)${R}\n"
+else
+  warn ".env file missing — copy from .env.example"
 fi
 
 # ── Summary ────────────────────────────────────────────────────────────────

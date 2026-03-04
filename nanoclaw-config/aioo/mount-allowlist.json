@@ -1,0 +1,19 @@
+{
+  "description": "Restricts what AIOO can mount when spawning nested containers",
+  "allowed_prefixes": [
+    "/vault/Distilled",
+    "/vault/NORTHSTAR.md",
+    "/vault/Logs"
+  ],
+  "blocked_patterns": [
+    ".ssh",
+    ".gnupg",
+    ".aws",
+    ".env",
+    "/etc/shadow",
+    "/etc/passwd",
+    "/root/",
+    "credentials",
+    "secrets"
+  ]
+}

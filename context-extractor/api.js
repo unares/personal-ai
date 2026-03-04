@@ -19,6 +19,9 @@ const { handleStoryCandidates } = require('./story-blog');
 const { handleCredibilityCheck } = require('./credibility');
 const { getPendingNotifications, clearNotifications } = require('./post-process');
 
+// TODO [future/low-priority]: Move SCOPE_MATRIX to config.json for extensibility.
+// Current agent types (clark, aioo, app-builder) are stable.
+// When adding new agent types, update this mapping or load from config.
 const SCOPE_MATRIX = {
   clark: ['personal-story', 'shared-story'],
   aioo: ['specification', 'shared-story'],
