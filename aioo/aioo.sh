@@ -80,10 +80,16 @@ fi
 NS_PATH=$(find "$VAULT_PATH/$ENTITY" -maxdepth 1 -name "*_NORTHSTAR.md" 2>/dev/null | head -1)
 [ -z "$NS_PATH" ] && NS_PATH="$VAULT_PATH/$ENTITY/${NS_FILE}"
 
+# Hydrate WELCOME.md
+WELCOME_TMP=$(mktemp /tmp/welcome-XXXXXX.md)
+HUMAN_LIST=$(node -e "const c=require('${CONFIG_PATH}'); const e=c.entities.find(x=>x.name==='${ENTITY}'); const h=[c.owner]; if(e&&e.human) h.push(e.human); console.log(h.join(', '))")
+sed -e "s/{ROLE}/AIOO/g" -e "s/{CONTAINER_NAME}/${CONTAINER}/g" -e "s/{ENTITY}/${ENTITY}/g" -e "s/{HUMAN_LIST}/${HUMAN_LIST}/g" "$REPO_DIR/WELCOME.md" > "$WELCOME_TMP"
+
 # Launch — full vault rw + NORTHSTAR at /vault/NORTHSTAR.md for easy access
 docker run -d --name "$CONTAINER" \
   -v "$VAULT_PATH/$ENTITY:/vault" \
   -v "$NS_PATH:/vault/NORTHSTAR.md" \
+  -v "$WELCOME_TMP:/WELCOME.md:ro" \
   -e "ENTITY=${ENTITY}" \
   -e "AIOO=${CONTAINER}" \
   "$IMAGE" > /dev/null
@@ -98,7 +104,7 @@ printf "╚${LINE}${R}\n\n"
 printf "  Enter AIOO:\n"
 printf "  ${B}docker exec -it ${CONTAINER} claude${R}\n\n"
 printf "  First prompt:\n"
-printf "  ${D}\"Read /vault/NORTHSTAR.md.\n"
+printf "  ${D}\"Read /WELCOME.md. Then read /vault/NORTHSTAR.md.\n"
 printf "   Then read /vault/Distilled/. What needs to happen next?\"${R}\n\n"
 printf "  Stop AIOO:\n"
 printf "  ${D}docker stop ${CONTAINER} && docker rm ${CONTAINER}${R}\n\n"

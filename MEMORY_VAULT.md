@@ -47,7 +47,7 @@ memory-vault/{entity}/
    to Distilled/ directly. All content flows through the Context Extractor
    pipeline (ingest → classify → distill).
 
-3. **Bin auto-purge** — files in Bin/ are automatically deleted after 30 days.
+3. **Bin auto-purge** — files in Bin/ are automatically deleted after 180 days.
    This is a soft-delete mechanism; files can be recovered within that window.
 
 4. **Processing is transient** — files in Processing/ are intermediate state.

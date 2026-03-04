@@ -74,8 +74,13 @@ if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
   printf "\n"
 fi
 
+# Hydrate WELCOME.md
+WELCOME_TMP=$(mktemp /tmp/welcome-XXXXXX.md)
+HUMAN_LIST=$(node -e "const c=require('${CONFIG_PATH}'); console.log(c.clarks.filter(x=>x.projects).map(x=>x.name.replace('clark-','')).join(', '))")
+sed -e "s/{ROLE}/Clark/g" -e "s/{CONTAINER_NAME}/${CLARK_NAME}/g" -e "s/{ENTITY}/${PROJECTS}/g" -e "s/{HUMAN_LIST}/${HUMAN_LIST}/g" "$REPO_DIR/WELCOME.md" > "$WELCOME_TMP"
+
 # Build mount args — one Distilled/Clark/ mount per entity
-MOUNT_ARGS=""
+MOUNT_ARGS="-v ${WELCOME_TMP}:/WELCOME.md:ro"
 for PROJ in $PROJECTS; do
   CLARK_DIR="$VAULT_PATH/$PROJ/Distilled/Clark"
   NS_FILE=$(find "$VAULT_PATH/$PROJ" -maxdepth 1 -name "*_NORTHSTAR.md" 2>/dev/null | head -1)
@@ -108,6 +113,6 @@ printf "╚${LINE}${R}\n\n"
 printf "  Enter Clark:\n"
 printf "  ${B}docker exec -it ${CLARK_NAME} claude${R}\n\n"
 printf "  First prompt:\n"
-printf "  ${D}\"Read /vault/. What is the One Thing?\"${R}\n\n"
+printf "  ${D}\"Read /WELCOME.md. Then read /vault/. What is the One Thing?\"${R}\n\n"
 printf "  Stop Clark:\n"
 printf "  ${D}docker stop ${CLARK_NAME} && docker rm ${CLARK_NAME}${R}\n\n"

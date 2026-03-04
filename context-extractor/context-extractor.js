@@ -15,6 +15,8 @@ const { initDistillSchema } = require('./distill');
 const { initStorySchema } = require('./story-blog');
 const { initAccessSchema } = require('./access');
 const cache = require('./cache');
+const { startBinPurgeSchedule } = require('./bin-purge');
+const chronicle = require('./chronicle');
 
 const VAULT = process.env.VAULT_PATH || '/vault';
 const PORT = process.env.CL_PORT || 27125;
@@ -44,6 +46,11 @@ function processFile(filePath, entity) {
   const content = fs.readFileSync(filePath, 'utf8');
   if (!content.trim()) return;
 
+  const jobId = chronicle.generateJobId('context-extractor', entity);
+  chronicle.fileCreated(VAULT, entity, filePath, {
+    jobId, agent: 'context-extractor', source: 'raw-watcher'
+  });
+
   const relPath = path.relative(path.join(VAULT, entity, 'Raw'), filePath);
   const { content: healed, corrections } = selfHeal(content);
   const predictions = detectPredictions(healed);
@@ -59,7 +66,7 @@ function processFile(filePath, entity) {
       predictions, corrections, conflicts
     });
     const correctionComment = corrections.length > 0
-      ? `\n<!-- Context Loader corrected [${new Date().toISOString()}]: ${corrections.join('; ')} -->\n`
+      ? `\n<!-- Context Extractor corrected [${new Date().toISOString()}]: ${corrections.join('; ')} -->\n`
       : '';
     const body = healed + correctionComment;
     const outPath = writeDistilled(
@@ -129,9 +136,10 @@ function main() {
   startWatchers();
   startPostProcessor(entityNames, 30000);
   cache.startCompactionSchedule();
+  startBinPurgeSchedule(VAULT, entityNames);
   const app = createApi(CONFIG, VAULT);
   app.listen(PORT, () => {
-    console.log(`Context Loader v0.2 listening on port ${PORT}`); // v0.2 Phase 4
+    console.log(`Context Extractor v0.3 listening on port ${PORT}`);
   });
 }
 

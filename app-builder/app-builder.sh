@@ -9,6 +9,7 @@ APP="${2:?Usage: app-builder.sh <entity> <app-name>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 VAULT_PATH="$REPO_DIR/memory-vault"
+CONFIG_PATH="$REPO_DIR/config.json"
 CONTAINER="app-${ENTITY}-${APP}"
 IMAGE="personal-ai-app-builder"
 
@@ -141,6 +142,11 @@ if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
   printf "\n"
 fi
 
+# Hydrate WELCOME.md
+WELCOME_TMP=$(mktemp /tmp/welcome-XXXXXX.md)
+HUMAN_LIST=$(node -e "const c=require('${CONFIG_PATH}'); const e=c.entities.find(x=>x.name==='${ENTITY}'); const h=[c.owner]; if(e&&e.human) h.push(e.human); console.log(h.join(', '))")
+sed -e "s/{ROLE}/App Builder/g" -e "s/{CONTAINER_NAME}/${CONTAINER}/g" -e "s/{ENTITY}/${ENTITY}/g" -e "s/{HUMAN_LIST}/${HUMAN_LIST}/g" "$REPO_DIR/WELCOME.md" > "$WELCOME_TMP"
+
 NORTHSTAR_TMP=$(mktemp /tmp/northstar-XXXXXX)
 if [ -n "$NS_FILE" ]; then
   cp "$NS_FILE" "$NORTHSTAR_TMP"
@@ -156,6 +162,7 @@ docker run -d --name "$CONTAINER" \
   -v "$VAULT_PATH/$ENTITY/Logs:/vault/Logs" \
   -v "$SCRIPT_DIR/CLAUDE.md:/workspace/CLAUDE.md:ro" \
   -v "$NORTHSTAR_TMP:/workspace/NORTHSTAR.md:ro" \
+  -v "$WELCOME_TMP:/WELCOME.md:ro" \
   "${DOCKER_ENV_ARGS[@]}" \
   "$IMAGE" > /dev/null
 
