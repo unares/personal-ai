@@ -33,10 +33,11 @@ function log(entity, message) {
 
 function archiveRaw(filePath, entity) {
   const bucket = new Date().toISOString().substring(0, 13).replace('T', '-');
-  const archiveDir = path.join(VAULT, entity, 'Archive', 'Raw', bucket);
-  fs.mkdirSync(archiveDir, { recursive: true });
-  const dest = path.join(archiveDir, path.basename(filePath));
+  const binDir = path.join(VAULT, entity, 'Bin', 'processed', bucket);
+  fs.mkdirSync(binDir, { recursive: true });
+  const dest = path.join(binDir, path.basename(filePath));
   fs.copyFileSync(filePath, dest);
+  fs.unlinkSync(filePath);
   return path.relative(VAULT, dest);
 }
 

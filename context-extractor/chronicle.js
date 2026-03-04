@@ -10,9 +10,35 @@ function generateJobId(agent, entity) {
   return `${agent}-${entity}-${ts}-${hash}`;
 }
 
+const MAX_LOG_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_ROTATED = 3;
+
+function rotateIfNeeded(logPath) {
+  try {
+    const stat = fs.statSync(logPath);
+    if (stat.size < MAX_LOG_SIZE) return;
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const rotated = logPath.replace('.jsonl', `-${ts}.jsonl`);
+    fs.renameSync(logPath, rotated);
+    const dir = path.dirname(logPath);
+    const files = fs.readdirSync(dir)
+      .filter(f => f.startsWith('chronicle-') && f.endsWith('.jsonl'))
+      .sort()
+      .reverse();
+    for (const old of files.slice(MAX_ROTATED)) {
+      fs.unlinkSync(path.join(dir, old));
+    }
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('Chronicle rotation error:', e.message);
+  }
+}
+
 function emitEvent(vaultPath, entity, event) {
   const logDir = path.join(vaultPath, entity, 'Logs');
   fs.mkdirSync(logDir, { recursive: true });
+
+  const logPath = path.join(logDir, 'chronicle.jsonl');
+  rotateIfNeeded(logPath);
 
   const record = {
     timestamp: new Date().toISOString(),
@@ -20,7 +46,7 @@ function emitEvent(vaultPath, entity, event) {
   };
 
   const line = JSON.stringify(record) + '\n';
-  fs.appendFileSync(path.join(logDir, 'chronicle.jsonl'), line);
+  fs.appendFileSync(logPath, line);
 }
 
 function fileCreated(vaultPath, entity, filePath, opts) {
