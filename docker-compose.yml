@@ -1,9 +1,9 @@
-# Personal AI v0.2 — Compose Services
+# Personal AI v0.3 — Compose Services
 # Only always-on services live here.
 # Clark, AIOO, and App Builder containers are spawned via:
-#   ./clark.sh          — spawn your Clark
-#   ./aioo.sh <entity>  — spawn an entity AIOO
-#   ./app-builder.sh <entity> <app>  — spawn an App Builder
+#   ./clark/clark.sh                       — spawn your Clark
+#   ./aioo/aioo.sh <entity>                — spawn an entity AIOO
+#   ./app-builder/app-builder.sh <entity> <app>  — spawn an App Builder
 #
 # Usage:
 #   docker compose --profile seed up -d          # start Context Extractor

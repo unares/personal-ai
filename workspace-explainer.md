@@ -7,16 +7,16 @@ Your computer (the host)
 │
 ├── ~/personal-ai/              ← your actual files on disk
 │   ├── memory-vault/
-│   ├── install.sh
-│   ├── clark.sh
+│   ├── setup/install.sh
+│   ├── clark/clark.sh
 │   └── ...
 │
 └── Docker containers (sealed rooms)
-    ├── app-builder-onething-context-extractor/
+    ├── app-onething-plusone/
     │   └── /workspace/         ← THIS container's workspace
-    │       ├── context-extractor.js
-    │       ├── api.js
-    │       └── ...
+    │       ├── CLAUDE.md
+    │       ├── NORTHSTAR.md
+    │       └── ... (app code)
     ├── clark-michal/
     │   └── /vault/             ← clark uses /vault, not /workspace
     └── aioo-onething/
@@ -30,15 +30,14 @@ Your computer (the host)
 Here's every component in Personal AI and what it can access — based on the actual `docker run` commands in your code:
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│ Component         │ /workspace │ /vault (Distilled) │ /vault (Raw) │
-├──────────────────────────────────────────────────────────────────────┤
-│ App Builder       │ ✅ OWNS IT │ ✅ read-only        │ ❌ no        │
-│ Clark             │ ❌ no      │ ✅ read-only        │ ❌ no        │
-│ AIOO              │ ❌ no      │ ✅ read-write       │ ✅ full      │
-│ Context Extractor    │ ❌ no      │ ✅ writes to it     │ ✅ reads it  │
-│ [removed]   │ ❌ no      │ ❌ no               │ ❌ no        │
-└──────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│ Component          │ /workspace │ /vault (Distilled) │ /vault (Raw) │
+├───────────────────────────────────────────────────────────────────┤
+│ App Builder        │ OWNS IT    │ read-only           │ no           │
+│ Clark              │ no         │ read-only           │ no           │
+│ AIOO               │ no         │ read-write          │ full         │
+│ Context Extractor  │ no         │ writes to it        │ reads it     │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -53,8 +52,6 @@ Here's every component in Personal AI and what it can access — based on the ac
 
 **Context Extractor** reads Raw notes and writes Distilled output. It never touches `/workspace` — it doesn't know or care about the app code.
 
-**[removed]** is deliberately isolated — it only sees `shared/` (the SQLite database and northstar summaries). It can't reach into any container's workspace or any entity's vault.
-
 ---
 
 ## The key mental model
@@ -66,6 +63,5 @@ Think of it like an office building:
 | `/workspace` | A builder's private workshop — only they have the key |
 | `/vault/Distilled` | The shared library — most people can read, few can write |
 | `/vault/Raw` | The inbox — only the archivist (AIOO/Context Extractor) touches it |
-| `shared/` | The noticeboard — public within the building |
 
 Containers can only see what was explicitly handed to them via `-v` (volume mount) when they were started. No volume mount = completely invisible. That's the security model.
