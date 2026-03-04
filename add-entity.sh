@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
+VAULT_PATH="$SCRIPT_DIR/memory-vault"
 CONFIG_PATH="$SCRIPT_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
@@ -176,7 +176,7 @@ printf "  ${G}✓${R} config.json updated\n"
 
 # ── Step 3: Create vault ──────────────────────────────────────────────────
 step_banner 3 3 "Creating Vault" \
-  "Raw/       = drop .md notes — Content Loader picks them up" \
+  "Raw/       = drop .md notes — Context Extractor picks them up" \
   "Distilled/ = summaries auto-generated for Clark and AIOO" \
   "Logs/      = all agent activity for this entity"
 
@@ -194,11 +194,11 @@ if [ ! -f "$VAULT_PATH/$PROJ_NAME/$NS_FILE" ]; then
   printf "  ${G}✓${R} ${NS_FILE} seeded\n"
 fi
 
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "content-loader"; then
-  printf "\n  Restarting Content Loader...\n"
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "context-extractor"; then
+  printf "\n  Restarting Context Extractor...\n"
   cd "$SCRIPT_DIR"
-  docker compose --profile seed restart content-loader 2>&1 | grep -E "✔|Started|Error|error" || true
-  printf "  ${G}✓${R} Content Loader restarted\n"
+  docker compose --profile seed restart context-extractor 2>&1 | grep -E "✔|Started|Error|error" || true
+  printf "  ${G}✓${R} Context Extractor restarted\n"
 fi
 
 printf "\n${B}${G}╔${LINE}\n"
@@ -207,6 +207,6 @@ printf "╚${LINE}${R}\n\n"
 printf "  Entity:   ${B}${PROJ_NAME}${R}\n"
 printf "  AIOO:     ${B}${AIOO_NAME}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}/${PROJ_NAME}${R}\n\n"
-printf "  Edit northstar: chronicle-vault/${PROJ_NAME}/${NS_FILE}\n"
+printf "  Edit northstar: memory-vault/${PROJ_NAME}/${NS_FILE}\n"
 printf "  Spawn builder:  ${B}./app-builder.sh ${PROJ_NAME} <app-name>${R}\n"
 printf "  Add a human:    ${B}./add-human.sh${R}\n\n"

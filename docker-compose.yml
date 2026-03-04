@@ -6,38 +6,21 @@
 #   ./app-builder.sh <entity> <app>  — spawn an App Builder
 #
 # Usage:
-#   docker compose --profile seed up -d          # start Content Loader
-#   docker compose --profile seed down           # stop Content Loader
+#   docker compose --profile seed up -d          # start Context Extractor
+#   docker compose --profile seed down           # stop Context Extractor
 
 services:
 
-  # ── Mission Control Dashboard ────────────────────────────────────────────────
-  # Visual dashboard: Clark/AIOO status, sandbox manager, activity feed.
-  # Access at http://localhost:3000
-  mission-control:
-    profiles: [seed]
-    build:
-      context: ./mission-control
-    container_name: mission-control
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./shared:/app/shared
-    environment:
-      - DB_PATH=/app/shared/chronicle.db
-      - NORTHSTAR_DIR=/app/shared/northstar-summaries
-    restart: unless-stopped
-
-  # ── Content Loader ─────────────────────────────────────────────────────────
+  # ── Context Extractor ──────────────────────────────────────────────────────
   # Watches all entity Raw/ dirs and distills notes for Clark and AIOO.
   # Reads config.json to discover entities at startup.
-  content-loader:
+  context-extractor:
     profiles: [seed]
     build:
-      context: ./content-loader
-    container_name: content-loader
+      context: ./context-extractor
+    container_name: context-extractor
     volumes:
-      - chronicle-vault:/vault
+      - memory-vault:/vault
       - ./config.json:/app/config.json:ro
     environment:
       - VAULT_PATH=/vault
@@ -45,9 +28,9 @@ services:
     restart: unless-stopped
 
 volumes:
-  chronicle-vault:
+  memory-vault:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${PWD}/chronicle-vault
+      device: ${PWD}/memory-vault

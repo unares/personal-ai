@@ -5,14 +5,15 @@ const DEPRECATED_TERMS = {
   'Chronicle.db': 'Chronicle vault',
   'Chronicle.sqlite': 'Chronicle vault',
   'Gemini 2.0 Pro': '\u26a0\ufe0f [CONFLICT: verify against NORTHSTAR \u2014 Gemini 3.1 Pro is current]',
-  'Context Loader v0.1': 'Context Loader v0.2',
+  'Content Loader': 'Context Extractor',
+  'Context Loader v0.1': 'Context Extractor v0.2',
   'NanoClaw-3': '\u26a0\ufe0f [CONFLICT: only 2 NanoClaws exist]',
-  'direct vault write': '\u26a0\ufe0f [CONFLICT: agents must use Context Loader API]'
+  'direct vault write': '\u26a0\ufe0f [CONFLICT: agents must use Context Extractor API]'
 };
 
 const ARCHITECTURE_VIOLATIONS = [
-  { pattern: /\b(write|writes|writing)\s+(to|into)\s+\/vault\b/i, type: 'direct_vault_write', recommendation: 'Use POST /ingest or Context Loader API instead of direct vault writes' },
-  { pattern: /\bbypass\s+content[- ]?loader\b/i, type: 'bypass_content_loader', recommendation: 'All content must flow through the Context Loader pipeline' },
+  { pattern: /\b(write|writes|writing)\s+(to|into)\s+\/vault\b/i, type: 'direct_vault_write', recommendation: 'Use POST /ingest or Context Extractor API instead of direct vault writes' },
+  { pattern: /\bbypass\s+context[- ]?extractor\b/i, type: 'bypass_context_extractor', recommendation: 'All content must flow through the Context Extractor pipeline' },
   { pattern: /\bskip\s+(classification|classify)\b/i, type: 'skip_classification', recommendation: 'Classification is mandatory for all ingested content' },
   { pattern: /\bagent\s+(writes?|edits?|modif(y|ies))\s+(to\s+)?NORTHSTAR\b/i, type: 'northstar_modification', recommendation: 'NORTHSTAR.md is read-only; only humans may edit it' }
 ];

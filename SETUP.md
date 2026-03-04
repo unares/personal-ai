@@ -4,7 +4,7 @@
 
 ## What This Creates
 
-Running `./install.sh` builds your **Personal AI workspace** from scratch — a private, Docker-native Founder OS with isolated memory per company, AI agents scoped to each project, and a Content Loader that watches everything you write and turns it into structured context for your agents.
+Running `./install.sh` builds your **Personal AI workspace** from scratch — a private, Docker-native Founder OS with isolated memory per company, AI agents scoped to each project, and a Context Extractor that watches everything you write and turns it into structured context for your agents.
 
 ---
 
@@ -44,26 +44,26 @@ Two things are generated:
 }
 ```
 
-**`chronicle-vault/`** (gitignored) — your private memory layer:
+**`memory-vault/`** (gitignored) — your private memory layer:
 ```
-chronicle-vault/
+memory-vault/
   onething/
     Raw/
       Daily/          ← drop your daily notes here
       MVPs/           ← notes per MVP/subproject
       People/         ← notes about people
     Distilled/
-      Clark/          ← Content Loader writes summaries here for Clark
-      AIOO/           ← Content Loader writes summaries here for AIOO
+      Clark/          ← Context Extractor writes summaries here for Clark
+      AIOO/           ← Context Extractor writes summaries here for AIOO
     Archive/Raw/      ← every note version kept forever (never deleted)
     Logs/             ← onething-specific activity log
     ONETHING_NORTHSTAR.md  ← your long-term vision for this company
   procenteo/          ← same structure
   inisio/             ← same structure
-  Logs/               ← system-wide Content Loader log
+  Logs/               ← system-wide Context Extractor log
 ```
 
-### Step 4 — Content Loader Starts
+### Step 4 — Context Extractor Starts
 A lightweight Node.js Docker container starts watching all your `Raw/` folders simultaneously.
 
 **What it does automatically, within 2 seconds of any file change:**
@@ -80,13 +80,13 @@ Isolation is enforced: the onething watcher only touches `onething/`, procenteo 
 
 ### Drop a note
 ```bash
-echo "# Q1 goal" > chronicle-vault/procenteo/Raw/Daily/2026-03-02.md
+echo "# Q1 goal" > memory-vault/procenteo/Raw/Daily/2026-03-02.md
 # → archived + distilled automatically within 2s
 ```
 
 ### Edit your Northstar
 ```bash
-nano chronicle-vault/onething/ONETHING_NORTHSTAR.md
+nano memory-vault/onething/ONETHING_NORTHSTAR.md
 ```
 This is the locked constitution for the company. Every MVP builder spawned for onething will read it.
 
@@ -102,16 +102,16 @@ Creates a Docker container (`mvp-onething-plusone`) with:
 Attach to it: `docker exec -it mvp-onething-plusone sh`
 Stop it: `docker stop mvp-onething-plusone && docker rm mvp-onething-plusone`
 
-### Check Content Loader logs
+### Check Context Extractor logs
 ```bash
 # Global system log
-cat chronicle-vault/Logs/content-loader.log
+cat memory-vault/Logs/context-extractor.log
 
 # Per-company log
-cat chronicle-vault/onething/Logs/content-loader.log
+cat memory-vault/onething/Logs/context-extractor.log
 
 # Live tail
-docker compose --profile seed logs -f content-loader
+docker compose --profile seed logs -f context-extractor
 ```
 
 ### Add a new company later
@@ -129,16 +129,16 @@ docker compose --profile seed logs -f content-loader
 | `clark-{cofounder}` | Their company → `Distilled/Clark/` | read-only |
 | `aioo-{company}` | Their company → full vault | read-write |
 | `mvp-{company}-{name}` | Their company → `Distilled/` | read-only |
-| Content Loader | All companies | read-write |
+| Context Extractor | All companies | read-write |
 
-**Rule**: Clarks never see raw notes. They only see what Content Loader has distilled for them. AIOs see everything in their company vault. MVP builders see only distilled context — never raw.
+**Rule**: Clarks never see raw notes. They only see what Context Extractor has distilled for them. AIOs see everything in their company vault. MVP builders see only distilled context — never raw.
 
 ---
 
 ## File Privacy
 
 These are gitignored and never committed:
-- `chronicle-vault/` — all your notes, archives, distilled content
+- `memory-vault/` — all your notes, archives, distilled content
 - `config.json` — your name, company names, co-founder names
 - `instances/` — spawned MVP builder instances
 
@@ -150,7 +150,7 @@ Everything in the repo is generic infrastructure — safe to push publicly.
 
 ```bash
 # On Mac — copy vault to VPS
-scp -r ~/personal-ai/chronicle-vault user@vps:~/personal-ai/
+scp -r ~/personal-ai/memory-vault user@vps:~/personal-ai/
 scp ~/personal-ai/config.json user@vps:~/personal-ai/
 
 # On VPS — identical command

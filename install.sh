@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
+VAULT_PATH="$SCRIPT_DIR/memory-vault"
 CONFIG_PATH="$SCRIPT_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
@@ -188,7 +188,7 @@ done
 printf "\n  ${B}Vault structure:${R}\n"
 printf "  ${D}(Logs/ = every agent action, tool run, and App build,\n"
 printf "   scoped per entity + one global system log)${R}\n\n"
-printf "  chronicle-vault/\n"
+printf "  memory-vault/\n"
 for PROJ in "${ENTITY_NAMES[@]}"; do
   printf "  ${Y}├── ${PROJ}/${R}\n"
   printf "  │   ├── Raw/{Daily, Apps, People}\n"
@@ -199,13 +199,13 @@ for PROJ in "${ENTITY_NAMES[@]}"; do
 done
 printf "  └── Logs/\n\n"
 
-# ── Step 4: Start Content Loader ───────────────────────────────────────────
-step_banner 4 4 "Starting Content Loader" \
-  "Content Loader = watches Raw/ and distills notes for agents" \
-  "Raw/           = drop any .md — archived + distilled in 2s" \
-  "Distilled/     = cleaned summaries read by Clark and AIOO"
+# ── Step 4: Start Context Extractor ────────────────────────────────────────
+step_banner 4 4 "Starting Context Extractor" \
+  "Context Extractor = watches Raw/ and distills notes for agents" \
+  "Raw/              = drop any .md — archived + distilled in 2s" \
+  "Distilled/        = cleaned summaries read by Clark and AIOO"
 cd "$SCRIPT_DIR"
-docker compose --profile seed up -d --build content-loader 2>&1 | grep -E "✔|Built|Started|Error|WARN|error" || true
+docker compose --profile seed up -d --build context-extractor 2>&1 | grep -E "✔|Built|Started|Error|WARN|error" || true
 
 printf "\n${B}${G}╔${LINE}\n"
 printf "║  Setup complete. Personal AI v0.2 is live.\n"
@@ -214,7 +214,7 @@ ENTITY_LIST=$(IFS=', '; echo "${ENTITY_NAMES[*]}")
 printf "  Owner:    ${B}${OWNER_NAME}${R} (${OWNER_CLARK})\n"
 printf "  Entities: ${B}${ENTITY_LIST}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}${R}\n\n"
-printf "  Drop notes:    chronicle-vault/{entity}/Raw/\n"
+printf "  Drop notes:    memory-vault/{entity}/Raw/\n"
 printf "  Spawn builder: ${B}./app-builder.sh <entity> <app-name>${R}\n"
 printf "  Add entity:    ${B}./add-entity.sh${R}\n"
 printf "  Add human:     ${B}./add-human.sh${R}\n\n"

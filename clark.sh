@@ -6,7 +6,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
+VAULT_PATH="$SCRIPT_DIR/memory-vault"
 CONFIG_PATH="$SCRIPT_DIR/config.json"
 IMAGE="personal-ai-clark"
 
@@ -88,9 +88,6 @@ for PROJ in $PROJECTS; do
   fi
 done
 
-# Mount ANNOUNCEMENTS.md
-MOUNT_ARGS="$MOUNT_ARGS -v ${SCRIPT_DIR}/ANNOUNCEMENTS.md:/ANNOUNCEMENTS.md:ro"
-
 # Launch
 docker run -d --name "$CLARK_NAME" \
   $MOUNT_ARGS \
@@ -103,7 +100,6 @@ for PROJ in $PROJECTS; do
   printf "  ${G}✓${R} ${PROJ}/Distilled/Clark/ mounted (read-only)\n"
   [ "$AIOO_ACCESS" = "true" ] && printf "  ${G}✓${R} ${PROJ}/Distilled/AIOO/ mounted (read-only)\n"
 done
-printf "  ${G}✓${R} ANNOUNCEMENTS.md mounted\n\n"
 
 printf "${B}${G}╔${LINE}\n"
 printf "║  ${CLARK_NAME} is ready.\n"
@@ -111,6 +107,6 @@ printf "╚${LINE}${R}\n\n"
 printf "  Enter Clark:\n"
 printf "  ${B}docker exec -it ${CLARK_NAME} claude${R}\n\n"
 printf "  First prompt:\n"
-printf "  ${D}\"Read ANNOUNCEMENTS.md. Then read /vault/. What is the One Thing?\"${R}\n\n"
+printf "  ${D}\"Read /vault/. What is the One Thing?\"${R}\n\n"
 printf "  Stop Clark:\n"
 printf "  ${D}docker stop ${CLARK_NAME} && docker rm ${CLARK_NAME}${R}\n\n"

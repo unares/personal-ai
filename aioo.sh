@@ -6,7 +6,7 @@ set -euo pipefail
 
 ENTITY="${1:?Usage: aioo.sh <entity>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
+VAULT_PATH="$SCRIPT_DIR/memory-vault"
 CONFIG_PATH="$SCRIPT_DIR/config.json"
 IMAGE="personal-ai-aioo"
 CONTAINER="aioo-${ENTITY}"
@@ -63,7 +63,7 @@ fi
 
 # Validate vault exists
 if [ ! -d "$VAULT_PATH/$ENTITY" ]; then
-  printf "  ${Y}Error:${R} vault not found at chronicle-vault/${ENTITY}/\n"
+  printf "  ${Y}Error:${R} vault not found at memory-vault/${ENTITY}/\n"
   printf "  Run ./install.sh or ./add-entity.sh to create it.\n\n"
   exit 1
 fi
@@ -83,15 +83,13 @@ NS_PATH=$(find "$VAULT_PATH/$ENTITY" -maxdepth 1 -name "*_NORTHSTAR.md" 2>/dev/n
 docker run -d --name "$CONTAINER" \
   -v "$VAULT_PATH/$ENTITY:/vault" \
   -v "$NS_PATH:/vault/NORTHSTAR.md" \
-  -v "$SCRIPT_DIR/ANNOUNCEMENTS.md:/ANNOUNCEMENTS.md:ro" \
   -e "ENTITY=${ENTITY}" \
   -e "AIOO=${CONTAINER}" \
   "$IMAGE" > /dev/null
 
 printf "  ${G}✓${R} ${CONTAINER} started\n"
-printf "  ${G}✓${R} chronicle-vault/${ENTITY}/ mounted (read-write)\n"
+printf "  ${G}✓${R} memory-vault/${ENTITY}/ mounted (read-write)\n"
 printf "  ${G}✓${R} NORTHSTAR.md at /vault/NORTHSTAR.md\n"
-printf "  ${G}✓${R} ANNOUNCEMENTS.md mounted\n\n"
 
 printf "${B}${G}╔${LINE}\n"
 printf "║  ${CONTAINER} is ready.\n"
@@ -99,7 +97,7 @@ printf "╚${LINE}${R}\n\n"
 printf "  Enter AIOO:\n"
 printf "  ${B}docker exec -it ${CONTAINER} claude${R}\n\n"
 printf "  First prompt:\n"
-printf "  ${D}\"Read ANNOUNCEMENTS.md. Then read /vault/NORTHSTAR.md.\n"
+printf "  ${D}\"Read /vault/NORTHSTAR.md.\n"
 printf "   Then read /vault/Distilled/. What needs to happen next?\"${R}\n\n"
 printf "  Stop AIOO:\n"
 printf "  ${D}docker stop ${CONTAINER} && docker rm ${CONTAINER}${R}\n\n"

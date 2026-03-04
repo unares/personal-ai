@@ -25,7 +25,7 @@ function log(entity, message) {
   const logDir = path.join(VAULT, entity, 'Logs');
   fs.mkdirSync(logDir, { recursive: true });
   const line = `[${new Date().toISOString()}] ${message}\n`;
-  fs.appendFileSync(path.join(logDir, 'content-loader.log'), line);
+  fs.appendFileSync(path.join(logDir, 'context-extractor.log'), line);
   console.log(`[${entity}] ${message}`);
 }
 

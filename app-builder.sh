@@ -7,7 +7,7 @@ set -euo pipefail
 ENTITY="${1:?Usage: app-builder.sh <entity> <app-name>}"
 APP="${2:?Usage: app-builder.sh <entity> <app-name>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
+VAULT_PATH="$SCRIPT_DIR/memory-vault"
 CONTAINER="app-${ENTITY}-${APP}"
 IMAGE="personal-ai-app-builder"
 
@@ -54,7 +54,7 @@ printf "  northstar and context, and grows with the app over time.${R}\n\n"
 
 # ── Validate entity ────────────────────────────────────────────────────────
 if [ ! -d "$VAULT_PATH/$ENTITY" ]; then
-  printf "  ${Y}Error:${R} entity '${ENTITY}' not found in chronicle-vault.\n"
+  printf "  ${Y}Error:${R} entity '${ENTITY}' not found in memory-vault.\n"
   printf "  Available: $(ls "$VAULT_PATH" | grep -v Logs | tr '\n' ' ')\n\n"
   exit 1
 fi
@@ -62,7 +62,7 @@ fi
 NS_FILE=$(find "$VAULT_PATH/$ENTITY" -maxdepth 1 -name "*_NORTHSTAR.md" | head -1)
 printf "  ${G}✓${R} Entity vault found\n"
 [ -n "$NS_FILE" ] && printf "  ${G}✓${R} Northstar: ${D}$(basename "$NS_FILE")${R}\n" \
-  || printf "  ${Y}!${R} No northstar yet — edit chronicle-vault/${ENTITY}/*_NORTHSTAR.md\n"
+  || printf "  ${Y}!${R} No northstar yet — edit memory-vault/${ENTITY}/*_NORTHSTAR.md\n"
 printf "\n"
 
 # ── Step 1: GitHub ─────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ fi
 step_banner 2 3 "Launching App Builder" \
   "App Builder  = Claude Code container dedicated to one app" \
   "Workspace    = /workspace/ — your isolated build space" \
-  "Distilled    = entity context prepared by Content Loader (read-only)"
+  "Distilled    = entity context prepared by Context Extractor (read-only)"
 
 if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
   printf "  Building App Builder image (first time only, ~2 min)...\n\n"
@@ -144,7 +144,7 @@ NORTHSTAR_TMP=$(mktemp /tmp/northstar-XXXXXX)
 if [ -n "$NS_FILE" ]; then
   cp "$NS_FILE" "$NORTHSTAR_TMP"
 else
-  printf "# NORTHSTAR\n\nEdit chronicle-vault/${ENTITY}/*_NORTHSTAR.md\n" > "$NORTHSTAR_TMP"
+  printf "# NORTHSTAR\n\nEdit memory-vault/${ENTITY}/*_NORTHSTAR.md\n" > "$NORTHSTAR_TMP"
 fi
 
 DOCKER_ENV_ARGS=(-e "ENTITY=$ENTITY" -e "APP=$APP")

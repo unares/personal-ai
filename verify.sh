@@ -1,11 +1,11 @@
 #!/bin/bash
 # Personal AI v0.2 — System Verification
 # Usage: ./verify.sh
-# Checks config, vault, Content Loader, and running containers.
+# Checks config, vault, Context Extractor, and running containers.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/chronicle-vault"
+VAULT_PATH="$SCRIPT_DIR/memory-vault"
 CONFIG_PATH="$SCRIPT_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" R_="\033[31m" B="\033[1m" D="\033[2m" R="\033[0m"
@@ -50,10 +50,10 @@ fi
 section "Vault"
 
 if [ ! -d "$VAULT_PATH" ]; then
-  fail "chronicle-vault/ missing — run ./install.sh"
+  fail "memory-vault/ missing — run ./install.sh"
 else
-  ok "chronicle-vault/ exists"
-  [ -d "$VAULT_PATH/Logs" ] && ok "Logs/ exists" || fail "chronicle-vault/Logs/ missing"
+  ok "memory-vault/ exists"
+  [ -d "$VAULT_PATH/Logs" ] && ok "Logs/ exists" || fail "memory-vault/Logs/ missing"
 
   if command -v node > /dev/null 2>&1 && [ -f "$CONFIG_PATH" ]; then
     ENTITIES=$(node -e "const c=require('${CONFIG_PATH}'); const e=c.entities||c.projects||[]; console.log(e.map(x=>x.name).join(' '))")
@@ -84,7 +84,7 @@ for SCRIPT in install.sh clark.sh aioo.sh app-builder.sh add-entity.sh add-human
   fi
 done
 
-for IMAGE_DIR in clark-image aioo-image app-builder-image content-loader; do
+for IMAGE_DIR in clark-image aioo-image app-builder-image context-extractor; do
   [ -d "$SCRIPT_DIR/$IMAGE_DIR" ] && ok "${IMAGE_DIR}/ exists" || fail "${IMAGE_DIR}/ missing"
 done
 
@@ -96,11 +96,11 @@ if ! command -v docker > /dev/null 2>&1; then
 else
   ok "docker available"
 
-  # Content Loader
-  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^content-loader$"; then
-    ok "content-loader running"
+  # Context Extractor
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^context-extractor$"; then
+    ok "context-extractor running"
   else
-    warn "content-loader not running — start with: docker compose --profile seed up -d"
+    warn "context-extractor not running — start with: docker compose --profile seed up -d"
   fi
 
   # Clark containers
@@ -122,11 +122,6 @@ else
     docker image inspect "$IMG" > /dev/null 2>&1 && ok "image ${IMG}" || printf "  ${D}  image ${IMG} not built yet${R}\n"
   done
 fi
-
-# ── ANNOUNCEMENTS ──────────────────────────────────────────────────────────
-section "Announcements"
-
-[ -f "$SCRIPT_DIR/ANNOUNCEMENTS.md" ] && ok "ANNOUNCEMENTS.md exists" || warn "ANNOUNCEMENTS.md missing"
 
 # ── Summary ────────────────────────────────────────────────────────────────
 printf "\n${B}${G}╔${LINE}\n"

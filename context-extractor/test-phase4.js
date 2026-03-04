@@ -129,8 +129,8 @@ async function testSelfHealExpansion() {
   assert(violations.length > 0, 'Architecture violation detected for NORTHSTAR write');
   assert(violations[0].type === 'northstar_modification', `Violation type: ${violations[0].type}`);
 
-  const v2 = detectArchitectureViolations('We must bypass content-loader for speed');
-  assert(v2.length > 0, 'Bypass content-loader violation detected');
+  const v2 = detectArchitectureViolations('We must bypass context-extractor for speed');
+  assert(v2.length > 0, 'Bypass context-extractor violation detected');
 
   const v3 = detectArchitectureViolations('Normal text with no violations');
   assert(v3.length === 0, 'No false positive violations');

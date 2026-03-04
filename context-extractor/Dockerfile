@@ -6,4 +6,4 @@ RUN npm ci --production
 COPY *.js ./
 COPY config.json ./
 EXPOSE 27125
-CMD ["node", "content-loader.js"]
+CMD ["node", "context-extractor.js"]
