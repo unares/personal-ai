@@ -10,3 +10,6 @@ npm-debug.log
 # OS
 .DS_Store
 *.swp
+shared/chronicle.db
+shared/chronicle.db-shm
+shared/chronicle.db-wal

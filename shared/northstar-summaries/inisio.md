@@ -1,2 +1,2 @@
-# Inisio — Northstar Summary
-Northstar TBD — to be populated by AIOO.
+# Inisio
+Northstar TBD.
