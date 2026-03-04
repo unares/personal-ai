@@ -5,8 +5,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/memory-vault"
-CONFIG_PATH="$SCRIPT_DIR/config.json"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAULT_PATH="$REPO_DIR/memory-vault"
+CONFIG_PATH="$REPO_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" R_="\033[31m" B="\033[1m" D="\033[2m" R="\033[0m"
 W=64
@@ -76,16 +77,16 @@ fi
 # ── Scripts ────────────────────────────────────────────────────────────────
 section "Scripts"
 
-for SCRIPT in install.sh clark.sh aioo.sh app-builder.sh add-entity.sh add-human.sh verify.sh; do
-  if [ -f "$SCRIPT_DIR/$SCRIPT" ]; then
-    [ -x "$SCRIPT_DIR/$SCRIPT" ] && ok "${SCRIPT} (executable)" || warn "${SCRIPT} exists but not executable — run: chmod +x ${SCRIPT}"
+for SCRIPT in setup/install.sh setup/verify.sh setup/add-entity.sh setup/add-human.sh clark/clark.sh aioo/aioo.sh app-builder/app-builder.sh; do
+  if [ -f "$REPO_DIR/$SCRIPT" ]; then
+    [ -x "$REPO_DIR/$SCRIPT" ] && ok "${SCRIPT} (executable)" || warn "${SCRIPT} exists but not executable — run: chmod +x ${SCRIPT}"
   else
     fail "${SCRIPT} missing"
   fi
 done
 
-for IMAGE_DIR in clark-image aioo-image app-builder-image context-extractor; do
-  [ -d "$SCRIPT_DIR/$IMAGE_DIR" ] && ok "${IMAGE_DIR}/ exists" || fail "${IMAGE_DIR}/ missing"
+for DIR in clark aioo app-builder context-extractor; do
+  [ -d "$REPO_DIR/$DIR" ] && ok "${DIR}/ exists" || fail "${DIR}/ missing"
 done
 
 # ── Docker ─────────────────────────────────────────────────────────────────

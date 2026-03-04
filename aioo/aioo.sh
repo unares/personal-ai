@@ -6,8 +6,9 @@ set -euo pipefail
 
 ENTITY="${1:?Usage: aioo.sh <entity>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/memory-vault"
-CONFIG_PATH="$SCRIPT_DIR/config.json"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAULT_PATH="$REPO_DIR/memory-vault"
+CONFIG_PATH="$REPO_DIR/config.json"
 IMAGE="personal-ai-aioo"
 CONTAINER="aioo-${ENTITY}"
 
@@ -71,7 +72,7 @@ fi
 # Build image if needed
 if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
   printf "  Building AIOO image (first time only, ~2 min)...\n"
-  docker build -t "$IMAGE" "$SCRIPT_DIR/aioo-image/" 2>&1 | grep -E "✔|Step|error" || true
+  docker build -t "$IMAGE" "$SCRIPT_DIR/" 2>&1 | grep -E "✔|Step|error" || true
   printf "\n"
 fi
 

@@ -3,8 +3,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/memory-vault"
-CONFIG_PATH="$SCRIPT_DIR/config.json"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAULT_PATH="$REPO_DIR/memory-vault"
+CONFIG_PATH="$REPO_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
 W=64
@@ -204,7 +205,7 @@ step_banner 4 4 "Starting Context Extractor" \
   "Context Extractor = watches Raw/ and distills notes for agents" \
   "Raw/              = drop any .md — archived + distilled in 2s" \
   "Distilled/        = cleaned summaries read by Clark and AIOO"
-cd "$SCRIPT_DIR"
+cd "$REPO_DIR"
 docker compose --profile seed up -d --build context-extractor 2>&1 | grep -E "✔|Built|Started|Error|WARN|error" || true
 
 printf "\n${B}${G}╔${LINE}\n"
@@ -215,6 +216,6 @@ printf "  Owner:    ${B}${OWNER_NAME}${R} (${OWNER_CLARK})\n"
 printf "  Entities: ${B}${ENTITY_LIST}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}${R}\n\n"
 printf "  Drop notes:    memory-vault/{entity}/Raw/\n"
-printf "  Spawn builder: ${B}./app-builder.sh <entity> <app-name>${R}\n"
-printf "  Add entity:    ${B}./add-entity.sh${R}\n"
-printf "  Add human:     ${B}./add-human.sh${R}\n\n"
+printf "  Spawn builder: ${B}./app-builder/app-builder.sh <entity> <app-name>${R}\n"
+printf "  Add entity:    ${B}./setup/add-entity.sh${R}\n"
+printf "  Add human:     ${B}./setup/add-human.sh${R}\n\n"

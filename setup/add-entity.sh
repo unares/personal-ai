@@ -4,8 +4,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/memory-vault"
-CONFIG_PATH="$SCRIPT_DIR/config.json"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAULT_PATH="$REPO_DIR/memory-vault"
+CONFIG_PATH="$REPO_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
 W=64
@@ -196,7 +197,7 @@ fi
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "context-extractor"; then
   printf "\n  Restarting Context Extractor...\n"
-  cd "$SCRIPT_DIR"
+  cd "$REPO_DIR"
   docker compose --profile seed restart context-extractor 2>&1 | grep -E "✔|Started|Error|error" || true
   printf "  ${G}✓${R} Context Extractor restarted\n"
 fi
@@ -208,5 +209,5 @@ printf "  Entity:   ${B}${PROJ_NAME}${R}\n"
 printf "  AIOO:     ${B}${AIOO_NAME}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}/${PROJ_NAME}${R}\n\n"
 printf "  Edit northstar: memory-vault/${PROJ_NAME}/${NS_FILE}\n"
-printf "  Spawn builder:  ${B}./app-builder.sh ${PROJ_NAME} <app-name>${R}\n"
-printf "  Add a human:    ${B}./add-human.sh${R}\n\n"
+printf "  Spawn builder:  ${B}./app-builder/app-builder.sh ${PROJ_NAME} <app-name>${R}\n"
+printf "  Add a human:    ${B}./setup/add-human.sh${R}\n\n"

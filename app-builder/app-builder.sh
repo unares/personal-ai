@@ -7,7 +7,8 @@ set -euo pipefail
 ENTITY="${1:?Usage: app-builder.sh <entity> <app-name>}"
 APP="${2:?Usage: app-builder.sh <entity> <app-name>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAULT_PATH="$SCRIPT_DIR/memory-vault"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAULT_PATH="$REPO_DIR/memory-vault"
 CONTAINER="app-${ENTITY}-${APP}"
 IMAGE="personal-ai-app-builder"
 
@@ -136,7 +137,7 @@ step_banner 2 3 "Launching App Builder" \
 
 if ! docker image inspect "$IMAGE" > /dev/null 2>&1; then
   printf "  Building App Builder image (first time only, ~2 min)...\n\n"
-  docker build -t "$IMAGE" "$SCRIPT_DIR/app-builder-image/" 2>&1 | grep -E "✔|Step|error" || true
+  docker build -t "$IMAGE" "$SCRIPT_DIR/" 2>&1 | grep -E "✔|Step|error" || true
   printf "\n"
 fi
 
@@ -153,7 +154,7 @@ DOCKER_ENV_ARGS=(-e "ENTITY=$ENTITY" -e "APP=$APP")
 docker run -d --name "$CONTAINER" \
   -v "$VAULT_PATH/$ENTITY/Distilled:/vault/Distilled:ro" \
   -v "$VAULT_PATH/$ENTITY/Logs:/vault/Logs" \
-  -v "$SCRIPT_DIR/app-builder-image/CLAUDE.md:/workspace/CLAUDE.md:ro" \
+  -v "$SCRIPT_DIR/CLAUDE.md:/workspace/CLAUDE.md:ro" \
   -v "$NORTHSTAR_TMP:/workspace/NORTHSTAR.md:ro" \
   "${DOCKER_ENV_ARGS[@]}" \
   "$IMAGE" > /dev/null
