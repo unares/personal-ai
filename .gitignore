@@ -1,5 +1,5 @@
 # Runtime generated — never commit these
-chronicle-vault/
+memory-vault/
 instances/
 config.json
 
@@ -10,6 +10,4 @@ npm-debug.log
 # OS
 .DS_Store
 *.swp
-shared/chronicle.db
-shared/chronicle.db-shm
-shared/chronicle.db-wal
+shared/

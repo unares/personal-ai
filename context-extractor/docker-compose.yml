@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  context-extractor:
+    build: .
+    ports:
+      - "27125:27125"
+    volumes:
+      - memory-vault:/vault
+    environment:
+      - VAULT_PATH=/vault
+      - CL_PORT=27125
+    restart: unless-stopped
+
+volumes:
+  memory-vault:
+    external: true
