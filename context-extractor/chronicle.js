@@ -90,10 +90,66 @@ function fileDeleted(vaultPath, entity, filePath, opts) {
   });
 }
 
+// NanoClaw event types (v0.4)
+function sessionStart(vaultPath, entity, opts) {
+  emitEvent(vaultPath, entity, {
+    event_type: 'SESSION_START',
+    entity,
+    agent: opts.agent || 'unknown',
+    metadata: { container: opts.container || null, channel: opts.channel || null }
+  });
+}
+
+function sessionEnd(vaultPath, entity, opts) {
+  emitEvent(vaultPath, entity, {
+    event_type: 'SESSION_END',
+    entity,
+    agent: opts.agent || 'unknown',
+    metadata: { duration_ms: opts.duration_ms || null, reason: opts.reason || 'normal' }
+  });
+}
+
+function taskSpawned(vaultPath, entity, opts) {
+  emitEvent(vaultPath, entity, {
+    event_type: 'TASK_SPAWNED',
+    entity,
+    agent: opts.agent || 'aioo',
+    metadata: { container: opts.container, brief: opts.brief || null, app: opts.app || null }
+  });
+}
+
+function skillInvoked(vaultPath, entity, opts) {
+  emitEvent(vaultPath, entity, {
+    event_type: 'SKILL_INVOKED',
+    entity,
+    agent: opts.agent || 'unknown',
+    metadata: { skill: opts.skill, args: opts.args || null }
+  });
+}
+
+function routingDecision(vaultPath, entity, opts) {
+  emitEvent(vaultPath, entity, {
+    event_type: 'ROUTING_DECISION',
+    entity,
+    agent: opts.agent || 'aioo',
+    metadata: {
+      classification: opts.classification,
+      chosen_model: opts.chosen_model,
+      confidence: opts.confidence || null,
+      estimated_cost_savings: opts.estimated_cost_savings || null
+    }
+  });
+}
+
 module.exports = {
   generateJobId,
   emitEvent,
   fileCreated,
   fileModified,
-  fileDeleted
+  fileDeleted,
+  sessionStart,
+  sessionEnd,
+  taskSpawned,
+  skillInvoked,
+  routingDecision
 };
