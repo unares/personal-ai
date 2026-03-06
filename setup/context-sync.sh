@@ -98,71 +98,91 @@ install_gws() {
   fi
 }
 
+ensure_gcloud() {
+  if command -v gcloud > /dev/null 2>&1; then
+    return 0
+  fi
+
+  printf "  ${Y}!${R} Google Cloud SDK (gcloud) not installed.\n"
+  printf "  ${D}  gcloud is needed once to create OAuth credentials for Drive access.${R}\n\n"
+
+  # Detect platform and offer install
+  local install_cmd=""
+  if command -v brew > /dev/null 2>&1; then
+    install_cmd="brew install --cask google-cloud-sdk"
+  elif [ -f /etc/debian_version ]; then
+    install_cmd="sudo apt-get install -y google-cloud-cli"
+  fi
+
+  if [ -n "$install_cmd" ]; then
+    while true; do
+      read -rp "  Install now? (${install_cmd}) [y/n]: " INSTALL_GCLOUD
+      case "$INSTALL_GCLOUD" in y*|Y*|n*|N*) break;; esac
+    done
+
+    if [[ "$INSTALL_GCLOUD" == "y"* || "$INSTALL_GCLOUD" == "Y"* ]]; then
+      printf "  Installing Google Cloud SDK...\n\n"
+      if $install_cmd; then
+        printf "\n  ${G}✓${R} gcloud installed\n\n"
+        # Source the path setup for brew installs
+        if command -v brew > /dev/null 2>&1; then
+          local gcloud_path; gcloud_path="$(brew --prefix)/share/google-cloud-sdk"
+          [ -f "$gcloud_path/path.bash.inc" ] && source "$gcloud_path/path.bash.inc" 2>/dev/null || true
+          [ -f "$gcloud_path/completion.bash.inc" ] && source "$gcloud_path/completion.bash.inc" 2>/dev/null || true
+        fi
+        return 0
+      else
+        printf "\n  ${Y}!${R} Installation failed.\n\n"
+      fi
+    fi
+  fi
+
+  printf "  ${D}Install manually: https://cloud.google.com/sdk/docs/install${R}\n"
+  printf "  ${D}Then re-run this command.${R}\n\n"
+  return 1
+}
+
 ensure_oauth_client() {
   # Check if OAuth client is already configured
   if [ -f "$GWS_CONFIG_DIR/client_secret.json" ]; then
     return 0
   fi
 
-  printf "  ${Y}!${R} No OAuth client configured for gws.\n\n"
-  printf "  ${B}You need a Google Cloud OAuth client to use Drive.${R}\n"
-  printf "  ${D}  This is a one-time setup. Two options:${R}\n\n"
-  printf "    ${C}1.${R} Automatic  ${D}(needs gcloud CLI — runs gws auth setup)${R}\n"
-  printf "    ${C}2.${R} Manual     ${D}(download client_secret.json from Google Cloud Console)${R}\n\n"
+  printf "  ${Y}!${R} No OAuth client configured for gws.\n"
+  printf "  ${D}  One-time setup: creates a Google Cloud project with Drive access.${R}\n\n"
 
-  local do_manual=false
-  read -rp "  Select [1/2]: " SETUP_CHOICE
-  case "$SETUP_CHOICE" in
-    1)
-      if ! command -v gcloud > /dev/null 2>&1; then
-        printf "\n  ${Y}!${R} gcloud CLI not found. Falling back to manual setup.\n"
-        printf "  ${D}  Install gcloud: https://cloud.google.com/sdk/docs/install${R}\n\n"
-        do_manual=true
-      else
-        printf "\n  Running ${B}gws auth setup${R}...\n"
-        printf "  ${D}  This creates a Google Cloud project and OAuth client.${R}\n"
-        printf "  ${D}  Follow the prompts in your terminal and browser.${R}\n\n"
-        if gws auth setup; then
-          printf "\n  ${G}✓${R} OAuth client configured\n\n"
-          return 0
-        else
-          printf "\n  ${Y}!${R} Setup incomplete. Falling back to manual setup...\n\n"
-          do_manual=true
-        fi
-      fi
-      ;;
-    *)
-      do_manual=true
-      ;;
-  esac
+  # Ensure gcloud is available (auto-install if needed)
+  ensure_gcloud || return 1
 
-  if $do_manual; then
-      printf "\n  ${B}Manual OAuth setup:${R}\n\n"
-      printf "  1. Go to ${C}https://console.cloud.google.com/apis/credentials${R}\n"
-      printf "  2. Create a project (or select existing)\n"
-      printf "  3. Enable ${B}Google Drive API${R} and ${B}Google Docs API${R}\n"
-      printf "     ${C}https://console.cloud.google.com/apis/library/drive.googleapis.com${R}\n"
-      printf "     ${C}https://console.cloud.google.com/apis/library/docs.googleapis.com${R}\n"
-      printf "  4. Go to ${B}Credentials${R} → ${B}Create Credentials${R} → ${B}OAuth client ID${R}\n"
-      printf "  5. Application type: ${B}Desktop app${R}\n"
-      printf "  6. Download the JSON file\n"
-      printf "  7. Save it to: ${B}${GWS_CONFIG_DIR}/client_secret.json${R}\n\n"
+  # Run gws auth setup — automates project creation, API enabling, OAuth client
+  printf "  Running ${B}gws auth setup${R}...\n"
+  printf "  ${D}  This creates a Google Cloud project, enables Drive/Docs APIs,${R}\n"
+  printf "  ${D}  and configures OAuth credentials. Follow the prompts.${R}\n\n"
 
-      mkdir -p "$GWS_CONFIG_DIR"
-      read -rp "  Path to downloaded client_secret.json (or Enter when done): " CLIENT_PATH
+  if gws auth setup; then
+    printf "\n  ${G}✓${R} OAuth client configured\n\n"
+    return 0
+  fi
 
-      if [ -n "$CLIENT_PATH" ] && [ -f "$CLIENT_PATH" ]; then
-        cp "$CLIENT_PATH" "$GWS_CONFIG_DIR/client_secret.json"
-        printf "  ${G}✓${R} OAuth client configured\n\n"
-        return 0
-      elif [ -f "$GWS_CONFIG_DIR/client_secret.json" ]; then
-        printf "  ${G}✓${R} Found client_secret.json\n\n"
-        return 0
-      else
-        printf "  ${Y}!${R} No client_secret.json found at ${GWS_CONFIG_DIR}/client_secret.json\n"
-        printf "  ${D}  Save it there and re-run this command.${R}\n\n"
-        return 1
-      fi
+  # If gws auth setup failed, offer manual fallback
+  printf "\n  ${Y}!${R} Automatic setup failed. Trying manual fallback...\n\n"
+  printf "  ${B}If you already have a client_secret.json:${R}\n"
+  printf "  ${D}  Save it to: ${GWS_CONFIG_DIR}/client_secret.json${R}\n\n"
+
+  mkdir -p "$GWS_CONFIG_DIR"
+  read -rp "  Path to client_secret.json (or Enter to abort): " CLIENT_PATH
+
+  if [ -n "$CLIENT_PATH" ] && [ -f "$CLIENT_PATH" ]; then
+    cp "$CLIENT_PATH" "$GWS_CONFIG_DIR/client_secret.json"
+    printf "  ${G}✓${R} OAuth client configured\n\n"
+    return 0
+  elif [ -f "$GWS_CONFIG_DIR/client_secret.json" ]; then
+    printf "  ${G}✓${R} Found client_secret.json\n\n"
+    return 0
+  else
+    printf "  ${Y}!${R} No client_secret.json found.\n"
+    printf "  ${D}  Re-run this command after saving it to ${GWS_CONFIG_DIR}/client_secret.json${R}\n\n"
+    return 1
   fi
 }
 
