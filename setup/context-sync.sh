@@ -110,13 +110,14 @@ ensure_oauth_client() {
   printf "    ${C}1.${R} Automatic  ${D}(needs gcloud CLI — runs gws auth setup)${R}\n"
   printf "    ${C}2.${R} Manual     ${D}(download client_secret.json from Google Cloud Console)${R}\n\n"
 
+  local do_manual=false
   read -rp "  Select [1/2]: " SETUP_CHOICE
   case "$SETUP_CHOICE" in
     1)
       if ! command -v gcloud > /dev/null 2>&1; then
-        printf "\n  ${Y}!${R} gcloud CLI not found. Use option 2 instead.\n"
+        printf "\n  ${Y}!${R} gcloud CLI not found. Falling back to manual setup.\n"
         printf "  ${D}  Install gcloud: https://cloud.google.com/sdk/docs/install${R}\n\n"
-        SETUP_CHOICE=2
+        do_manual=true
       else
         printf "\n  Running ${B}gws auth setup${R}...\n"
         printf "  ${D}  This creates a Google Cloud project and OAuth client.${R}\n"
@@ -125,12 +126,17 @@ ensure_oauth_client() {
           printf "\n  ${G}✓${R} OAuth client configured\n\n"
           return 0
         else
-          printf "\n  ${Y}!${R} Setup incomplete. Trying manual method...\n\n"
-          SETUP_CHOICE=2
+          printf "\n  ${Y}!${R} Setup incomplete. Falling back to manual setup...\n\n"
+          do_manual=true
         fi
       fi
-      ;;&  # fall through to manual if automatic failed
-    2|*)
+      ;;
+    *)
+      do_manual=true
+      ;;
+  esac
+
+  if $do_manual; then
       printf "\n  ${B}Manual OAuth setup:${R}\n\n"
       printf "  1. Go to ${C}https://console.cloud.google.com/apis/credentials${R}\n"
       printf "  2. Create a project (or select existing)\n"
@@ -157,8 +163,7 @@ ensure_oauth_client() {
         printf "  ${D}  Save it there and re-run this command.${R}\n\n"
         return 1
       fi
-      ;;
-  esac
+  fi
 }
 
 ensure_gws() {
