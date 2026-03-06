@@ -276,44 +276,44 @@ get_visible_entities() {
 # All gws commands use --params for API parameters and return JSON.
 # Ref: https://github.com/googleworkspace/cli
 
-gws_account_flag() {
+set_gws_account() {
   local email="${1:-}"
   if [ -n "$email" ]; then
-    echo "--account=$email"
+    gws auth default "$email" 2>/dev/null || true
   fi
 }
 
 list_google_docs() {
   local email="${1:-}"
-  local acct; acct=$(gws_account_flag "$email")
-  gws $acct drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\"", "pageSize": 50, "fields": "files(id,name,modifiedTime)"}' 2>/dev/null
+  set_gws_account "$email"
+  gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\"", "pageSize": 50, "fields": "files(id,name,modifiedTime)"}' 2>/dev/null
 }
 
 list_drive_folders() {
   local email="${1:-}"
-  local acct; acct=$(gws_account_flag "$email")
-  gws $acct drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.folder\"", "pageSize": 50, "fields": "files(id,name)"}' 2>/dev/null
+  set_gws_account "$email"
+  gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.folder\"", "pageSize": 50, "fields": "files(id,name)"}' 2>/dev/null
 }
 
 list_docs_in_folder() {
   local folder_id="$1" email="${2:-}"
-  local acct; acct=$(gws_account_flag "$email")
-  gws $acct drive files list --params "{\"q\": \"'${folder_id}' in parents and mimeType='application/vnd.google-apps.document'\", \"pageSize\": 50, \"fields\": \"files(id,name,modifiedTime)\"}" 2>/dev/null
+  set_gws_account "$email"
+  gws drive files list --params "{\"q\": \"'${folder_id}' in parents and mimeType='application/vnd.google-apps.document'\", \"pageSize\": 50, \"fields\": \"files(id,name,modifiedTime)\"}" 2>/dev/null
 }
 
 export_doc_as_md() {
   local doc_id="$1" output_path="$2" email="${3:-}"
-  local acct; acct=$(gws_account_flag "$email")
+  set_gws_account "$email"
   local tmp_file="/tmp/pai-export-${doc_id}.md"
 
   # Try markdown export first (available since mid-2024)
-  if gws $acct drive files export --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/markdown\"}" > "$tmp_file" 2>/dev/null && [ -s "$tmp_file" ]; then
+  if gws drive files export --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/markdown\"}" > "$tmp_file" 2>/dev/null && [ -s "$tmp_file" ]; then
     mv "$tmp_file" "$output_path"
     return 0
   fi
 
   # Fallback: plain text export
-  if gws $acct drive files export --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/plain\"}" > "$tmp_file" 2>/dev/null && [ -s "$tmp_file" ]; then
+  if gws drive files export --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/plain\"}" > "$tmp_file" 2>/dev/null && [ -s "$tmp_file" ]; then
     mv "$tmp_file" "$output_path"
     return 0
   fi
@@ -324,11 +324,11 @@ export_doc_as_md() {
 
 create_google_doc() {
   local title="$1" email="${2:-}"
-  local acct; acct=$(gws_account_flag "$email")
+  set_gws_account "$email"
   # Escape special chars in title for JSON
   local safe_title; safe_title=$(echo "$title" | sed "s/'/\\\\u0027/g; s/\"/\\\\\"/g")
   local out_file="/tmp/pai-gws-create.$$.out"
-  gws $acct docs documents create --json "{\"title\": \"${safe_title}\"}" > "$out_file" 2>&1
+  gws docs documents create --json "{\"title\": \"${safe_title}\"}" > "$out_file" 2>&1
   local rc=$?
   local result; result=$(cat "$out_file" 2>/dev/null)
   rm -f "$out_file"
@@ -346,9 +346,9 @@ create_google_doc() {
 
 write_to_google_doc() {
   local doc_id="$1" content="$2" email="${3:-}"
-  local acct; acct=$(gws_account_flag "$email")
+  set_gws_account "$email"
   # Use the gws docs +write skill for appending content
-  gws $acct docs +write --document-id "$doc_id" --text "$content" 2>/dev/null
+  gws docs +write --document-id "$doc_id" --text "$content" 2>/dev/null
 }
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -838,6 +838,7 @@ cmd_interactive() {
     printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
     printf "    2. Open the URL printed below in your browser\n\n"
     if gws auth login --account="$email" --services drive,docs; then
+      gws auth default "$email" 2>/dev/null || true
       printf "\n  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
       connected=true
     else
@@ -846,6 +847,8 @@ cmd_interactive() {
     fi
   fi
 
+  # Set as default account for all subsequent gws API calls
+  gws auth default "$email" 2>/dev/null || true
   log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
   save_sync_state "$entity" "$email" 0
 
