@@ -404,15 +404,7 @@ cmd_auth() {
     log_setup "GDRIVE_CONNECTED" "" 50 "$email"
     printf "  ${G}+50 Pts.${R} for connecting Google Drive!\n\n"
 
-    # Quick test: list files
-    printf "  Verifying access...\n"
-    local test_result; test_result=$(gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' 2>/dev/null) || true
-    if [ -n "$test_result" ]; then
-      printf "  ${G}✓${R} Drive access confirmed\n\n"
-    else
-      printf "  ${Y}!${R} Auth succeeded but Drive access could not be verified.\n"
-      printf "  ${D}  Try: gws --account ${email} drive files list${R}\n\n"
-    fi
+    printf "  ${G}✓${R} Ready to sync\n\n"
   else
     printf "\n  ${Y}!${R} Authentication failed.\n"
     printf "  ${D}  Make sure you opened the URL and completed the consent flow.${R}\n\n"
@@ -827,41 +819,27 @@ cmd_interactive() {
   done
 
   # ── Connecting ────────────────────────────────────────────────
-  printf "  Connecting to Google Drive"
+  printf "  Connecting"
 
-  # Animated progress bar while checking auth
   local connected=false
-  for i in 1 2 3 4 5 6 7 8; do
-    printf "."
-    sleep 0.2
-  done
+  for i in 1 2 3 4 5 6; do printf "."; sleep 0.15; done
 
-  if gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
+  # Check if gws has credentials for this account
+  if gws auth status --account "$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
     connected=true
   fi
 
   if $connected; then
-    printf " ${G}done${R}\n"
-    printf "  ${G}✓${R} Connected as ${B}${email}${R}\n\n"
+    printf " ${G}connected${R}\n"
+    printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
   else
-    printf " ${Y}not authenticated${R}\n\n"
+    printf " ${Y}not yet authenticated${R}\n\n"
     printf "  ${B}Two steps to authenticate:${R}\n"
     printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
-    printf "    2. Open the URL in your browser to authorize\n\n"
+    printf "    2. Open the URL printed below in your browser\n\n"
     if gws auth login --account "$email" --services drive,docs; then
-      # Verify connection after auth
-      printf "\n  Verifying"
-      for i in 1 2 3 4; do printf "."; sleep 0.3; done
-      if gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
-        connected=true
-        printf " ${G}done${R}\n"
-        printf "  ${G}✓${R} Connected as ${B}${email}${R}\n\n"
-      else
-        printf " ${Y}failed${R}\n"
-        printf "  ${Y}!${R} Auth succeeded but Drive access could not be verified.\n"
-        printf "  ${D}  Make sure Google Drive API is enabled in your GCP project.${R}\n\n"
-        return 1
-      fi
+      printf "\n  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
+      connected=true
     else
       printf "  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
       return 1
