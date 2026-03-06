@@ -65,11 +65,9 @@ progress_bar() {
 die() { printf "  ${Y}Error:${R} %s\n\n" "$1"; exit 1; }
 
 # ── gws dependency management ─────────────────────────────────────────────
-ensure_gws() {
-  if command -v gws > /dev/null 2>&1; then
-    return 0
-  fi
+GWS_CONFIG_DIR="${HOME}/.config/gws"
 
+install_gws() {
   printf "  ${Y}!${R} Google Workspace CLI (gws) not installed.\n"
   printf "  ${D}  gws provides Google Drive access for context sync.${R}\n\n"
 
@@ -93,20 +91,86 @@ ensure_gws() {
   printf "  Installing gws...\n"
   if npm install -g @googleworkspace/cli 2>&1 | tail -3; then
     printf "  ${G}✓${R} gws installed\n\n"
-
-    # First-time setup: create OAuth client
-    printf "  ${B}First-time setup:${R} gws needs a Google Cloud OAuth client.\n"
-    printf "  ${D}  This opens your browser to create credentials.${R}\n\n"
-    gws auth setup || {
-      printf "\n  ${Y}!${R} OAuth setup incomplete. You can retry with: gws auth setup\n\n"
-      return 1
-    }
-    printf "  ${G}✓${R} OAuth client configured\n\n"
     return 0
   else
     printf "  ${Y}!${R} Installation failed. Try manually: npm install -g @googleworkspace/cli\n\n"
     return 1
   fi
+}
+
+ensure_oauth_client() {
+  # Check if OAuth client is already configured
+  if [ -f "$GWS_CONFIG_DIR/client_secret.json" ]; then
+    return 0
+  fi
+
+  printf "  ${Y}!${R} No OAuth client configured for gws.\n\n"
+  printf "  ${B}You need a Google Cloud OAuth client to use Drive.${R}\n"
+  printf "  ${D}  This is a one-time setup. Two options:${R}\n\n"
+  printf "    ${C}1.${R} Automatic  ${D}(needs gcloud CLI — runs gws auth setup)${R}\n"
+  printf "    ${C}2.${R} Manual     ${D}(download client_secret.json from Google Cloud Console)${R}\n\n"
+
+  read -rp "  Select [1/2]: " SETUP_CHOICE
+  case "$SETUP_CHOICE" in
+    1)
+      if ! command -v gcloud > /dev/null 2>&1; then
+        printf "\n  ${Y}!${R} gcloud CLI not found. Use option 2 instead.\n"
+        printf "  ${D}  Install gcloud: https://cloud.google.com/sdk/docs/install${R}\n\n"
+        SETUP_CHOICE=2
+      else
+        printf "\n  Running ${B}gws auth setup${R}...\n"
+        printf "  ${D}  This creates a Google Cloud project and OAuth client.${R}\n"
+        printf "  ${D}  Follow the prompts in your terminal and browser.${R}\n\n"
+        if gws auth setup; then
+          printf "\n  ${G}✓${R} OAuth client configured\n\n"
+          return 0
+        else
+          printf "\n  ${Y}!${R} Setup incomplete. Trying manual method...\n\n"
+          SETUP_CHOICE=2
+        fi
+      fi
+      ;;&  # fall through to manual if automatic failed
+    2|*)
+      printf "\n  ${B}Manual OAuth setup:${R}\n\n"
+      printf "  1. Go to ${C}https://console.cloud.google.com/apis/credentials${R}\n"
+      printf "  2. Create a project (or select existing)\n"
+      printf "  3. Enable ${B}Google Drive API${R} and ${B}Google Docs API${R}\n"
+      printf "     ${C}https://console.cloud.google.com/apis/library/drive.googleapis.com${R}\n"
+      printf "     ${C}https://console.cloud.google.com/apis/library/docs.googleapis.com${R}\n"
+      printf "  4. Go to ${B}Credentials${R} → ${B}Create Credentials${R} → ${B}OAuth client ID${R}\n"
+      printf "  5. Application type: ${B}Desktop app${R}\n"
+      printf "  6. Download the JSON file\n"
+      printf "  7. Save it to: ${B}${GWS_CONFIG_DIR}/client_secret.json${R}\n\n"
+
+      mkdir -p "$GWS_CONFIG_DIR"
+      read -rp "  Path to downloaded client_secret.json (or Enter when done): " CLIENT_PATH
+
+      if [ -n "$CLIENT_PATH" ] && [ -f "$CLIENT_PATH" ]; then
+        cp "$CLIENT_PATH" "$GWS_CONFIG_DIR/client_secret.json"
+        printf "  ${G}✓${R} OAuth client configured\n\n"
+        return 0
+      elif [ -f "$GWS_CONFIG_DIR/client_secret.json" ]; then
+        printf "  ${G}✓${R} Found client_secret.json\n\n"
+        return 0
+      else
+        printf "  ${Y}!${R} No client_secret.json found at ${GWS_CONFIG_DIR}/client_secret.json\n"
+        printf "  ${D}  Save it there and re-run this command.${R}\n\n"
+        return 1
+      fi
+      ;;
+  esac
+}
+
+ensure_gws() {
+  # Step 1: ensure gws binary is installed
+  if ! command -v gws > /dev/null 2>&1; then
+    install_gws || return 1
+  fi
+
+  # Step 2: ensure OAuth client is configured
+  ensure_oauth_client || return 1
+
+  return 0
 }
 
 require_config() {
@@ -275,7 +339,7 @@ cmd_auth() {
   printf "╚${LINE}${R}\n\n"
 
   printf "  Authenticating ${B}${email}${R}...\n"
-  printf "  ${D}This will open your browser for Google OAuth consent.${R}\n\n"
+  printf "  ${D}gws will print a URL — open it in your browser to authorize.${R}\n\n"
 
   if gws auth login --account "$email" -s drive,docs; then
     printf "\n  ${G}✓${R} Google Drive authenticated for ${B}${email}${R}\n"
@@ -297,8 +361,7 @@ cmd_auth() {
     fi
   else
     printf "\n  ${Y}!${R} Authentication failed.\n"
-    printf "  ${D}  Make sure you completed the browser flow.${R}\n"
-    printf "  ${D}  If this is your first time, run: gws auth setup${R}\n\n"
+    printf "  ${D}  Make sure you opened the URL and completed the consent flow.${R}\n\n"
     exit 1
   fi
 }
