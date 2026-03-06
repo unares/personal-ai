@@ -1,11 +1,12 @@
 #!/bin/bash
-# Personal AI v0.4 — System Verification
+# Personal AI — System Verification
 # Usage: ./verify.sh
 # Checks config, vault, Context Extractor, and running containers.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_DIR/version.sh"
 VAULT_PATH="$REPO_DIR/memory-vault"
 CONFIG_PATH="$REPO_DIR/config.json"
 
@@ -24,7 +25,7 @@ section() { printf "\n  ${B}── %s ──${R}\n" "$1"; }
 
 clear
 printf "${B}${G}╔${LINE}\n"
-printf "║  Personal AI v0.4 — System Verify\n"
+printf "║  Personal AI v${VERSION} — System Verify\n"
 printf "╚${LINE}${R}\n\n"
 
 # ── Config ─────────────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ else
     CLARK_COUNT=$(node -e "const c=require('${CONFIG_PATH}'); console.log((c.clarks||[]).length)" 2>/dev/null)
     [ "$CLARK_COUNT" -gt 0 ] && ok "clarks: ${CLARK_COUNT} registered" || warn "config.json: no clarks found"
     HAS_ENTITIES_KEY=$(node -e "const c=require('${CONFIG_PATH}'); console.log(c.entities ? 'yes' : 'no')" 2>/dev/null)
-    [ "$HAS_ENTITIES_KEY" = "yes" ] && ok "config uses 'entities' key (v0.2)" || warn "config uses old 'projects' key — re-run ./install.sh"
+    [ "$HAS_ENTITIES_KEY" = "yes" ] && ok "config uses 'entities' key (v${VERSION})" || warn "config uses old 'projects' key — re-run ./install.sh"
   fi
 fi
 
@@ -147,6 +148,59 @@ else
     fi
   done
 fi
+
+# ── GitHub ─────────────────────────────────────────────────────────────────
+section "GitHub"
+
+if command -v node > /dev/null 2>&1 && [ -f "$CONFIG_PATH" ]; then
+  ENTITIES=$(node -e "const c=require('${CONFIG_PATH}'); const e=c.entities||c.projects||[]; console.log(e.map(x=>x.name).join(' '))")
+  HAS_GH=false
+  for ENTITY in $ENTITIES; do
+    GH_REPO=$(node -e "const c=require('${CONFIG_PATH}'); const e=(c.entities||[]).find(x=>x.name==='${ENTITY}'); if(e&&e.github) console.log(e.github.repo); else console.log('')" 2>/dev/null) || true
+    if [ -z "$GH_REPO" ]; then
+      printf "  ${D}  ${ENTITY}: no GitHub repo configured${R}\n"
+      continue
+    fi
+    HAS_GH=true
+
+    # Test connection
+    GH_OK=false
+    GH_DETAILS=""
+
+    if command -v gh > /dev/null 2>&1; then
+      GH_RESULT=$(gh api "repos/${GH_REPO}" --jq '[.private, .default_branch, (.size // 0)] | @tsv' 2>/dev/null) && GH_OK=true || true
+    fi
+
+    if ! $GH_OK; then
+      GH_TOKEN=""
+      [ -f "$REPO_DIR/.env" ] && GH_TOKEN=$(grep -E "^GITHUB_TOKEN=" "$REPO_DIR/.env" 2>/dev/null | cut -d'=' -f2- | tr -d "'\"" || true)
+      if [ -n "$GH_TOKEN" ]; then
+        GH_RESULT=$(curl -sf -H "Authorization: token ${GH_TOKEN}" "https://api.github.com/repos/${GH_REPO}" 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log([j.private,j.default_branch,j.size||0].join('\t'))" 2>/dev/null) && GH_OK=true || true
+      else
+        GH_RESULT=$(curl -sf "https://api.github.com/repos/${GH_REPO}" 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log([j.private,j.default_branch,j.size||0].join('\t'))" 2>/dev/null) && GH_OK=true || true
+      fi
+    fi
+
+    if $GH_OK && [ -n "$GH_RESULT" ]; then
+      GH_PRIVATE=$(echo "$GH_RESULT" | cut -f1)
+      GH_BRANCH=$(echo "$GH_RESULT" | cut -f2)
+      GH_VIS="public"; [ "$GH_PRIVATE" = "true" ] && GH_VIS="private"
+      ok "${ENTITY}: ${GH_REPO} (${GH_VIS}, branch: ${GH_BRANCH})"
+    else
+      fail "${ENTITY}: ${GH_REPO} — not reachable (check GITHUB_TOKEN in .env)"
+    fi
+  done
+  if ! $HAS_GH; then
+    printf "  ${D}  No entities have GitHub repos configured${R}\n"
+  fi
+else
+  printf "  ${D}  Skipped — node or config.json not available${R}\n"
+fi
+
+# ── pai-launch ──────────────────────────────────────────────────────────
+section "Launcher"
+
+[ -f "$REPO_DIR/pai-launch" ] && [ -x "$REPO_DIR/pai-launch" ] && ok "pai-launch (executable)" || warn "pai-launch missing or not executable"
 
 # ── NanoClaw Config ──────────────────────────────────────────────────────
 section "NanoClaw Config"

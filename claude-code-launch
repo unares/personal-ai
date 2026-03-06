@@ -1,0 +1,235 @@
+#!/bin/bash
+# Personal AI — Universal Container Launcher
+# Baked into every Docker image at /usr/local/bin/pai-launch
+# Also runnable from host for testing.
+set -euo pipefail
+
+# ── Color codes ───────────────────────────────────────────────────────────
+G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
+W=64
+LINE=$(printf '═%.0s' $(seq 1 $W))
+
+# ── Detect context from environment ──────────────────────────────────────
+PAI_VERSION="${VERSION:-0.4}"
+PAI_HUMAN="${HUMAN_NAME:-unknown}"
+PAI_ENTITY="${ENTITY:-unknown}"
+PAI_ROLE="${ROLE:-unknown}"
+PAI_ROLE_LABEL="${ROLE_LABEL:-$PAI_ROLE}"
+PAI_CONTAINER="${CONTAINER:-$(hostname 2>/dev/null || echo unknown)}"
+
+# Try to source version.sh if available
+for VPATH in /workspace/version.sh ./version.sh; do
+  if [ -f "$VPATH" ]; then
+    source "$VPATH"
+    PAI_VERSION="$VERSION"
+    break
+  fi
+done
+
+# ── Banner ────────────────────────────────────────────────────────────────
+printf "\n${B}${G}╔${LINE}\n"
+printf "║  Personal AI v${PAI_VERSION} — Claude Code\n"
+if [ "$PAI_HUMAN" != "unknown" ]; then
+  printf "║  Human: ${PAI_HUMAN}\n"
+fi
+printf "╚${LINE}${R}\n\n"
+
+# ── Where you are ─────────────────────────────────────────────────────────
+printf "  ${B}Where you are:${R}\n"
+printf "    Container:  ${B}${PAI_CONTAINER}${R}\n"
+printf "    Entity:     ${B}${PAI_ENTITY}${R}\n"
+printf "    Role:       ${B}${PAI_ROLE_LABEL}${R}\n"
+printf "\n"
+
+# ── Vault access ──────────────────────────────────────────────────────────
+if [ -d "/vault" ]; then
+  printf "  ${B}Vault access:${R}\n"
+  for VDIR in /vault /vault/Distilled /vault/Raw /vault/Logs; do
+    if [ -d "$VDIR" ]; then
+      VNAME="${VDIR#/vault}"
+      [ -z "$VNAME" ] && VNAME="/"
+      if [ -w "$VDIR" ]; then
+        printf "    %-28s ${G}read-write${R}\n" "/vault${VNAME}"
+      else
+        printf "    %-28s ${D}read-only${R}\n" "/vault${VNAME}"
+      fi
+    fi
+  done
+  # Check for NORTHSTAR.md
+  NS=$(find /vault -maxdepth 1 -name "*NORTHSTAR*" 2>/dev/null | head -1)
+  if [ -n "$NS" ]; then
+    if [ -w "$NS" ]; then
+      printf "    %-28s ${G}read-write${R}\n" "$(basename "$NS")"
+    else
+      printf "    %-28s ${D}read-only${R}\n" "$(basename "$NS")"
+    fi
+  fi
+  printf "\n"
+fi
+
+# ── GitHub ────────────────────────────────────────────────────────────────
+GH_REPO=""
+GH_STATUS=""
+
+# Try to read from config.json (host mode)
+for CFG in /workspace/config.json ./config.json; do
+  if [ -f "$CFG" ] && command -v node > /dev/null 2>&1 && [ "$PAI_ENTITY" != "unknown" ]; then
+    GH_REPO=$(node -e "const c=require('${CFG}'); const e=(c.entities||[]).find(x=>x.name==='${PAI_ENTITY}'); console.log(e&&e.github?e.github.repo:'')" 2>/dev/null) || true
+    break
+  fi
+done
+
+# Try to detect from git remote
+if [ -z "$GH_REPO" ] && command -v git > /dev/null 2>&1; then
+  REMOTE_URL=$(git -C /workspace remote get-url origin 2>/dev/null || echo "")
+  if [ -n "$REMOTE_URL" ]; then
+    # Extract owner/repo from HTTPS or SSH URL
+    GH_REPO=$(echo "$REMOTE_URL" | sed -E 's|https://github.com/||;s|git@github.com:||;s|\.git$||')
+  fi
+fi
+
+if [ -n "$GH_REPO" ]; then
+  printf "  ${B}GitHub:${R}\n"
+  # Test connection
+  GH_OK=false
+  if command -v gh > /dev/null 2>&1; then
+    gh api "repos/${GH_REPO}" --jq '.full_name' > /dev/null 2>&1 && GH_OK=true
+  elif command -v git > /dev/null 2>&1 && [ -n "${GITHUB_TOKEN:-}" ]; then
+    git ls-remote "https://x-access-token:${GITHUB_TOKEN}@github.com/${GH_REPO}.git" HEAD > /dev/null 2>&1 && GH_OK=true
+  elif command -v curl > /dev/null 2>&1; then
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      curl -sf -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/${GH_REPO}" > /dev/null 2>&1 && GH_OK=true
+    else
+      curl -sf "https://api.github.com/repos/${GH_REPO}" > /dev/null 2>&1 && GH_OK=true
+    fi
+  fi
+
+  if $GH_OK; then
+    printf "    Repo: %-22s ${G}✓ connected${R}\n" "$GH_REPO"
+  else
+    printf "    Repo: %-22s ${Y}✗ not reachable${R}\n" "$GH_REPO"
+  fi
+  [ -n "${GITHUB_TOKEN:-}" ] && printf "    Access: PAT configured\n" || printf "    Access: ${D}no PAT — set GITHUB_TOKEN${R}\n"
+  printf "\n"
+fi
+
+# ── Profile picker ────────────────────────────────────────────────────────
+PROFILE_NAME=""
+PROFILES_DIR=""
+
+# Find profiles directory
+for PDIR in /workspace/profiles ./profiles; do
+  if [ -d "$PDIR" ] && ls "$PDIR"/*/profile.json > /dev/null 2>&1; then
+    PROFILES_DIR="$PDIR"
+    break
+  fi
+done
+
+if [ -n "$PROFILES_DIR" ] && command -v node > /dev/null 2>&1; then
+  printf "  ${B}Profiles:${R}\n"
+
+  PROFILE_DIRS=()
+  PROFILE_LABELS=()
+  PROFILE_DESCS=()
+  IDX=1
+
+  for PJ in "$PROFILES_DIR"/*/profile.json; do
+    [ -f "$PJ" ] || continue
+    PNAME=$(node -e "const p=require('${PJ}'); console.log(p.name)" 2>/dev/null) || continue
+    PLABEL=$(node -e "const p=require('${PJ}'); console.log(p.label)" 2>/dev/null) || continue
+    PDESC=$(node -e "const p=require('${PJ}'); console.log(p.description||'')" 2>/dev/null) || continue
+
+    # Skip vanilla — it's the "skip" option
+    [ "$PNAME" = "vanilla" ] && continue
+
+    PROFILE_DIRS+=("$(dirname "$PJ")")
+    PROFILE_LABELS+=("$PLABEL")
+    PROFILE_DESCS+=("$PDESC")
+    printf "    ${C}%s.${R} %-16s ${D}%s${R}\n" "$IDX" "$PLABEL" "$PDESC"
+    IDX=$((IDX + 1))
+  done
+
+  printf "    ${C}S.${R} Skip             ${D}Use container defaults${R}\n"
+  printf "\n"
+
+  read -rp "  Select profile: " PCHOICE
+
+  case "$PCHOICE" in
+    [Ss])
+      printf "  ${D}Using container defaults.${R}\n\n"
+      ;;
+    *)
+      if [[ "$PCHOICE" =~ ^[0-9]+$ ]] && [ "$PCHOICE" -ge 1 ] && [ "$PCHOICE" -le "${#PROFILE_DIRS[@]}" ]; then
+        PIDX=$((PCHOICE - 1))
+        PROFILE_NAME="${PROFILE_LABELS[$PIDX]}"
+        PROFILE_DIR="${PROFILE_DIRS[$PIDX]}"
+
+        # Copy profile CLAUDE.md if it exists
+        if [ -f "$PROFILE_DIR/CLAUDE.md" ]; then
+          CLAUDE_MD_TARGET="${HOME}/.claude/CLAUDE.md"
+          if [ -d "/workspace" ]; then
+            CLAUDE_MD_TARGET="/workspace/CLAUDE.md"
+          fi
+          # Only copy if target is writable or doesn't exist
+          if [ ! -f "$CLAUDE_MD_TARGET" ] || [ -w "$CLAUDE_MD_TARGET" ]; then
+            cp "$PROFILE_DIR/CLAUDE.md" "$CLAUDE_MD_TARGET" 2>/dev/null || true
+          fi
+        fi
+
+        printf "  ${G}✓${R} Profile: ${B}${PROFILE_NAME}${R}\n\n"
+        export PROFILE_NAME
+      else
+        printf "  ${D}Invalid selection. Using container defaults.${R}\n\n"
+      fi
+      ;;
+  esac
+else
+  printf "  ${D}No profiles directory found — using container defaults.${R}\n\n"
+fi
+
+# ── Account picker ────────────────────────────────────────────────────────
+ACCOUNTS_SCRIPT=""
+for APATH in /workspace/accounts/select-account.sh ./accounts/select-account.sh; do
+  if [ -f "$APATH" ]; then
+    ACCOUNTS_SCRIPT="$APATH"
+    break
+  fi
+done
+
+ACCOUNTS_STORE="${ACCOUNTS_STORE:-$HOME/.config/personal-ai/claude-accounts}"
+export ACCOUNTS_STORE
+
+if [ -n "$ACCOUNTS_SCRIPT" ]; then
+  # Determine the target .claude directory for credentials
+  CLAUDE_DIR="$HOME/.claude"
+  if [ -d "/home/pai/.claude" ]; then
+    CLAUDE_DIR="/home/pai/.claude"
+  fi
+
+  source "$ACCOUNTS_SCRIPT"
+  select_account "$CLAUDE_DIR"
+  printf "\n"
+fi
+
+# ── Launch Claude Code ────────────────────────────────────────────────────
+printf "  ${B}Launching Claude Code...${R}\n\n"
+
+# Log session start
+_log_launch() {
+  local vault_logs=""
+  if [ -d "/vault/Logs" ]; then
+    vault_logs="/vault/Logs"
+  fi
+
+  if [ -n "$vault_logs" ]; then
+    local ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+    local entry="{\"ts\":\"$ts\",\"event\":\"launch\",\"human\":\"${PAI_HUMAN}\",\"entity\":\"${PAI_ENTITY}\",\"role\":\"${PAI_ROLE}\",\"container\":\"${PAI_CONTAINER}\",\"profile\":\"${PROFILE_NAME:-default}\",\"account\":\"${CLAUDE_ACCOUNT:-unknown}\"}"
+    echo "$entry" >> "$vault_logs/sessions.jsonl" 2>/dev/null || true
+  fi
+}
+_log_launch
+
+# Build claude args
+CLAUDE_ARGS=("--dangerously-skip-permissions")
+
+exec claude "${CLAUDE_ARGS[@]}"

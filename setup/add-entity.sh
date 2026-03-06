@@ -1,10 +1,11 @@
 #!/bin/bash
-# Personal AI v0.2 — Add Entity
+# Personal AI — Add Entity
 # Usage: ./add-entity.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_DIR/version.sh"
 VAULT_PATH="$REPO_DIR/memory-vault"
 CONFIG_PATH="$REPO_DIR/config.json"
 
@@ -14,7 +15,8 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step >= total ? 16 : step * 16 / total)) empty=$((16 - filled))
+  local filled=$((step >= total ? 16 : step * 16 / total))
+  local empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
@@ -54,7 +56,7 @@ ask_raw() {
 
 clear
 printf "${B}${G}╔${LINE}\n"
-printf "║  Personal AI v0.2 — Add Entity\n"
+printf "║  Personal AI v${VERSION} — Entity Portfolio\n"
 printf "╚${LINE}${R}\n\n"
 
 if [ ! -f "$CONFIG_PATH" ]; then
@@ -73,7 +75,7 @@ printf "  Owner:             ${B}${OWNER}${R}\n"
 printf "  Existing entities: ${B}${EXISTING}${R}\n\n"
 
 # ── Step 1: Entity details ─────────────────────────────────────────────────
-step_banner 1 3 "New Entity" \
+step_banner 1 4 "New Entity" \
   "Entity   = a company or major project Apps are built under" \
   "Human    = another person jointly responsible for this entity" \
   "AIOO     = AI Operating Officer assigned to drive this entity"
@@ -125,8 +127,61 @@ if [[ "$IS_SOLO" == "n"* || "$IS_SOLO" == "N"* ]]; then
   printf "\n  ${G}✓${R} ${B}${HUMAN_CLARK_NAME}${R} will be added — Clark + AIOO access for ${PROJ_NAME}.\n"
 fi
 
-# ── Step 2: Update config.json ────────────────────────────────────────────
-step_banner 2 3 "Updating Config" \
+# ── Step 2: GitHub Repository (optional) ──────────────────────────────────
+step_banner 2 4 "GitHub Repository" \
+  "GitHub  = where your entity's code lives (owner/repo)" \
+  "PAT     = uses GITHUB_TOKEN from .env — not stored in config" \
+  "Skip    = you can add this later via add-entity.sh"
+
+GITHUB_REPO=""
+GITHUB_BRANCH="main"
+GITHUB_JSON="null"
+
+printf "  GitHub repo for ${B}${PROJ_NAME}${R} (owner/repo, or Enter to skip): "
+read -r GH_INPUT
+
+if [ -n "$GH_INPUT" ]; then
+  # Normalize: strip https://github.com/ prefix if pasted
+  GH_INPUT="${GH_INPUT#https://github.com/}"
+  GH_INPUT="${GH_INPUT%.git}"
+  GH_INPUT="${GH_INPUT%/}"
+  GITHUB_REPO="$GH_INPUT"
+
+  printf "\n  Testing connection to ${B}${GITHUB_REPO}${R}...\n"
+  GH_OK=false
+  GH_INFO=""
+
+  if command -v gh > /dev/null 2>&1; then
+    GH_RESULT=$(gh api "repos/${GITHUB_REPO}" --jq '.private, .default_branch, (.size // 0)' 2>/dev/null) && GH_OK=true || true
+  fi
+
+  if ! $GH_OK && [ -n "${GITHUB_TOKEN:-}" ]; then
+    GH_RESULT=$(curl -sf -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/${GITHUB_REPO}" 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log(j.private+'\n'+j.default_branch+'\n'+(j.size||0))" 2>/dev/null) && GH_OK=true || true
+  fi
+
+  if ! $GH_OK; then
+    # Try unauthenticated
+    GH_RESULT=$(curl -sf "https://api.github.com/repos/${GITHUB_REPO}" 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log(j.private+'\n'+j.default_branch+'\n'+(j.size||0))" 2>/dev/null) && GH_OK=true || true
+  fi
+
+  if $GH_OK && [ -n "$GH_RESULT" ]; then
+    GH_PRIVATE=$(echo "$GH_RESULT" | head -1)
+    GITHUB_BRANCH=$(echo "$GH_RESULT" | sed -n '2p')
+    GH_SIZE=$(echo "$GH_RESULT" | sed -n '3p')
+    GH_VIS="public"; [ "$GH_PRIVATE" = "true" ] && GH_VIS="private"
+    printf "  ${G}✓${R} connected (${GH_VIS} repo, default branch: ${GITHUB_BRANCH})\n"
+  else
+    printf "  ${Y}!${R} Could not verify — repo saved anyway. Check GITHUB_TOKEN in .env.\n"
+  fi
+
+  GITHUB_JSON="{\"repo\":\"${GITHUB_REPO}\",\"default_branch\":\"${GITHUB_BRANCH}\"}"
+  printf "\n"
+else
+  printf "  ${D}Skipped — add later by editing config.json.${R}\n\n"
+fi
+
+# ── Step 3: Update config.json ────────────────────────────────────────────
+step_banner 3 4 "Updating Config" \
   "config.json  = source of truth for all agents and tools" \
   "entities[]   = registered entities with AIOO assignments" \
   "clarks[]     = access control — who sees which entity vault"
@@ -140,6 +195,7 @@ export HUMAN_NAME_VAL="$HUMAN_NAME"
 export HUMAN_CLARK_VAL="$HUMAN_CLARK_NAME"
 export HU_ENTRY_VAL="$HU_ENTRY"
 export OWNER_VAL="$OWNER"
+export GITHUB_JSON_VAL="$GITHUB_JSON"
 
 node << 'NODEEOF'
 const fs = require('fs');
@@ -154,11 +210,13 @@ const humanClark   = process.env.HUMAN_CLARK_VAL === 'null' ? null : process.env
 const huEntry      = process.env.HU_ENTRY_VAL;
 const ownerName    = process.env.OWNER_VAL;
 const ownerClark   = 'clark-' + ownerName;
+const githubJson   = process.env.GITHUB_JSON_VAL;
+const github       = githubJson === 'null' ? null : JSON.parse(githubJson);
 
 if (!c.entities && c.projects) { c.entities = c.projects; delete c.projects; }
 if (!c.entities) c.entities = [];
 
-c.entities.push({ name: entityName, aioo: aiooName, northstar: nsFile, solo: isSolo, human: humanName, human_clark: humanClark });
+c.entities.push({ name: entityName, aioo: aiooName, northstar: nsFile, solo: isSolo, human: humanName, human_clark: humanClark, github: github });
 
 const ownerEntry = c.clarks.find(cl => cl.name === ownerClark);
 if (ownerEntry) { if (!ownerEntry.projects.includes(entityName)) ownerEntry.projects.push(entityName); }
@@ -175,8 +233,8 @@ NODEEOF
 
 printf "  ${G}✓${R} config.json updated\n"
 
-# ── Step 3: Create vault ──────────────────────────────────────────────────
-step_banner 3 3 "Creating Vault" \
+# ── Step 4: Create vault ──────────────────────────────────────────────────
+step_banner 4 4 "Creating Vault" \
   "Raw/       = drop .md notes — Context Extractor picks them up" \
   "Distilled/ = summaries auto-generated for Clark and AIOO" \
   "Logs/      = all agent activity for this entity"

@@ -1,9 +1,10 @@
 #!/bin/bash
-# Personal AI v0.4 — Guided Setup Wizard
+# Personal AI — Guided Setup Wizard
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_DIR/version.sh"
 VAULT_PATH="$REPO_DIR/memory-vault"
 CONFIG_PATH="$REPO_DIR/config.json"
 
@@ -13,7 +14,8 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step >= total ? 16 : step * 16 / total)) empty=$((16 - filled))
+  local filled=$((step >= total ? 16 : step * 16 / total))
+  local empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
@@ -53,7 +55,7 @@ ask_raw() {
 
 clear
 printf "${B}${G}╔${LINE}\n"
-printf "║  Personal AI v0.4 — Setup Wizard\n"
+printf "║  Personal AI v${VERSION} — Setup Wizard\n"
 printf "║  Do One Thing. Earn Full Autonomy.\n"
 printf "╚${LINE}${R}\n"
 printf "\n  ${D}4 steps · ~2 minutes${R}\n\n"
@@ -130,16 +132,61 @@ while true; do
     printf "  ${D}${HU_RAW} is scoped strictly to the ${PROJ_NAME} entity.${R}\n"
   fi
 
+  # GitHub Repository (optional)
+  printf "  ${B}GitHub Repository (optional)${R}\n"
+  printf "  GitHub repo for ${B}${PROJ_NAME}${R} (owner/repo, or Enter to skip): "
+  read -r GH_INPUT
+
+  GITHUB_REPO=""
+  GITHUB_BRANCH="main"
+  GH_FIELD="null"
+
+  if [ -n "$GH_INPUT" ]; then
+    GH_INPUT="${GH_INPUT#https://github.com/}"
+    GH_INPUT="${GH_INPUT%.git}"
+    GH_INPUT="${GH_INPUT%/}"
+    GITHUB_REPO="$GH_INPUT"
+
+    printf "\n  Testing connection to ${B}${GITHUB_REPO}${R}...\n"
+    GH_OK=false
+
+    if command -v gh > /dev/null 2>&1; then
+      GH_RESULT=$(gh api "repos/${GITHUB_REPO}" --jq '.private, .default_branch' 2>/dev/null) && GH_OK=true || true
+    fi
+
+    if ! $GH_OK && [ -n "${GITHUB_TOKEN:-}" ]; then
+      GH_RESULT=$(curl -sf -H "Authorization: token ${GITHUB_TOKEN}" "https://api.github.com/repos/${GITHUB_REPO}" 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log(j.private+'\n'+j.default_branch)" 2>/dev/null) && GH_OK=true || true
+    fi
+
+    if ! $GH_OK; then
+      GH_RESULT=$(curl -sf "https://api.github.com/repos/${GITHUB_REPO}" 2>/dev/null | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); const j=JSON.parse(d); console.log(j.private+'\n'+j.default_branch)" 2>/dev/null) && GH_OK=true || true
+    fi
+
+    if $GH_OK && [ -n "$GH_RESULT" ]; then
+      GH_PRIVATE=$(echo "$GH_RESULT" | head -1)
+      GITHUB_BRANCH=$(echo "$GH_RESULT" | sed -n '2p')
+      GH_VIS="public"; [ "$GH_PRIVATE" = "true" ] && GH_VIS="private"
+      printf "  ${G}✓${R} connected (${GH_VIS} repo, default branch: ${GITHUB_BRANCH})\n"
+    else
+      printf "  ${Y}!${R} Could not verify — repo saved anyway.\n"
+    fi
+
+    GH_FIELD="{\\\"repo\\\":\\\"${GITHUB_REPO}\\\",\\\"default_branch\\\":\\\"${GITHUB_BRANCH}\\\"}"
+  else
+    printf "  ${D}Skipped.${R}\n"
+  fi
+  printf "\n"
+
   ENTITY_NAMES+=("$PROJ_NAME")
   HUMAN_CLARKS+=("$HU_ENTRY")
 
-  printf "\n  ${G}✓${R} ${B}${PROJ_NAME}${R} entity registered — ${B}${AIOO_NAME}${R} assigned.\n"
+  printf "  ${G}✓${R} ${B}${PROJ_NAME}${R} entity registered — ${B}${AIOO_NAME}${R} assigned.\n"
   printf "  ${D}AIOO is the AI Operating Officer of ${PROJ_NAME}. It drives\n"
   printf "  execution, maintains the northstar, and spawns App Builders.${R}\n\n"
 
   SEP=""; [ -n "$ENTITIES_JSON" ] && SEP=","
   ENTITIES_JSON="${ENTITIES_JSON}${SEP}
-    {\"name\":\"${PROJ_NAME}\",\"aioo\":\"${AIOO_NAME}\",\"northstar\":\"${NS_FILE}\",\"solo\":${SOLO_JSON},\"human\":${HUMAN_VAL},\"human_clark\":${HUMAN_CLARK_VAL}}"
+    {\"name\":\"${PROJ_NAME}\",\"aioo\":\"${AIOO_NAME}\",\"northstar\":\"${NS_FILE}\",\"solo\":${SOLO_JSON},\"human\":${HUMAN_VAL},\"human_clark\":${HUMAN_CLARK_VAL},\"github\":${GH_FIELD}}"
   [ -n "$ENTITIES_ARRAY" ] && ENTITIES_ARRAY="${ENTITIES_ARRAY}, "
   ENTITIES_ARRAY="${ENTITIES_ARRAY}\"${PROJ_NAME}\""
 
@@ -246,7 +293,7 @@ printf "\n  Running verification...\n\n"
 "$REPO_DIR/setup/verify.sh" || true
 
 printf "\n${B}${G}╔${LINE}\n"
-printf "║  Setup complete. Personal AI v0.4 is live.\n"
+printf "║  Setup complete. Personal AI v${VERSION} is live.\n"
 printf "╚${LINE}${R}\n\n"
 ENTITY_LIST=$(IFS=', '; echo "${ENTITY_NAMES[*]}")
 printf "  Owner:    ${B}${OWNER_NAME}${R} (${OWNER_CLARK})\n"
