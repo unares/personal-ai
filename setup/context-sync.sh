@@ -346,8 +346,7 @@ create_google_doc() {
 write_to_google_doc() {
   local doc_id="$1" content="$2" email="${3:-}"
   set_gws_account "$email"
-  # Use the gws docs +write skill for appending content
-  gws docs +write --document-id "$doc_id" --text "$content" 2>/dev/null
+  gws docs +write --document "$doc_id" --text "$content" 2>/dev/null
 }
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -642,8 +641,27 @@ create_context_dump() {
   local entity="$1" email="$2"
   ensure_gws || return 1
 
-  local doc_title="${entity}'s PersonalAI context dump"
-  printf "\n  Creating ${B}${doc_title}${R} in Google Docs...\n\n"
+  local upper_entity; upper_entity=$(echo "$entity" | sed 's/.*/\u&/')
+  local doc_title="Personal AI Context Dump - ${upper_entity}"
+
+  printf "\n  Checking for existing template...\n"
+
+  # Check if doc already exists in Drive
+  set_gws_account "$email"
+  local existing; existing=$(gws drive files list --params "{\"q\": \"name='${doc_title}' and mimeType='application/vnd.google-apps.document' and trashed=false\", \"pageSize\": 1, \"fields\": \"files(id,name)\"}" 2>/dev/null)
+  local existing_id=""
+  if [ -n "$existing" ]; then
+    existing_id=$(echo "$existing" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const f=(d.files||[])[0]; console.log(f?f.id:'')" 2>/dev/null) || true
+  fi
+
+  if [ -n "$existing_id" ]; then
+    printf "  ${Y}!${R} ${B}${doc_title}${R} already exists in your Google Drive.\n"
+    printf "  ${D}  Open it in Google Docs and add your context, then run:${R}\n"
+    printf "  ${D}  ./setup/context-sync.sh --sync ${entity}${R}\n\n"
+    return 0
+  fi
+
+  printf "  Creating ${B}${doc_title}${R}...\n"
 
   # Create the doc via gws Docs API
   local create_result; create_result=$(create_google_doc "$doc_title" "$email") || {
@@ -661,79 +679,92 @@ create_context_dump() {
     return 1
   fi
 
-  # Write the template content section by section
-  local content="# ${entity}'s PersonalAI Context Dump
+  # Write the template content with sections
+  local content="Personal AI Context Dump - ${upper_entity}
 
-What is this?
+INTRODUCTION
 
 This document is a structured brain dump for your Personal AI system.
 Everything you write here gets synced to your entity vault and distilled
 by Context Extractor into actionable knowledge for Clark and AIOO.
 
-How to use it:
-1. Write freely in each section below
-2. Don't worry about formatting — raw thoughts are fine
-3. Volume matters — the more context you provide, the better your AI agents understand you
-4. Run context-sync.sh --sync ${entity} to pull updates into your vault
+How to use this template:
+- Write freely in each section below
+- Don't worry about formatting — raw thoughts are fine
+- Volume matters — the more you write, the better your AI agents understand you
+- When done, run: ./setup/context-sync.sh --sync ${entity}
 
----
+Each section maps to a folder in your vault. Context Extractor reads them
+and produces distilled summaries for your AI agents.
 
+========================================
 CLARK — Strategic Thinking
-Scope: Long-term vision, priorities, what matters most
-Do: brain-dump strategy, doubts, big decisions pending
-Don't: list tasks — that's AIOO's job
+========================================
 
-[Write here]
+Scope: Long-term vision, priorities, what matters most to you.
+Do: brain-dump your strategy, doubts, big decisions pending.
+Don't: list tasks — that's AIOO's job.
 
----
+[Write your strategic thoughts here]
 
+========================================
 SUBMISSIONS — Work in Progress
-Scope: Things you're actively working on or submitting
-Do: paste drafts, proposals, applications
+========================================
 
-[Write here]
+Scope: Things you're actively working on or submitting.
+Do: paste drafts, proposals, applications, pitch decks.
 
----
+[Paste your work in progress here]
 
+========================================
 HITLs — Human-in-the-Loop Decisions
-Scope: Decisions that need your input before AI can proceed
-Do: record your reasoning, preferences, constraints
+========================================
 
-[Write here]
+Scope: Decisions that need your input before AI can proceed.
+Do: record your reasoning, preferences, constraints on open decisions.
 
----
+[Write your decisions and reasoning here]
 
+========================================
 CODING — Technical Context
-Scope: Code-related notes, architecture decisions, tech stack
-Do: paste error messages, architecture diagrams, API notes
+========================================
 
-[Write here]
+Scope: Code-related notes, architecture decisions, tech stack choices.
+Do: paste error messages, architecture diagrams, API notes, stack decisions.
 
----
+[Write your technical context here]
 
+========================================
 AIOO — Operational Notes
-Scope: Day-to-day operations, processes, workflows
-Do: describe how things work, recurring tasks, SOPs
+========================================
 
-[Write here]
+Scope: Day-to-day operations, processes, workflows.
+Do: describe how things work, recurring tasks, SOPs, team routines.
 
----
+[Write your operational notes here]
 
+========================================
 OTHER — Everything Else
-Scope: Anything that doesn't fit above
-Do: meeting notes, random ideas, links, references
+========================================
 
-[Write here]"
+Scope: Anything that doesn't fit above.
+Do: meeting notes, random ideas, links, references, inspiration.
+
+[Write anything else here]"
 
   printf "  Writing template content...\n"
   if write_to_google_doc "$doc_id" "$content" "$email"; then
-    printf "  ${G}✓${R} Context dump created: ${B}${doc_title}${R}\n"
-    printf "  ${D}  Open it in Google Drive, fill in the sections, then run:${R}\n"
-    printf "  ${D}  context-sync.sh --sync ${entity}${R}\n\n"
+    printf "  ${G}✓${R} Template created: ${B}${doc_title}${R}\n\n"
   else
-    printf "  ${G}✓${R} Document created (template write may need manual editing)\n"
-    printf "  ${D}  Find \"${doc_title}\" in Google Drive and fill it in.${R}\n\n"
+    printf "  ${G}✓${R} Document created: ${B}${doc_title}${R}\n"
+    printf "  ${D}  Template sections could not be written automatically.${R}\n"
+    printf "  ${D}  Open the doc in Google Drive and add your content manually.${R}\n\n"
   fi
+
+  printf "  ${B}Next steps:${R}\n"
+  printf "    1. Open ${B}${doc_title}${R} in Google Drive\n"
+  printf "    2. Fill in each section with your context\n"
+  printf "    3. Run: ${B}./setup/context-sync.sh --sync ${entity}${R}\n\n"
 
   # Mark as created
   local dump_marker="$VAULT_PATH/$entity/Logs/.context-dump-created"
@@ -849,8 +880,11 @@ cmd_interactive() {
     done
     printf "\n"
 
-    # Launch gws auth — interactive scope picker + URL display
-    if gws auth login --account="$email" --services drive,docs; then
+    # Launch gws auth — scope picker is interactive TUI, can't redirect stdout.
+    # The JSON success blob will print but we follow with clear status.
+    gws auth login --account="$email" --services drive,docs
+    local auth_rc=$?
+    if [ $auth_rc -eq 0 ]; then
       printf "\n  Connecting"
       for i in 1 2 3 4 5 6 7 8; do printf "."; sleep 0.2; done
       printf " ${G}connected${R}\n"
