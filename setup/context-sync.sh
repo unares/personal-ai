@@ -641,10 +641,12 @@ create_context_dump() {
   local entity="$1" email="$2"
   ensure_gws || return 1
 
-  local upper_entity; upper_entity=$(echo "$entity" | sed 's/.*/\u&/')
+  # Capitalize first letter (macOS-compatible)
+  local upper_entity; upper_entity=$(echo "$entity" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
   local doc_title="Personal AI Context Dump - ${upper_entity}"
 
-  printf "\n  Checking for existing template...\n"
+  printf "\n  Checking for existing template"
+  for i in 1 2 3; do printf "."; sleep 0.15; done
 
   # Check if doc already exists in Drive
   set_gws_account "$email"
@@ -655,15 +657,17 @@ create_context_dump() {
   fi
 
   if [ -n "$existing_id" ]; then
-    printf "  ${Y}!${R} ${B}${doc_title}${R} already exists in your Google Drive.\n"
-    printf "  ${D}  Open it in Google Docs and add your context, then run:${R}\n"
-    printf "  ${D}  ./setup/context-sync.sh --sync ${entity}${R}\n\n"
+    printf " ${Y}already exists${R}\n\n"
+    printf "  ${B}${doc_title}${R} is already in your Google Drive.\n"
+    printf "  ${D}  Open it, fill in each tab, then run:${R}\n"
+    printf "  ${B}  ./setup/context-sync.sh --sync ${entity}${R}\n\n"
     return 0
   fi
+  printf " ${G}ok${R}\n"
 
   printf "  Creating ${B}${doc_title}${R}...\n"
 
-  # Create the doc via gws Docs API
+  # Step 1: Create the doc
   local create_result; create_result=$(create_google_doc "$doc_title" "$email") || {
     printf "  ${Y}!${R} Could not create document. Run: context-sync.sh --auth ${email}\n\n"
     return 1
@@ -679,91 +683,102 @@ create_context_dump() {
     return 1
   fi
 
-  # Write the template content with sections
-  local content="Personal AI Context Dump - ${upper_entity}
+  printf "  ${G}✓${R} Document created\n"
 
-INTRODUCTION
+  # Step 2: Write introduction to the main tab
+  local intro="Personal AI Context Dump - ${upper_entity}
 
 This document is a structured brain dump for your Personal AI system.
 Everything you write here gets synced to your entity vault and distilled
 by Context Extractor into actionable knowledge for Clark and AIOO.
 
 How to use this template:
-- Write freely in each section below
+- Each tab below is a category — write freely in whichever applies
 - Don't worry about formatting — raw thoughts are fine
-- Volume matters — the more you write, the better your AI agents understand you
-- When done, run: ./setup/context-sync.sh --sync ${entity}
+- Volume matters — the more you write, the better your AI understands you
+- When ready, sync: ./setup/context-sync.sh --sync ${entity}
 
-Each section maps to a folder in your vault. Context Extractor reads them
-and produces distilled summaries for your AI agents.
+Tabs:
+  Clark         — Strategic vision, priorities, big decisions
+  Submissions   — Drafts, proposals, applications in progress
+  HITLs         — Decisions pending your input
+  Coding        — Technical notes, architecture, stack choices
+  AIOO          — Operations, workflows, SOPs, routines
+  Other         — Meeting notes, random ideas, references"
 
-========================================
-CLARK — Strategic Thinking
-========================================
+  printf "  Writing introduction"
+  for i in 1 2 3; do printf "."; sleep 0.15; done
+  if write_to_google_doc "$doc_id" "$intro" "$email"; then
+    printf " ${G}done${R}\n"
+  else
+    printf " ${Y}skipped${R}\n"
+  fi
 
-Scope: Long-term vision, priorities, what matters most to you.
-Do: brain-dump your strategy, doubts, big decisions pending.
-Don't: list tasks — that's AIOO's job.
+  # Step 3: Create tabs and write content to each
+  local tab_names=("Clark" "Submissions" "HITLs" "Coding" "AIOO" "Other")
+  local tab_descs=(
+    "Strategic Thinking\n\nScope: Long-term vision, priorities, what matters most to you.\nDo: brain-dump your strategy, doubts, big decisions pending.\nDon't: list tasks — that is AIOO's job.\n\n[Write your strategic thoughts here]"
+    "Work in Progress\n\nScope: Things you are actively working on or submitting.\nDo: paste drafts, proposals, applications, pitch decks.\n\n[Paste your work in progress here]"
+    "Human-in-the-Loop Decisions\n\nScope: Decisions that need your input before AI can proceed.\nDo: record your reasoning, preferences, constraints on open decisions.\n\n[Write your decisions and reasoning here]"
+    "Technical Context\n\nScope: Code-related notes, architecture decisions, tech stack choices.\nDo: paste error messages, architecture diagrams, API notes.\n\n[Write your technical context here]"
+    "Operational Notes\n\nScope: Day-to-day operations, processes, workflows.\nDo: describe how things work, recurring tasks, SOPs, team routines.\n\n[Write your operational notes here]"
+    "Everything Else\n\nScope: Anything that does not fit the other tabs.\nDo: meeting notes, random ideas, links, references, inspiration.\n\n[Write anything else here]"
+  )
 
-[Write your strategic thoughts here]
+  local tab_ok=0
+  local tab_fail=0
+  for i in "${!tab_names[@]}"; do
+    local tname="${tab_names[$i]}"
+    local tdesc="${tab_descs[$i]}"
+    printf "  Creating tab: ${B}${tname}${R}"
+    for j in 1 2; do printf "."; sleep 0.1; done
 
-========================================
-SUBMISSIONS — Work in Progress
-========================================
+    # Create tab via batchUpdate
+    local tab_result; tab_result=$(gws docs documents batchUpdate \
+      --params "{\"documentId\": \"${doc_id}\"}" \
+      --json "{\"requests\": [{\"addDocumentTab\": {\"tabProperties\": {\"title\": \"${tname}\"}}}]}" 2>/dev/null)
 
-Scope: Things you're actively working on or submitting.
-Do: paste drafts, proposals, applications, pitch decks.
+    if [ -n "$tab_result" ]; then
+      # Extract the new tab ID
+      local tab_id; tab_id=$(echo "$tab_result" | node -e "
+        const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+        const r=d.replies||[];
+        for(const rep of r){if(rep.addDocumentTab){console.log(rep.addDocumentTab.tabId||'');process.exit(0)}}
+        console.log('');
+      " 2>/dev/null) || true
 
-[Paste your work in progress here]
+      if [ -n "$tab_id" ]; then
+        # Insert text into the new tab
+        local text_content; text_content=$(printf "${tdesc}")
+        gws docs documents batchUpdate \
+          --params "{\"documentId\": \"${doc_id}\"}" \
+          --json "{\"requests\": [{\"insertText\": {\"text\": \"${tname} — ${text_content}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
+        printf " ${G}done${R}\n"
+        tab_ok=$((tab_ok + 1))
+      else
+        printf " ${G}created${R} ${D}(text skipped)${R}\n"
+        tab_ok=$((tab_ok + 1))
+      fi
+    else
+      printf " ${Y}failed${R}\n"
+      tab_fail=$((tab_fail + 1))
+    fi
+  done
 
-========================================
-HITLs — Human-in-the-Loop Decisions
-========================================
-
-Scope: Decisions that need your input before AI can proceed.
-Do: record your reasoning, preferences, constraints on open decisions.
-
-[Write your decisions and reasoning here]
-
-========================================
-CODING — Technical Context
-========================================
-
-Scope: Code-related notes, architecture decisions, tech stack choices.
-Do: paste error messages, architecture diagrams, API notes, stack decisions.
-
-[Write your technical context here]
-
-========================================
-AIOO — Operational Notes
-========================================
-
-Scope: Day-to-day operations, processes, workflows.
-Do: describe how things work, recurring tasks, SOPs, team routines.
-
-[Write your operational notes here]
-
-========================================
-OTHER — Everything Else
-========================================
-
-Scope: Anything that doesn't fit above.
-Do: meeting notes, random ideas, links, references, inspiration.
-
-[Write anything else here]"
-
-  printf "  Writing template content...\n"
-  if write_to_google_doc "$doc_id" "$content" "$email"; then
-    printf "  ${G}✓${R} Template created: ${B}${doc_title}${R}\n\n"
+  printf "\n"
+  if [ $tab_ok -gt 0 ]; then
+    printf "  ${G}✓${R} Template created: ${B}${doc_title}${R}\n"
+    printf "    ${D}${tab_ok} tabs created"
+    [ $tab_fail -gt 0 ] && printf ", ${tab_fail} failed"
+    printf "${R}\n\n"
   else
     printf "  ${G}✓${R} Document created: ${B}${doc_title}${R}\n"
-    printf "  ${D}  Template sections could not be written automatically.${R}\n"
-    printf "  ${D}  Open the doc in Google Drive and add your content manually.${R}\n\n"
+    printf "  ${D}  Tabs could not be created — add sections manually.${R}\n\n"
   fi
 
   printf "  ${B}Next steps:${R}\n"
   printf "    1. Open ${B}${doc_title}${R} in Google Drive\n"
-  printf "    2. Fill in each section with your context\n"
+  printf "    2. Fill in each tab with your context\n"
   printf "    3. Run: ${B}./setup/context-sync.sh --sync ${entity}${R}\n\n"
 
   # Mark as created
