@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "ROLE": "clark",
-    "ROLE_LABEL": "Clarity Architect"
+    "ROLE": "context-aware",
+    "ROLE_LABEL": "Context-Aware"
   },
   "permissions": {
     "allow": [
@@ -13,30 +13,30 @@
       "Bash(grep*)",
       "Bash(echo*)",
       "Bash(pwd*)",
+      "Bash(wc*)",
+      "Bash(head*)",
+      "Bash(tail*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],
     "deny": [
-      "Edit(**)",
-      "Write(**)",
       "Bash(rm*)",
-      "Bash(git*)",
-      "Bash(npm*)",
-      "Bash(node*)",
       "Bash(sudo*)",
-      "Bash(curl*)",
-      "Bash(wget*)"
+      "Bash(git push*)",
+      "Bash(npm*)",
+      "Bash(curl*|*bash*)",
+      "Bash(wget*|*bash*)"
     ]
   },
   "spinnerTipsEnabled": true,
   "spinnerTipsOverride": {
     "excludeDefault": true,
     "tips": [
-      "Clarity before action. What is the One Thing?",
-      "Read Distilled/ context before advising.",
-      "You are the Philosophical Brain, not the executor.",
-      "Surface patterns across entities.",
-      "Run /compact when approaching 70% context."
+      "Explore possibilities. Surface patterns.",
+      "Read Distilled/ before researching further.",
+      "Produce summaries, not essays.",
+      "Test ideas before recommending them.",
+      "Run /compact at 70% context."
     ]
   }
 }

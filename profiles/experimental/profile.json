@@ -1,0 +1,8 @@
+{
+  "name": "experimental",
+  "label": "Experimental",
+  "description": "Vanilla clone. Test setups, transfer what works into profiles.",
+  "icon": "!",
+  "skills": [],
+  "notes": "Use this to prototype Claude Code configurations before committing them to a real profile"
+}

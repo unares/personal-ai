@@ -1,8 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
-    "ROLE": "app-builder",
-    "ROLE_LABEL": "App Builder"
+    "ROLE": "mercenary",
+    "ROLE_LABEL": "Mercenary"
   },
   "permissions": {
     "allow": [
@@ -15,14 +15,6 @@
       "Bash(git add*)",
       "Bash(git commit*)",
       "Bash(git push*)",
-      "Bash(git checkout*)",
-      "Bash(git branch*)",
-      "Bash(npm test*)",
-      "Bash(npm run*)",
-      "Bash(npm install*)",
-      "Bash(npm ci*)",
-      "Bash(npx*)",
-      "Bash(node*)",
       "Bash(ls*)",
       "Bash(cat*)",
       "Bash(find*)",
@@ -32,28 +24,39 @@
       "Bash(mv*)",
       "Bash(echo*)",
       "Bash(touch*)",
-      "Bash(which*)",
+      "Bash(date*)",
       "Bash(pwd*)",
+      "Bash(npm test*)",
+      "Bash(npm run*)",
+      "Bash(npm install*)",
+      "Bash(npx*)",
+      "Bash(node*)",
+      "Bash(docker run*)",
+      "Bash(docker ps*)",
+      "Bash(docker stop*)",
+      "Bash(docker rm*)",
+      "Bash(docker exec*)",
+      "Bash(docker logs*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],
     "deny": [
       "Bash(rm -rf*)",
       "Bash(sudo*)",
-      "Bash(chmod 777*)",
       "Bash(curl*|*bash*)",
-      "Bash(wget*|*bash*)"
+      "Bash(wget*|*bash*)",
+      "Bash(docker run*--privileged*)"
     ]
   },
   "spinnerTipsEnabled": true,
   "spinnerTipsOverride": {
     "excludeDefault": true,
     "tips": [
-      "Do One Thing. Ship fast. No bloat.",
-      "Run /compact when approaching 70% context.",
-      "Run /handoff to save state before ending.",
-      "Functions < 30 lines. Files < 300 lines.",
-      "Read Distilled/ for project context."
+      "Do One Thing. Execute with precision.",
+      "Read NORTHSTAR.md first — always.",
+      "Ship deliverables, not plans.",
+      "Log decisions. Stay accountable.",
+      "Run /compact at 70% context."
     ]
   }
 }

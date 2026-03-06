@@ -50,7 +50,7 @@
     "excludeDefault": true,
     "tips": [
       "Do One Thing. Ship fast. No bloat.",
-      "Run /compact when approaching 70% context.",
+      "Run /compact at 70% context.",
       "Run /handoff to save state before ending.",
       "Functions < 30 lines. Files < 300 lines.",
       "Read Distilled/ for project context."

@@ -1,4 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "aioo",
+    "ROLE_LABEL": "AI Operating Officer"
+  },
   "permissions": {
     "allow": [
       "Read(**)",
@@ -44,12 +49,14 @@
     ]
   },
   "spinnerTipsEnabled": true,
-  "spinnerTipsOverride": [
-    "Do One Thing. Drive execution.",
-    "Read NORTHSTAR.md first — always.",
-    "Log decisions to /vault/Logs/aioo.log",
-    "Spawn App Builders for building, not yourself.",
-    "Run /compact at 70% context.",
-    "Check /audit-routing for cost savings."
-  ]
+  "spinnerTipsOverride": {
+    "excludeDefault": true,
+    "tips": [
+      "Do One Thing. Drive execution.",
+      "Read NORTHSTAR.md first — always.",
+      "Log decisions to /vault/Logs/aioo.log",
+      "Spawn App Builders for building, not yourself.",
+      "Run /compact at 70% context."
+    ]
+  }
 }
