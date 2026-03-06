@@ -332,7 +332,7 @@ create_google_doc() {
   local result; result=$(cat "$out_file" 2>/dev/null)
   rm -f "$out_file"
   if [ $rc -ne 0 ] || [ -z "$result" ]; then
-    printf "  ${Y}gws error (rc=%s):${R} %s\n" "$rc" "${result:-<no output>}" >&2
+    printf "  ${Y}gws error rc=%s:${R} %s\n" "$rc" "${result:-<no output>}" >&2
     return 1
   fi
   # Check if result looks like JSON with an error
@@ -425,7 +425,7 @@ cmd_status() {
     local sync_count; sync_count=$(get_sync_count "$entity")
 
     if [ -n "$email" ]; then
-      printf "    Google Drive:  ${G}✓${R} connected (${email})\n"
+      printf "    Google Drive:  ${G}✓${R} connected — ${email}\n"
       if [ -n "$last_sync" ]; then
         printf "    Last sync:     ${last_sync}\n"
       else
@@ -696,41 +696,185 @@ create_context_dump() {
   " 2>/dev/null) || true
 
   if [ -n "$first_tab_id" ]; then
-    # Rename to "Personal AI"
+    # Rename default "Tab 1" to "Personal AI"
     gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
-      --json "{\"requests\": [{\"updateDocumentTab\": {\"tabProperties\": {\"tabId\": \"${first_tab_id}\", \"title\": \"Personal AI\"}, \"fields\": \"title\"}}]}" > /dev/null 2>&1
+      --json "{\"requests\": [{\"updateTabProperties\": {\"tabProperties\": {\"tabId\": \"${first_tab_id}\", \"title\": \"Personal AI\"}, \"fields\": \"title\"}}]}" > /dev/null 2>&1
   fi
 
-  local intro="# Personal AI Context Dump - ${upper_entity}\n\n## What is this?\n\nThis Google Doc is a structured brain dump for your Personal AI system. Everything you write here gets synced into your entity vault and distilled by Context Extractor into actionable knowledge for your AI agents (Clark and AIOO).\n\n## How to use it\n\n1. Open each tab below and write freely\n2. Each tab has instructions explaining what belongs there\n3. Do not worry about formatting — raw thoughts are perfectly fine\n4. Volume matters — the more context you provide, the smarter your AI becomes\n5. Feel free to add more tabs if you need additional categories\n6. When ready, sync your content into the vault:\n\n   ./setup/context-sync.sh --sync ${entity}\n\n## Tabs\n\n| Tab | Purpose |\n|-----|--------|\n| NORTHSTAR | Your long-term vision and mission for ${upper_entity} |\n| About ${upper_entity} | What ${upper_entity} is, who it serves, how it works |\n| Research | Market research, competitor analysis, industry insights |\n| Customers (Users) | Who your users are, what they need, feedback |\n| Specifications | Product specs, technical requirements, feature definitions |\n| Transcripts | Video calls, WhatsApp chats, conversation logs |\n| Other | Anything that does not fit the other tabs |\n\n---\n\n*Add more tabs as needed — your AI agents will process all of them.*"
+  local intro_text="# Personal AI Context Dump - ${upper_entity}
+
+## What is this?
+
+This Google Doc is a structured brain dump for your Personal AI system.
+
+Everything you write here gets synced into your memory vault and distilled into actionable knowledge for your AI agents.
+
+## How to use it
+
+1. Open each tab of this Google Doc and write freely (top left corner to see the tabs)
+2. Each tab has instructions explaining what belongs there (you can leave or delete them)
+3. Do not worry about formatting. Raw thoughts are perfectly fine
+4. Volume matters. The more context you provide, the smarter your AI becomes
+5. Feel free to add more tabs if you need additional categories
+6. When ready, your Context Dump can be synced
+
+## Tabs
+
+1. NORTHSTAR - Your long-term vision and mission for ${upper_entity}
+2. About ${upper_entity} - What ${upper_entity} is, who it serves, how it works
+3. Research - Market research, competitor analysis, industry insights
+4. Customers (Users) - Who your users are, what they need, feedback
+5. Specifications - Product specs, technical requirements, feature definitions
+6. Transcripts - Video calls, WhatsApp chats, conversation logs
+7. Other - Anything that does not fit the other tabs
+
+---
+
+*Add more tabs as needed. Your AI agents will process all of them.*"
 
   printf "  Writing intro to Personal AI tab"
   for i in 1 2 3; do printf "."; sleep 0.15; done
-  local intro_json; intro_json=$(printf "${intro}" | node -e "
-    const t=require('fs').readFileSync('/dev/stdin','utf8');
+  local intro_json; intro_json=$(node -e "
+    const t=process.argv[1];
     process.stdout.write(JSON.stringify(t).slice(1,-1));
-  " 2>/dev/null)
+  " "$intro_text" 2>/dev/null)
   if [ -n "$first_tab_id" ]; then
     gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
       --json "{\"requests\": [{\"insertText\": {\"text\": \"${intro_json}\", \"location\": {\"tabId\": \"${first_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
     printf " ${G}done${R}\n"
   else
-    write_to_google_doc "$doc_id" "$(printf "${intro}")" "$email"
+    write_to_google_doc "$doc_id" "$intro_text" "$email"
     printf " ${G}done${R}\n"
   fi
 
   # Step 3: Create tabs and write content to each
   local tab_names=("NORTHSTAR" "About ${upper_entity}" "Research" "Customers (Users)" "Specifications" "Transcripts" "Other")
-  local tab_descs=(
-    "# NORTHSTAR\n\n## Your North Star Vision\n\nWhat is the long-term mission for ${upper_entity}? Where do you want to be in 1 year? 5 years?\n\n## Core Values\n\nWhat principles guide every decision?\n\n## Current Priority\n\nWhat is the single most important thing right now?\n\n---\n*Write freely. This shapes how your AI agents prioritize and make decisions.*"
-    "# About ${upper_entity}\n\n## What is ${upper_entity}?\n\nDescribe your company/project in your own words.\n\n## Who is behind it?\n\nFounders, team, key people and their roles.\n\n## How does it work?\n\nThe core mechanism — how does ${upper_entity} create value?\n\n## Stage\n\nWhere are you now? Idea, MVP, growth, scale?\n\n---\n*The more your AI knows about ${upper_entity}, the better it can represent you.*"
-    "# Research\n\n## Market Landscape\n\nWhat market are you in? How big is it? Key trends?\n\n## Competitors\n\nWho else is doing this? What do they do well? Where do they fall short?\n\n## Insights\n\nWhat have you learned from research, conversations, data?\n\n---\n*Paste links, notes, summaries — anything that informs your strategy.*"
-    "# Customers (Users)\n\n## Who are your users?\n\nDescribe your ideal customer. Demographics, behaviors, pain points.\n\n## What do they need?\n\nWhat problem are you solving for them?\n\n## Feedback\n\nWhat have users told you? Quotes, reviews, support requests.\n\n---\n*Your AI uses this to understand who you serve and why.*"
-    "# Specifications\n\n## Product Overview\n\nWhat are you building? Key features and capabilities.\n\n## Technical Requirements\n\nStack, architecture, integrations, constraints.\n\n## Feature Definitions\n\nDetailed specs for features in progress or planned.\n\n---\n*Paste PRDs, feature briefs, technical docs — the more detail the better.*"
-    "# Transcripts\n\n## Video Calls\n\nPaste transcripts or notes from Zoom, Google Meet, Teams calls.\n\n## WhatsApp Chats\n\nCopy-paste important WhatsApp conversations and threads.\n\n## Other Conversations\n\nSlack threads, email exchanges, voice memo transcriptions.\n\n---\n*Raw transcripts are fine — Context Extractor will distill the key points.*"
-    "# Other\n\n## Meeting Notes\n\nDrop notes from meetings, calls, conversations.\n\n## Ideas\n\nRandom thoughts, inspirations, things to explore later.\n\n## References\n\nLinks, articles, resources worth keeping.\n\n---\n*Anything that does not fit the other tabs goes here. Add more tabs if a category grows large enough.*"
-  )
+  # Tab descriptions — using node to build the array avoids bash newline issues
+  local tab_descs=()
+  tab_descs+=("# NORTHSTAR
+
+## Your North Star Vision
+
+What is the long-term mission for ${upper_entity}? Where do you want to be in 1 year? 5 years?
+
+## Core Values
+
+What principles guide every decision?
+
+## Current Priority
+
+What is the single most important thing right now?
+
+---
+*Write freely. This shapes how your AI agents prioritize and make decisions.*")
+
+  tab_descs+=("# About ${upper_entity}
+
+## What is ${upper_entity}?
+
+Describe your company/project in your own words.
+
+## Who is behind it?
+
+Founders, team, key people and their roles.
+
+## How does it work?
+
+The core mechanism — how does ${upper_entity} create value?
+
+## Stage
+
+Where are you now? Idea, MVP, growth, scale?
+
+---
+*The more your AI knows about ${upper_entity}, the better it can represent you.*")
+
+  tab_descs+=("# Research
+
+## Market Landscape
+
+What market are you in? How big is it? Key trends?
+
+## Competitors
+
+Who else is doing this? What do they do well? Where do they fall short?
+
+## Insights
+
+What have you learned from research, conversations, data?
+
+---
+*Paste links, notes, summaries — anything that informs your strategy.*")
+
+  tab_descs+=("# Customers (Users)
+
+## Who are your users?
+
+Describe your ideal customer. Demographics, behaviors, pain points.
+
+## What do they need?
+
+What problem are you solving for them?
+
+## Feedback
+
+What have users told you? Quotes, reviews, support requests.
+
+---
+*Your AI uses this to understand who you serve and why.*")
+
+  tab_descs+=("# Specifications
+
+## Product Overview
+
+What are you building? Key features and capabilities.
+
+## Technical Requirements
+
+Stack, architecture, integrations, constraints.
+
+## Feature Definitions
+
+Detailed specs for features in progress or planned.
+
+---
+*Paste PRDs, feature briefs, technical docs — the more detail the better.*")
+
+  tab_descs+=("# Transcripts
+
+## Video Calls
+
+Paste transcripts or notes from Zoom, Google Meet, Teams calls.
+
+## WhatsApp Chats
+
+Copy-paste important WhatsApp conversations and threads.
+
+## Other Conversations
+
+Slack threads, email exchanges, voice memo transcriptions.
+
+---
+*Raw transcripts are fine — Context Extractor will distill the key points.*")
+
+  tab_descs+=("# Other
+
+## Meeting Notes
+
+Drop notes from meetings, calls, conversations.
+
+## Ideas
+
+Random thoughts, inspirations, things to explore later.
+
+## References
+
+Links, articles, resources worth keeping.
+
+---
+*Anything that does not fit the other tabs goes here. Add more tabs if a category grows large enough.*")
 
   local tab_ok=0
   local tab_fail=0
@@ -763,11 +907,10 @@ create_context_dump() {
       " 2>/dev/null) || true
 
       if [ -n "$tab_id" ]; then
-        # Insert text into the new tab — escape newlines for JSON
-        local json_text; json_text=$(echo "${tname} — ${tdesc}" | node -e "
-          const t=require('fs').readFileSync('/dev/stdin','utf8');
-          process.stdout.write(JSON.stringify(t).slice(1,-1));
-        " 2>/dev/null)
+        # Insert text into the new tab — printf converts \n to real newlines, node JSON-escapes
+        local json_text; json_text=$(node -e "
+          const t=process.argv[1];
+          process.stdout.write(JSON.stringify(t).slice(1,-1));" "$tdesc" 2>/dev/null)
         gws docs documents batchUpdate \
           --params "{\"documentId\": \"${doc_id}\"}" \
           --json "{\"requests\": [{\"insertText\": {\"text\": \"${json_text}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
@@ -785,7 +928,7 @@ create_context_dump() {
         " "$tname" 2>/dev/null) || true
 
         if [ -n "$tab_id" ]; then
-          local json_text; json_text=$(echo "${tname} — ${tdesc}" | node -e "
+          local json_text; json_text=$(printf "%s" "$tdesc" | node -e "
             const t=require('fs').readFileSync('/dev/stdin','utf8');
             process.stdout.write(JSON.stringify(t).slice(1,-1));
           " 2>/dev/null)
@@ -794,7 +937,7 @@ create_context_dump() {
             --json "{\"requests\": [{\"insertText\": {\"text\": \"${json_text}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
           printf " ${G}done${R}\n"
         else
-          printf " ${G}created${R} ${D}(text skipped)${R}\n"
+          printf " ${G}created${R} ${D}text skipped${R}\n"
         fi
         tab_ok=$((tab_ok + 1))
       fi
@@ -843,7 +986,7 @@ cmd_sync() {
     return 1
   fi
 
-  printf "  Syncing ${B}${entity}${R} (${email})...\n"
+  printf "  Syncing ${B}${entity}${R} — ${email}...\n"
   sync_folder "$entity" "$email"
 }
 
@@ -887,7 +1030,7 @@ cmd_interactive() {
   # ── Google account ────────────────────────────────────────────
   printf "  ${B}Next:${R} Connect your Google account for ${B}${entity}${R}\n"
   printf "  ${D}You will select OAuth scopes, then authorize in your browser.${R}\n"
-  printf "  ${D}@gmail.com users — just type your username (e.g. john)${R}\n\n"
+  printf "  ${D}@gmail.com users — just type your username, e.g. john${R}\n\n"
 
   local email=""
   while true; do
@@ -960,9 +1103,8 @@ cmd_interactive() {
 
   printf "  What would you like to do?\n\n"
   printf "    ${C}1.${R} ${B}Create Context Dump template${R}\n"
-  printf "       ${D}A Google Doc with predefined sections (Clark, AIOO, Coding,${R}\n"
-  printf "       ${D}Submissions, HITLs, Other) and explanations for each.${R}\n"
-  printf "       ${D}Fill it with context in Google Docs, then sync later.${R}\n\n"
+  printf "       ${D}A Google Doc with tabs — NORTHSTAR, Research, Specs, etc.${R}\n"
+  printf "       ${D}Each tab has instructions. Fill it in, then sync later.${R}\n\n"
   printf "    ${C}2.${R} ${B}Sync an existing Google Doc${R}\n"
   printf "       ${D}Pick a doc from your Drive — downloads it as .md into${R}\n"
   printf "       ${D}your vault now. Context Extractor processes it immediately.${R}\n\n"
