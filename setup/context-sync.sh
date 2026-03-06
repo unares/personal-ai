@@ -325,16 +325,20 @@ export_doc_as_md() {
 create_google_doc() {
   local title="$1" email="${2:-}"
   local acct; acct=$(gws_account_flag "$email")
-  local err_file="/tmp/pai-gws-create-err.$$"
-  local result; result=$(gws $acct docs documents create --json "{\"title\": \"${title}\"}" 2>"$err_file")
+  local out_file="/tmp/pai-gws-create.$$.out"
+  gws $acct docs documents create --json "{\"title\": \"${title}\"}" > "$out_file" 2>&1
   local rc=$?
+  local result; result=$(cat "$out_file" 2>/dev/null)
+  rm -f "$out_file"
   if [ $rc -ne 0 ] || [ -z "$result" ]; then
-    local err_msg; err_msg=$(cat "$err_file" 2>/dev/null)
-    [ -n "$err_msg" ] && printf "  ${D}gws error: %s${R}\n" "$err_msg" >&2
-    rm -f "$err_file"
+    [ -n "$result" ] && printf "  ${Y}gws:${R} %s\n" "$result"
     return 1
   fi
-  rm -f "$err_file"
+  # Check if result looks like JSON with an error
+  if echo "$result" | grep -qi '"error"'; then
+    printf "  ${Y}gws:${R} %s\n" "$result"
+    return 1
+  fi
   echo "$result"
 }
 
