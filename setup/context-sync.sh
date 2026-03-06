@@ -368,7 +368,7 @@ cmd_auth() {
   printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
   printf "    2. Open the URL in your browser to authorize\n\n"
 
-  if gws auth login --account "$email" --scopes drive,docs; then
+  if gws auth login --account "$email" --services drive,docs; then
     printf "\n  ${G}✓${R} Google Drive authenticated for ${B}${email}${R}\n"
 
     # Set as default account for convenience
@@ -797,7 +797,7 @@ cmd_interactive() {
       printf "  ${B}Two steps:${R}\n"
       printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
       printf "    2. Open the URL in your browser to authorize\n\n"
-      if gws auth login --account "$email" --scopes drive,docs; then
+      if gws auth login --account "$email" --services drive,docs; then
         printf "  ${G}✓${R} Connected\n\n"
       else
         printf "  ${Y}!${R} Auth failed. Run: context-sync.sh --auth ${email}\n\n"
