@@ -357,6 +357,11 @@ cmd_auth() {
   local email="${1:-}"
   [ -z "$email" ] && die "Usage: context-sync.sh --auth <email>"
 
+  # Auto-append @gmail.com if no @ present
+  if [[ "$email" != *@* ]]; then
+    email="${email}@gmail.com"
+  fi
+
   ensure_gws || exit 1
 
   printf "${B}${G}╔${LINE}\n"
@@ -784,11 +789,19 @@ cmd_interactive() {
   local email; email=$(get_gdrive_email "$entity")
   if [ -z "$email" ]; then
     printf "  ${D}No Google Drive connected for ${entity}.${R}\n"
-    read -rp "  Google account email (or Enter to skip): " email
-    if [ -z "$email" ]; then
-      printf "  ${D}Skipped.${R}\n\n"
-      return 0
-    fi
+    while true; do
+      read -rp "  Google account email (or Enter to skip): " email
+      if [ -z "$email" ]; then
+        printf "  ${D}Skipped.${R}\n\n"
+        return 0
+      fi
+      # Auto-append @gmail.com if no @ present
+      if [[ "$email" != *@* ]]; then
+        email="${email}@gmail.com"
+        printf "  ${D}→ Using ${email}${R}\n"
+      fi
+      break
+    done
     # Check if already authenticated with gws
     if gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
       printf "  ${G}✓${R} Already authenticated as ${B}${email}${R}\n\n"
