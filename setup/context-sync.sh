@@ -834,15 +834,30 @@ cmd_interactive() {
     printf " ${G}connected${R}\n"
     printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
   else
-    printf " ${Y}authenticating${R}\n\n"
-    printf "  ${B}Select scopes${R} — pick ${B}Recommended${R} and press Enter,\n"
-    printf "  then ${B}open the URL${R} in your browser to authorize.\n\n"
-    if gws auth login --account="$email" --services drive,docs; then
+    printf " ${Y}not yet authenticated${R}\n\n"
 
-      printf "\n  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
+    printf "  ${B}What will happen:${R}\n"
+    printf "    1. A scope selector opens in this terminal\n"
+    printf "       ${D}Use arrow keys to navigate to ${B}Recommended${D},${R}\n"
+    printf "       ${D}press ${B}Space${D} to select it, then ${B}Enter${D} to confirm${R}\n"
+    printf "    2. An OAuth URL is displayed — open it in your browser\n"
+    printf "       ${D}Sign in with ${B}${email}${D} and approve access${R}\n\n"
+
+    while true; do
+      read -rp "  Ready to launch Google OAuth? [y]: " OAUTH_READY
+      [ -z "$OAUTH_READY" ] || [[ "$OAUTH_READY" == [yY]* ]] && break
+    done
+    printf "\n"
+
+    # Launch gws auth — interactive scope picker + URL display
+    if gws auth login --account="$email" --services drive,docs; then
+      printf "\n  Connecting"
+      for i in 1 2 3 4 5 6 7 8; do printf "."; sleep 0.2; done
+      printf " ${G}connected${R}\n"
+      printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
       connected=true
     else
-      printf "  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
+      printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
       return 1
     fi
   fi
@@ -851,25 +866,27 @@ cmd_interactive() {
   save_sync_state "$entity" "$email" 0
 
   # ── Sync options ──────────────────────────────────────────────
-  step_banner 2 3 "Context Sync — ${entity}" \
+  step_banner 2 3 "Personal AI v${VERSION} — Context Sync" \
     "Google Docs are exported as .md into your vault" \
-    "Context Extractor then distills them for Clark and AIOO" \
-    "+50 Pts. for connecting Google Drive!"
+    "Context Extractor then distills them for Clark and AIOO"
 
-  printf "  What would you like to do?\n"
-  printf "    ${C}1.${R} Pull a Google Doc             ${D}(pick one doc, export as .md)${R}\n"
-  printf "    ${C}2.${R} Pull all docs from a folder   ${D}(export every doc in a Drive folder)${R}\n"
-  printf "    ${C}3.${R} Create Context Dump doc       ${D}(skeleton doc in Drive for later sync)${R}\n"
-  printf "    ${C}S.${R} Skip\n\n"
+  printf "  What would you like to do?\n\n"
+  printf "    ${C}1.${R} ${B}Create Context Dump template${R}\n"
+  printf "       ${D}A Google Doc with predefined sections (Clark, AIOO, Coding,${R}\n"
+  printf "       ${D}Submissions, HITLs, Other) and explanations for each.${R}\n"
+  printf "       ${D}Fill it with context in Google Docs, then sync later.${R}\n\n"
+  printf "    ${C}2.${R} ${B}Sync an existing Google Doc${R}\n"
+  printf "       ${D}Pick a doc from your Drive — downloads it as .md into${R}\n"
+  printf "       ${D}your vault now. Context Extractor processes it immediately.${R}\n\n"
 
-  read -rp "  Select [1/2/3/S]: " SYNC_CHOICE
-  case "$SYNC_CHOICE" in
-    1) sync_single_file "$entity" "$email" ;;
-    2) sync_folder "$entity" "$email" ;;
-    3) create_context_dump "$entity" "$email" ;;
-    [Ss]) printf "  ${D}Skipped.${R}\n\n" ;;
-    *) printf "  ${Y}Invalid selection.${R}\n\n" ;;
-  esac
+  while true; do
+    read -rp "  Select [1/2]: " SYNC_CHOICE
+    case "$SYNC_CHOICE" in
+      1) create_context_dump "$entity" "$email"; break ;;
+      2) sync_single_file "$entity" "$email"; break ;;
+      *) printf "  ${Y}Please enter 1 or 2.${R}\n" ;;
+    esac
+  done
 }
 
 # ══════════════════════════════════════════════════════════════════════════
