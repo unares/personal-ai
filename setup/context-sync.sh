@@ -685,44 +685,50 @@ create_context_dump() {
 
   printf "  ${G}✓${R} Document created\n"
 
-  # Step 2: Write introduction to the main tab
-  local intro="Personal AI Context Dump - ${upper_entity}
+  # Step 2: Rename the default first tab to "Personal AI" and write intro
+  # The first tab already exists — rename it via batchUpdate
+  local first_tab_id; first_tab_id=$(gws docs documents get \
+    --params "{\"documentId\": \"${doc_id}\"}" 2>/dev/null | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const tabs=d.tabs||[];
+    if(tabs.length>0) console.log((tabs[0].tabProperties||{}).tabId||'');
+    else console.log('');
+  " 2>/dev/null) || true
 
-This document is a structured brain dump for your Personal AI system.
-Everything you write here gets synced to your entity vault and distilled
-by Context Extractor into actionable knowledge for Clark and AIOO.
+  if [ -n "$first_tab_id" ]; then
+    # Rename to "Personal AI"
+    gws docs documents batchUpdate \
+      --params "{\"documentId\": \"${doc_id}\"}" \
+      --json "{\"requests\": [{\"updateDocumentTab\": {\"tabProperties\": {\"tabId\": \"${first_tab_id}\", \"title\": \"Personal AI\"}, \"fields\": \"title\"}}]}" > /dev/null 2>&1
+  fi
 
-How to use this template:
-- Each tab below is a category — write freely in whichever applies
-- Don't worry about formatting — raw thoughts are fine
-- Volume matters — the more you write, the better your AI understands you
-- When ready, sync: ./setup/context-sync.sh --sync ${entity}
+  local intro="# Personal AI Context Dump - ${upper_entity}\n\n## What is this?\n\nThis Google Doc is a structured brain dump for your Personal AI system. Everything you write here gets synced into your entity vault and distilled by Context Extractor into actionable knowledge for your AI agents (Clark and AIOO).\n\n## How to use it\n\n1. Open each tab below and write freely\n2. Each tab has instructions explaining what belongs there\n3. Do not worry about formatting — raw thoughts are perfectly fine\n4. Volume matters — the more context you provide, the smarter your AI becomes\n5. Feel free to add more tabs if you need additional categories\n6. When ready, sync your content into the vault:\n\n   ./setup/context-sync.sh --sync ${entity}\n\n## Tabs\n\n| Tab | Purpose |\n|-----|--------|\n| NORTHSTAR | Your long-term vision and mission for ${upper_entity} |\n| About ${upper_entity} | What ${upper_entity} is, who it serves, how it works |\n| Research | Market research, competitor analysis, industry insights |\n| Customers (Users) | Who your users are, what they need, feedback |\n| Specifications | Product specs, technical requirements, feature definitions |\n| Other | Anything that does not fit the other tabs |\n\n---\n\n*Add more tabs as needed — your AI agents will process all of them.*"
 
-Tabs:
-  Clark         — Strategic vision, priorities, big decisions
-  Submissions   — Drafts, proposals, applications in progress
-  HITLs         — Decisions pending your input
-  Coding        — Technical notes, architecture, stack choices
-  AIOO          — Operations, workflows, SOPs, routines
-  Other         — Meeting notes, random ideas, references"
-
-  printf "  Writing introduction"
+  printf "  Writing intro to Personal AI tab"
   for i in 1 2 3; do printf "."; sleep 0.15; done
-  if write_to_google_doc "$doc_id" "$intro" "$email"; then
+  local intro_json; intro_json=$(printf "${intro}" | node -e "
+    const t=require('fs').readFileSync('/dev/stdin','utf8');
+    process.stdout.write(JSON.stringify(t).slice(1,-1));
+  " 2>/dev/null)
+  if [ -n "$first_tab_id" ]; then
+    gws docs documents batchUpdate \
+      --params "{\"documentId\": \"${doc_id}\"}" \
+      --json "{\"requests\": [{\"insertText\": {\"text\": \"${intro_json}\", \"location\": {\"tabId\": \"${first_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
     printf " ${G}done${R}\n"
   else
-    printf " ${Y}skipped${R}\n"
+    write_to_google_doc "$doc_id" "$(printf "${intro}")" "$email"
+    printf " ${G}done${R}\n"
   fi
 
   # Step 3: Create tabs and write content to each
-  local tab_names=("Clark" "Submissions" "HITLs" "Coding" "AIOO" "Other")
+  local tab_names=("NORTHSTAR" "About ${upper_entity}" "Research" "Customers (Users)" "Specifications" "Other")
   local tab_descs=(
-    "Strategic Thinking\n\nScope: Long-term vision, priorities, what matters most to you.\nDo: brain-dump your strategy, doubts, big decisions pending.\nDon't: list tasks — that is AIOO's job.\n\n[Write your strategic thoughts here]"
-    "Work in Progress\n\nScope: Things you are actively working on or submitting.\nDo: paste drafts, proposals, applications, pitch decks.\n\n[Paste your work in progress here]"
-    "Human-in-the-Loop Decisions\n\nScope: Decisions that need your input before AI can proceed.\nDo: record your reasoning, preferences, constraints on open decisions.\n\n[Write your decisions and reasoning here]"
-    "Technical Context\n\nScope: Code-related notes, architecture decisions, tech stack choices.\nDo: paste error messages, architecture diagrams, API notes.\n\n[Write your technical context here]"
-    "Operational Notes\n\nScope: Day-to-day operations, processes, workflows.\nDo: describe how things work, recurring tasks, SOPs, team routines.\n\n[Write your operational notes here]"
-    "Everything Else\n\nScope: Anything that does not fit the other tabs.\nDo: meeting notes, random ideas, links, references, inspiration.\n\n[Write anything else here]"
+    "# NORTHSTAR\n\n## Your North Star Vision\n\nWhat is the long-term mission for ${upper_entity}? Where do you want to be in 1 year? 5 years?\n\n## Core Values\n\nWhat principles guide every decision?\n\n## Current Priority\n\nWhat is the single most important thing right now?\n\n---\n*Write freely. This shapes how your AI agents prioritize and make decisions.*"
+    "# About ${upper_entity}\n\n## What is ${upper_entity}?\n\nDescribe your company/project in your own words.\n\n## Who is behind it?\n\nFounders, team, key people and their roles.\n\n## How does it work?\n\nThe core mechanism — how does ${upper_entity} create value?\n\n## Stage\n\nWhere are you now? Idea, MVP, growth, scale?\n\n---\n*The more your AI knows about ${upper_entity}, the better it can represent you.*"
+    "# Research\n\n## Market Landscape\n\nWhat market are you in? How big is it? Key trends?\n\n## Competitors\n\nWho else is doing this? What do they do well? Where do they fall short?\n\n## Insights\n\nWhat have you learned from research, conversations, data?\n\n---\n*Paste links, notes, summaries — anything that informs your strategy.*"
+    "# Customers (Users)\n\n## Who are your users?\n\nDescribe your ideal customer. Demographics, behaviors, pain points.\n\n## What do they need?\n\nWhat problem are you solving for them?\n\n## Feedback\n\nWhat have users told you? Quotes, reviews, support requests.\n\n---\n*Your AI uses this to understand who you serve and why.*"
+    "# Specifications\n\n## Product Overview\n\nWhat are you building? Key features and capabilities.\n\n## Technical Requirements\n\nStack, architecture, integrations, constraints.\n\n## Feature Definitions\n\nDetailed specs for features in progress or planned.\n\n---\n*Paste PRDs, feature briefs, technical docs — the more detail the better.*"
+    "# Other\n\n## Meeting Notes\n\nDrop notes from meetings, calls, conversations.\n\n## Ideas\n\nRandom thoughts, inspirations, things to explore later.\n\n## References\n\nLinks, articles, resources worth keeping.\n\n---\n*Anything that does not fit the other tabs goes here. Add more tabs if a category grows large enough.*"
   )
 
   local tab_ok=0
@@ -733,10 +739,11 @@ Tabs:
     printf "  Creating tab: ${B}${tname}${R}"
     for j in 1 2; do printf "."; sleep 0.1; done
 
-    # Create tab via batchUpdate
+    # Create tab via batchUpdate — use node to safely escape tab name
+    local safe_tname; safe_tname=$(node -e "process.stdout.write(JSON.stringify(process.argv[1]).slice(1,-1))" "$tname" 2>/dev/null)
     local tab_result; tab_result=$(gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
-      --json "{\"requests\": [{\"addDocumentTab\": {\"tabProperties\": {\"title\": \"${tname}\"}}}]}" 2>/dev/null)
+      --json "{\"requests\": [{\"addDocumentTab\": {\"tabProperties\": {\"title\": \"${safe_tname}\"}}}]}" 2>/dev/null)
 
     if [ -n "$tab_result" ]; then
       # Extract the new tab ID — try multiple response paths
@@ -770,10 +777,11 @@ Tabs:
         local doc_data; doc_data=$(gws docs documents get --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null)
         tab_id=$(echo "$doc_data" | node -e "
           const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+          const name=process.argv[1];
           const tabs=d.tabs||[];
-          for(const t of tabs){if((t.tabProperties||{}).title==='${tname}'){console.log(t.tabProperties.tabId||'');process.exit(0)}}
+          for(const t of tabs){if((t.tabProperties||{}).title===name){console.log(t.tabProperties.tabId||'');process.exit(0)}}
           console.log('');
-        " 2>/dev/null) || true
+        " "$tname" 2>/dev/null) || true
 
         if [ -n "$tab_id" ]; then
           local json_text; json_text=$(echo "${tname} — ${tdesc}" | node -e "
