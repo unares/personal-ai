@@ -994,9 +994,14 @@ cmd_interactive() {
   require_config
   ensure_gws || exit 1
 
-  step_banner 1 3 "Personal AI v${VERSION} — Context Sync" \
-    "Connect your Google account to sync Google Docs into your vault" \
-    "Context Extractor distills them for Clark and AIOO"
+  # ── Welcome screen — no progress bar ────────────────────────
+  printf "\n${B}${G}╔${LINE}\n"
+  printf "║  Personal AI v${VERSION} — Context Sync\n"
+  printf "╚${LINE}${R}\n\n"
+
+  printf "  Context Sync connects your Google account to Personal AI.\n"
+  printf "  Your Google Docs are exported as Markdown and loaded into\n"
+  printf "  your Memory, where agents distill them into knowledge.\n\n"
 
   # ── Entity selection ──────────────────────────────────────────
   local entities; entities=$(get_entities)
@@ -1027,14 +1032,14 @@ cmd_interactive() {
     printf "\n  Entity: ${B}${entity}${R}\n\n"
   fi
 
-  # ── Google account ────────────────────────────────────────────
-  printf "  ${B}Next:${R} Connect your Google account for ${B}${entity}${R}\n"
-  printf "  ${D}You will select OAuth scopes, then authorize in your browser.${R}\n"
-  printf "  ${D}@gmail.com users — just type your username, e.g. john${R}\n\n"
+  # ── Step 1: Google account ──────────────────────────────────
+  step_banner 1 3 "Google Account" \
+    "Which Google account holds your docs for ${entity}?" \
+    "@gmail.com users — just type your username, e.g. john"
 
   local email=""
   while true; do
-    read -rp "  Google account: " email
+    read -rp "  Google account name: " email
     if [ -z "$email" ]; then
       printf "  ${Y}Google account is required for Context Sync.${R}\n"
       continue
@@ -1047,7 +1052,7 @@ cmd_interactive() {
     break
   done
 
-  # ── Connecting ────────────────────────────────────────────────
+  # ── Check existing credentials ──────────────────────────────
   printf "  Connecting"
 
   local connected=false
@@ -1059,16 +1064,20 @@ cmd_interactive() {
   fi
 
   if $connected; then
-    printf " ${G}connected${R}\n"
-    printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
+    printf " ${G}connected${R}\n\n"
   else
     printf " ${Y}not yet authenticated${R}\n\n"
+
+    # ── Step 2: OAuth authentication ────────────────────────────
+    step_banner 2 3 "Authenticate" \
+      "A scope selector will open — use arrow keys to select Recommended" \
+      "Press Space to select, then Enter to confirm"
 
     printf "  ${B}What will happen:${R}\n"
     printf "    1. A scope selector opens in this terminal\n"
     printf "       ${D}Use arrow keys to navigate to ${B}Recommended${D},${R}\n"
     printf "       ${D}press ${B}Space${D} to select it, then ${B}Enter${D} to confirm${R}\n"
-    printf "    2. An OAuth URL is displayed — open it in your browser\n"
+    printf "    2. Open the URL displayed in your browser\n"
     printf "       ${D}Sign in with ${B}${email}${D} and approve access${R}\n\n"
 
     while true; do
@@ -1078,14 +1087,12 @@ cmd_interactive() {
     printf "\n"
 
     # Launch gws auth — scope picker is interactive TUI, can't redirect stdout.
-    # The JSON success blob will print but we follow with clear status.
     gws auth login --account="$email" --services drive,docs
     local auth_rc=$?
     if [ $auth_rc -eq 0 ]; then
       printf "\n  Connecting"
       for i in 1 2 3 4 5 6 7 8; do printf "."; sleep 0.2; done
-      printf " ${G}connected${R}\n"
-      printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
+      printf " ${G}connected${R}\n\n"
       connected=true
     else
       printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
@@ -1096,10 +1103,13 @@ cmd_interactive() {
   log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
   save_sync_state "$entity" "$email" 0
 
-  # ── Sync options ──────────────────────────────────────────────
-  step_banner 2 3 "Personal AI v${VERSION} — Context Sync" \
-    "Google Docs are exported as .md into your vault" \
-    "Context Extractor then distills them for Clark and AIOO"
+  # ── Step 3: Connected + sync options ────────────────────────
+  step_banner 3 3 "Connected" \
+    "Google Docs are exported as .md into your Memory" \
+    "Context Extractor then distills your knowledge for Agents"
+
+  printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n"
+  printf "  ${G}✓${R} Connected\n\n"
 
   printf "  What would you like to do?\n\n"
   printf "    ${C}1.${R} ${B}Create Context Dump template${R}\n"
@@ -1107,7 +1117,7 @@ cmd_interactive() {
   printf "       ${D}Each tab has instructions. Fill it in, then sync later.${R}\n\n"
   printf "    ${C}2.${R} ${B}Sync an existing Google Doc${R}\n"
   printf "       ${D}Pick a doc from your Drive — downloads it as .md into${R}\n"
-  printf "       ${D}your vault now. Context Extractor processes it immediately.${R}\n\n"
+  printf "       ${D}your Memory. Context Extractor processes it immediately.${R}\n\n"
 
   while true; do
     read -rp "  Select [1/2]: " SYNC_CHOICE
