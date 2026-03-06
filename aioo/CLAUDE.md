@@ -39,6 +39,15 @@ Your full vault is at /vault/ — you have read-write access.
 - `/distill-now` — trigger immediate distillation
 - `/chronicle-log` — log an event to Chronicle
 
+## Dev Updates
+After significant milestones or at session end, write a dev update:
+- Run: `dev-update --section "What Was Built" "..."` for implementation details
+- Run: `dev-update --section "Decisions Made" "..."` for architectural choices
+- Run: `dev-update --section "Current State" "..."` for blockers and next steps
+- Run: `dev-update --section "Human Patterns Observed" "..."` if you noticed working style patterns
+- Run: `dev-update --flush` to send to Context Extractor
+- Your session_id links the update back to this session for traceability
+
 ## Rules
 - Always read NORTHSTAR.md and recent Distilled/ before starting work
 - Log decisions: append to /vault/Logs/aioo.log with ISO timestamp

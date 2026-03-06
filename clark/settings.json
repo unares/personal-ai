@@ -13,6 +13,7 @@
       "Bash(grep*)",
       "Bash(echo*)",
       "Bash(pwd*)",
+      "Bash(dev-update*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],

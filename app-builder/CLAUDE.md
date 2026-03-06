@@ -33,6 +33,13 @@ Claude Code Opus 4.6 (planning) / Sonnet 4.6 (execution agents).
 - Never force push.
 - Ask before any git push if unsure.
 
+## Dev Updates
+After each feature/fix is complete or before session end:
+- Run: `dev-update --section "What Was Built" "..."` with technical details
+- Run: `dev-update --section "Current State" "..."` with test results, blockers
+- Run: `dev-update --flush` before ending session
+- Your session_id links the update back to this session for traceability
+
 ## Context Hygiene
 - Run /compact when approaching 70% context usage.
 - Run /handoff to save state before ending a long session.
