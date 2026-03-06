@@ -1,0 +1,636 @@
+#!/bin/bash
+# Personal AI — Google Drive Context Sync
+# Syncs Google Docs into memory-vault Raw/ for Context Extractor.
+# Uses Google Workspace CLI (gws) for Drive access.
+#
+# Usage:
+#   context-sync.sh                    # interactive: pick entity, show menu
+#   context-sync.sh --status           # show all entities' Drive connection status
+#   context-sync.sh --sync <entity>    # trigger sync for entity
+#   context-sync.sh --auth <email>     # authenticate Google account
+#   context-sync.sh --help             # show usage
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_DIR/version.sh"
+VAULT_PATH="$REPO_DIR/memory-vault"
+CONFIG_PATH="$REPO_DIR/config.json"
+
+G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
+W=64
+LINE=$(printf '═%.0s' $(seq 1 $W))
+
+upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
+lower() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'; }
+
+step_banner() {
+  local step=$1 total=$2 title="$3"
+  local filled; filled=$((step >= total ? 16 : step * 16 / total))
+  local empty; empty=$((16 - filled))
+  local bar="" i
+  for i in $(seq 1 $filled); do bar="${bar}█"; done
+  for i in $(seq 1 $empty); do bar="${bar}░"; done
+  shift 3
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  [Step %s/%s]  %s  %s\n" "$step" "$total" "$bar" "$title"
+  printf "╠${LINE}\n"
+  while [ $# -gt 0 ]; do
+    printf "║  ${C}▸${G} %s\n" "$1"
+    shift
+  done
+  printf "╚${LINE}${R}\n\n"
+}
+
+log_setup() {
+  local event="$1" entity="${2:-}" pts="${3:-0}" detail="${4:-}"
+  local log_dir="$VAULT_PATH/Logs"
+  mkdir -p "$log_dir"
+  local ts; ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+  local entry="{\"ts\":\"$ts\",\"event\":\"$event\",\"entity\":\"$entity\",\"pts\":$pts,\"detail\":\"$detail\"}"
+  echo "$entry" >> "$log_dir/setup.jsonl" 2>/dev/null || true
+}
+
+progress_bar() {
+  local current=$1 total=$2 width=16
+  local filled; filled=$((current * width / total))
+  local empty; empty=$((width - filled))
+  local bar=""
+  local i
+  for i in $(seq 1 $filled); do bar="${bar}█"; done
+  for i in $(seq 1 $empty); do bar="${bar}░"; done
+  echo "$bar"
+}
+
+die() { printf "  ${Y}Error:${R} %s\n\n" "$1"; exit 1; }
+
+require_gws() {
+  if ! command -v gws > /dev/null 2>&1; then
+    printf "  ${Y}!${R} Google Workspace CLI (gws) not found.\n"
+    printf "  ${D}  Install: npm install -g @anthropic-ai/gws-cli${R}\n"
+    printf "  ${D}  Or:      brew install gws${R}\n\n"
+    return 1
+  fi
+  return 0
+}
+
+require_config() {
+  [ -f "$CONFIG_PATH" ] || die "config.json not found. Run ./install.sh first."
+  command -v node > /dev/null 2>&1 || die "node is required. Install Node.js."
+}
+
+get_entities() {
+  node -e "const c=require('${CONFIG_PATH}'); const e=c.entities||[]; console.log(e.map(x=>x.name).join(' '))" 2>/dev/null
+}
+
+get_owner() {
+  node -e "const c=require('${CONFIG_PATH}'); console.log(c.owner)" 2>/dev/null
+}
+
+get_sync_state_file() {
+  local entity="$1"
+  echo "$VAULT_PATH/$entity/Logs/.context-sync-state"
+}
+
+get_gdrive_email() {
+  local entity="$1"
+  local state_file; state_file=$(get_sync_state_file "$entity")
+  [ -f "$state_file" ] && node -e "const s=JSON.parse(require('fs').readFileSync('${state_file}','utf8')); console.log(s.email||'')" 2>/dev/null || echo ""
+}
+
+get_last_sync() {
+  local entity="$1"
+  local state_file; state_file=$(get_sync_state_file "$entity")
+  [ -f "$state_file" ] && node -e "const s=JSON.parse(require('fs').readFileSync('${state_file}','utf8')); console.log(s.last_sync||'')" 2>/dev/null || echo ""
+}
+
+get_sync_count() {
+  local entity="$1"
+  local state_file; state_file=$(get_sync_state_file "$entity")
+  [ -f "$state_file" ] && node -e "const s=JSON.parse(require('fs').readFileSync('${state_file}','utf8')); console.log(s.files_synced||0)" 2>/dev/null || echo "0"
+}
+
+save_sync_state() {
+  local entity="$1" email="$2" files_synced="${3:-0}"
+  local state_file; state_file=$(get_sync_state_file "$entity")
+  local ts; ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+  mkdir -p "$(dirname "$state_file")"
+  printf '{"email":"%s","last_sync":"%s","files_synced":%s}\n' "$email" "$ts" "$files_synced" > "$state_file"
+  # Also write last sync timestamp for claude-code-launch re-sync check
+  local vault_logs="$VAULT_PATH/$entity/Logs"
+  mkdir -p "$vault_logs"
+  echo "$ts" > "$vault_logs/.context-sync-last"
+}
+
+# ── Access control ─────────────────────────────────────────────────────────
+get_visible_entities() {
+  local user="${1:-}"
+  if [ -z "$user" ]; then
+    get_entities
+    return
+  fi
+  local owner; owner=$(get_owner)
+  if [ "$user" = "$owner" ]; then
+    get_entities
+  else
+    # Co-founder: only entities they're assigned to
+    node -e "
+      const c=require('${CONFIG_PATH}');
+      const clark=c.clarks.find(cl=>cl.name==='clark-${user}');
+      if(clark) console.log((clark.projects||[]).join(' '));
+    " 2>/dev/null
+  fi
+}
+
+# ══════════════════════════════════════════════════════════════════════════
+# COMMANDS
+# ══════════════════════════════════════════════════════════════════════════
+
+cmd_help() {
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  Personal AI v${VERSION} — Context Sync\n"
+  printf "╚${LINE}${R}\n\n"
+  printf "  ${B}Usage:${R}\n"
+  printf "    context-sync.sh                    ${D}# interactive mode${R}\n"
+  printf "    context-sync.sh --status           ${D}# show Drive connection status${R}\n"
+  printf "    context-sync.sh --sync <entity>    ${D}# trigger sync for entity${R}\n"
+  printf "    context-sync.sh --auth <email>     ${D}# authenticate Google account${R}\n"
+  printf "    context-sync.sh --help             ${D}# this help${R}\n\n"
+  printf "  ${B}Requirements:${R}\n"
+  printf "    Google Workspace CLI (gws) must be installed.\n"
+  printf "    Run ${B}context-sync.sh --auth <email>${R} before first sync.\n\n"
+}
+
+cmd_auth() {
+  local email="${1:-}"
+  [ -z "$email" ] && die "Usage: context-sync.sh --auth <email>"
+
+  require_gws || exit 1
+
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  Personal AI v${VERSION} — Google Drive Authentication\n"
+  printf "╚${LINE}${R}\n\n"
+
+  printf "  Authenticating ${B}${email}${R}...\n\n"
+  if gws auth login --email "$email"; then
+    printf "\n  ${G}✓${R} Google Drive authenticated for ${B}${email}${R}\n"
+    log_setup "GDRIVE_CONNECTED" "" 50 "$email"
+    printf "  ${G}+50 Pts.${R} for connecting Google Drive!\n\n"
+  else
+    printf "\n  ${Y}!${R} Authentication failed. Check your browser and try again.\n\n"
+    exit 1
+  fi
+}
+
+cmd_status() {
+  require_config
+
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  Personal AI v${VERSION} — Context Sync Status\n"
+  printf "╚${LINE}${R}\n\n"
+
+  local entities; entities=$(get_entities)
+  for entity in $entities; do
+    printf "  Entity: ${B}${entity}${R}\n"
+    local email; email=$(get_gdrive_email "$entity")
+    local last_sync; last_sync=$(get_last_sync "$entity")
+    local sync_count; sync_count=$(get_sync_count "$entity")
+
+    if [ -n "$email" ]; then
+      printf "    Google Drive:  ${G}✓${R} connected (${email})\n"
+      if [ -n "$last_sync" ]; then
+        printf "    Last sync:     ${last_sync}\n"
+      else
+        printf "    Last sync:     ${D}never${R}\n"
+      fi
+      printf "    Files synced:  ${sync_count}\n"
+    else
+      printf "    Google Drive:  ${Y}✗${R} not connected\n"
+    fi
+
+    # Check for context dump doc
+    local dump_marker="$VAULT_PATH/$entity/Logs/.context-dump-created"
+    if [ -f "$dump_marker" ]; then
+      printf "    Context Dump:  ${G}✓${R} created\n"
+    else
+      printf "    Context Dump:  ${D}─ none${R}\n"
+    fi
+    printf "\n"
+  done
+
+  printf "  [S] Sync now  [C] Connect Drive  [Q] Quit\n\n"
+  read -rp "  Select: " CHOICE
+  case "$CHOICE" in
+    [Ss]) cmd_interactive ;;
+    [Cc])
+      read -rp "  Google account email: " AUTH_EMAIL
+      cmd_auth "$AUTH_EMAIL"
+      ;;
+    *) printf "  ${D}Done.${R}\n\n" ;;
+  esac
+}
+
+export_doc_as_md() {
+  local doc_id="$1" output_path="$2" doc_name="$3"
+  # Export Google Doc as plain text / markdown
+  if gws drive files export "$doc_id" --mime "text/plain" --output "$output_path" 2>/dev/null; then
+    return 0
+  fi
+  # Fallback: download as docx and convert if pandoc available
+  local tmp_docx="/tmp/pai-sync-${doc_id}.docx"
+  if gws drive files export "$doc_id" --mime "application/vnd.openxmlformats-officedocument.wordprocessingml.document" --output "$tmp_docx" 2>/dev/null; then
+    if command -v pandoc > /dev/null 2>&1; then
+      pandoc -f docx -t markdown "$tmp_docx" -o "$output_path" 2>/dev/null
+      rm -f "$tmp_docx"
+      return 0
+    fi
+    rm -f "$tmp_docx"
+  fi
+  return 1
+}
+
+sync_single_file() {
+  local entity="$1" email="$2"
+  require_gws || return 1
+
+  printf "\n  Listing Google Docs...\n\n"
+  local doc_list; doc_list=$(gws drive files list --type document --format json 2>/dev/null) || {
+    printf "  ${Y}!${R} Could not list documents. Check authentication.\n\n"
+    return 1
+  }
+
+  local doc_count; doc_count=$(echo "$doc_list" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log((d.files||d||[]).length)" 2>/dev/null) || doc_count=0
+
+  if [ "$doc_count" -eq 0 ]; then
+    printf "  ${D}No Google Docs found.${R}\n\n"
+    return 0
+  fi
+
+  # Display numbered list
+  echo "$doc_list" | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const files=d.files||d||[];
+    files.forEach((f,i) => {
+      const name=f.name||f.title||'untitled';
+      console.log('    ' + (i+1) + '. ' + name);
+    });
+  " 2>/dev/null
+
+  printf "\n"
+  read -rp "  Select document number: " DOC_NUM
+
+  local doc_info; doc_info=$(echo "$doc_list" | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const files=d.files||d||[];
+    const idx=${DOC_NUM}-1;
+    if(idx>=0 && idx<files.length) {
+      const f=files[idx];
+      console.log(JSON.stringify({id:f.id,name:f.name||f.title||'untitled'}));
+    }
+  " 2>/dev/null)
+
+  if [ -z "$doc_info" ]; then
+    printf "  ${Y}!${R} Invalid selection.\n\n"
+    return 1
+  fi
+
+  local doc_id; doc_id=$(echo "$doc_info" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).id)" 2>/dev/null)
+  local doc_name; doc_name=$(echo "$doc_info" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).name)" 2>/dev/null)
+  local safe_name; safe_name=$(echo "$doc_name" | tr ' ' '-' | tr -cd '[:alnum:]-_')
+  local output_dir="$VAULT_PATH/$entity/Raw/Other"
+  mkdir -p "$output_dir"
+  local output_path="$output_dir/${safe_name}.md"
+
+  printf "  Exporting ${B}${doc_name}${R}...\n"
+  local bar; bar=$(progress_bar 8 16)
+  printf "  [${bar}] exporting...\r"
+
+  if export_doc_as_md "$doc_id" "$output_path" "$doc_name"; then
+    bar=$(progress_bar 16 16)
+    printf "  [${bar}] done ${G}✓${R}    \n"
+    printf "  ${G}✓${R} ${doc_name} → Raw/Other/${safe_name}.md\n\n"
+    save_sync_state "$entity" "$email" 1
+    return 0
+  else
+    printf "  ${Y}!${R} Export failed for ${doc_name}\n\n"
+    return 1
+  fi
+}
+
+sync_folder() {
+  local entity="$1" email="$2"
+  require_gws || return 1
+
+  printf "\n  Listing Drive folders...\n\n"
+  local folder_list; folder_list=$(gws drive files list --type folder --format json 2>/dev/null) || {
+    printf "  ${Y}!${R} Could not list folders. Check authentication.\n\n"
+    return 1
+  }
+
+  local folder_count; folder_count=$(echo "$folder_list" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log((d.files||d||[]).length)" 2>/dev/null) || folder_count=0
+
+  if [ "$folder_count" -eq 0 ]; then
+    printf "  ${D}No folders found.${R}\n\n"
+    return 0
+  fi
+
+  echo "$folder_list" | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const files=d.files||d||[];
+    files.forEach((f,i) => {
+      console.log('    ' + (i+1) + '. ' + (f.name||f.title||'untitled'));
+    });
+  " 2>/dev/null
+
+  printf "\n"
+  read -rp "  Select folder number: " FOLDER_NUM
+
+  local folder_info; folder_info=$(echo "$folder_list" | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const files=d.files||d||[];
+    const idx=${FOLDER_NUM}-1;
+    if(idx>=0 && idx<files.length) {
+      const f=files[idx];
+      console.log(JSON.stringify({id:f.id,name:f.name||f.title||'untitled'}));
+    }
+  " 2>/dev/null)
+
+  if [ -z "$folder_info" ]; then
+    printf "  ${Y}!${R} Invalid selection.\n\n"
+    return 1
+  fi
+
+  local folder_id; folder_id=$(echo "$folder_info" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).id)" 2>/dev/null)
+  local folder_name; folder_name=$(echo "$folder_info" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).name)" 2>/dev/null)
+
+  printf "\n  Listing docs in ${B}${folder_name}${R}...\n\n"
+  local docs_list; docs_list=$(gws drive files list --parent "$folder_id" --type document --format json 2>/dev/null) || {
+    printf "  ${Y}!${R} Could not list folder contents.\n\n"
+    return 1
+  }
+
+  local total_docs; total_docs=$(echo "$docs_list" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); console.log((d.files||d||[]).length)" 2>/dev/null) || total_docs=0
+
+  if [ "$total_docs" -eq 0 ]; then
+    printf "  ${D}No Google Docs in this folder.${R}\n\n"
+    return 0
+  fi
+
+  printf "  Uploading ${B}${total_docs}${R} files from \"${folder_name}\"\n\n"
+
+  local output_dir="$VAULT_PATH/$entity/Raw/Other"
+  mkdir -p "$output_dir"
+  local success_count=0
+  local current=0
+
+  # Get all doc IDs and names
+  local docs_json; docs_json=$(echo "$docs_list" | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    const files=d.files||d||[];
+    files.forEach(f => console.log(JSON.stringify({id:f.id,name:f.name||f.title||'untitled'})));
+  " 2>/dev/null)
+
+  while IFS= read -r doc_line; do
+    [ -z "$doc_line" ] && continue
+    current=$((current + 1))
+    local did; did=$(echo "$doc_line" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).id)" 2>/dev/null)
+    local dname; dname=$(echo "$doc_line" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).name)" 2>/dev/null)
+    local safe; safe=$(echo "$dname" | tr ' ' '-' | tr -cd '[:alnum:]-_')
+    local out="$output_dir/${safe}.md"
+
+    # Show current file progress
+    local bar; bar=$(progress_bar 8 16)
+    printf "  [%s/%s] %-30s %s exporting...\r" "$current" "$total_docs" "${dname:0:30}" "$bar"
+
+    if export_doc_as_md "$did" "$out" "$dname"; then
+      bar=$(progress_bar 16 16)
+      printf "  [%s/%s] %-30s %s done ${G}✓${R}     \n" "$current" "$total_docs" "${dname:0:30}" "$bar"
+      success_count=$((success_count + 1))
+    else
+      printf "  [%s/%s] %-30s ${Y}failed${R}                  \n" "$current" "$total_docs" "${dname:0:30}"
+    fi
+
+    # Show remaining count for large batches
+    local remaining=$((total_docs - current))
+    if [ "$remaining" -gt 3 ] && [ "$current" -le 3 ]; then
+      printf "  ${D}─────────────────────────────────────────${R}\n"
+      printf "  ${D}[%s-%s] %s files waiting...${R}\n" "$((current + 1))" "$total_docs" "$remaining"
+    fi
+  done <<< "$docs_json"
+
+  printf "\n  ${G}✓${R} ${success_count}/${total_docs} files exported to Raw/Other/\n"
+  save_sync_state "$entity" "$email" "$success_count"
+  printf "  ${D}Context Extractor will process them automatically.${R}\n\n"
+}
+
+create_context_dump() {
+  local entity="$1" email="$2"
+  require_gws || return 1
+
+  local doc_title="${entity}'s PersonalAI context dump"
+  printf "\n  Creating ${B}${doc_title}${R}...\n\n"
+
+  # Create the main doc with explanation content
+  local content="# ${entity}'s PersonalAI Context Dump
+
+## What is this?
+
+This document is a structured brain dump for your Personal AI system.
+Everything you write here gets synced to your entity vault and distilled
+by Context Extractor into actionable knowledge for Clark and AIOO.
+
+## How to use it
+
+1. Write freely in each section below
+2. Don't worry about formatting — raw thoughts are fine
+3. Volume matters — the more context you provide, the better your AI agents understand you
+4. Run \`context-sync.sh --sync ${entity}\` to pull updates into your vault
+
+---
+
+## Clark — Strategic Thinking
+*Scope: Long-term vision, priorities, what matters most*
+*Do: brain-dump strategy, doubts, big decisions pending*
+*Don't: list tasks — that's AIOO's job*
+
+
+
+---
+
+## Submissions — Work in Progress
+*Scope: Things you're actively working on or submitting*
+*Do: paste drafts, proposals, applications*
+*Don't: include final/published versions — those belong in archives*
+
+
+
+---
+
+## HITLs — Human-in-the-Loop Decisions
+*Scope: Decisions that need your input before AI can proceed*
+*Do: record your reasoning, preferences, constraints*
+*Don't: defer — make the call and note why*
+
+
+
+---
+
+## Coding — Technical Context
+*Scope: Code-related notes, architecture decisions, tech stack preferences*
+*Do: paste error messages, architecture diagrams, API notes*
+*Don't: paste entire codebases — use GitHub integration instead*
+
+
+
+---
+
+## AIOO — Operational Notes
+*Scope: Day-to-day operations, processes, workflows*
+*Do: describe how things work, recurring tasks, SOPs*
+*Don't: write strategy — that's Clark's domain*
+
+
+
+---
+
+## Other — Everything Else
+*Scope: Anything that doesn't fit above*
+*Do: meeting notes, random ideas, links, references*
+*Don't: hold back — volume over perfection*
+
+"
+
+  # Create the doc via gws
+  if gws drive files create --name "$doc_title" --type document --content "$content" 2>/dev/null; then
+    printf "  ${G}✓${R} Context dump template created: ${B}${doc_title}${R}\n"
+    printf "  ${D}  Open it in Google Drive, fill in the sections, then sync.${R}\n\n"
+    # Mark as created
+    local dump_marker="$VAULT_PATH/$entity/Logs/.context-dump-created"
+    mkdir -p "$(dirname "$dump_marker")"
+    date -u +"%Y-%m-%dT%H:%M:%SZ" > "$dump_marker" 2>/dev/null || true
+    return 0
+  else
+    printf "  ${Y}!${R} Could not create document. Check authentication.\n\n"
+    return 1
+  fi
+}
+
+cmd_sync() {
+  local entity="${1:-}"
+  require_config
+  [ -z "$entity" ] && die "Usage: context-sync.sh --sync <entity>"
+
+  # Verify entity exists
+  local found; found=$(node -e "const c=require('${CONFIG_PATH}'); console.log((c.entities||[]).some(e=>e.name==='${entity}')?'yes':'no')" 2>/dev/null)
+  [ "$found" != "yes" ] && die "Entity '${entity}' not found in config.json."
+
+  local email; email=$(get_gdrive_email "$entity")
+  if [ -z "$email" ]; then
+    printf "  ${Y}!${R} No Google Drive connection for ${entity}.\n"
+    printf "  ${D}  Run: context-sync.sh --auth <email>${R}\n\n"
+    return 1
+  fi
+
+  printf "  Syncing ${B}${entity}${R} (${email})...\n"
+  sync_folder "$entity" "$email"
+}
+
+cmd_interactive() {
+  require_config
+
+  local entities; entities=$(get_entities)
+  local entity_arr=($entities)
+  local entity=""
+
+  if [ "${#entity_arr[@]}" -eq 0 ]; then
+    die "No entities found. Run ./install.sh first."
+  elif [ "${#entity_arr[@]}" -eq 1 ]; then
+    entity="${entity_arr[0]}"
+  else
+    printf "  ${B}Select entity:${R}\n"
+    local idx=1
+    for e in "${entity_arr[@]}"; do
+      printf "    ${C}%s.${R} %s\n" "$idx" "$e"
+      idx=$((idx + 1))
+    done
+    printf "\n"
+    read -rp "  Select: " ECHOICE
+    if [[ "$ECHOICE" =~ ^[0-9]+$ ]] && [ "$ECHOICE" -ge 1 ] && [ "$ECHOICE" -le "${#entity_arr[@]}" ]; then
+      entity="${entity_arr[$((ECHOICE - 1))]}"
+    else
+      die "Invalid selection."
+    fi
+  fi
+
+  # Determine email from existing state or prompt
+  local email; email=$(get_gdrive_email "$entity")
+  if [ -z "$email" ]; then
+    printf "\n  ${D}No Google Drive connected for ${entity}.${R}\n"
+    read -rp "  Google account email (or Enter to skip): " email
+    if [ -z "$email" ]; then
+      printf "  ${D}Skipped.${R}\n\n"
+      return 0
+    fi
+    # Attempt auth
+    if require_gws; then
+      printf "  Authenticating...\n"
+      if gws auth login --email "$email" 2>/dev/null; then
+        printf "  ${G}✓${R} Connected\n"
+        log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
+        save_sync_state "$entity" "$email" 0
+      else
+        printf "  ${Y}!${R} Auth failed.\n\n"
+        return 1
+      fi
+    else
+      return 1
+    fi
+  fi
+
+  step_banner 2 3 "Context Sync — ${entity}" \
+    "Google Drive powers context loading for your entity" \
+    "Files are exported as .md and processed by Context Extractor" \
+    "+50 Pts. for connecting Google Drive!"
+
+  printf "  What would you like to do?\n"
+  printf "    ${C}1.${R} Upload a single file          ${D}(pick one Google Doc)${R}\n"
+  printf "    ${C}2.${R} Upload a folder               ${D}(all docs in a Drive folder)${R}\n"
+  printf "    ${C}3.${R} Create Context Dump template  ${D}(empty skeleton doc for later sync)${R}\n"
+  printf "    ${C}S.${R} Skip\n\n"
+
+  read -rp "  Select [1/2/3/S]: " SYNC_CHOICE
+  case "$SYNC_CHOICE" in
+    1) sync_single_file "$entity" "$email" ;;
+    2) sync_folder "$entity" "$email" ;;
+    3) create_context_dump "$entity" "$email" ;;
+    [Ss]) printf "  ${D}Skipped.${R}\n\n" ;;
+    *) printf "  ${Y}Invalid selection.${R}\n\n" ;;
+  esac
+}
+
+# ══════════════════════════════════════════════════════════════════════════
+# MAIN
+# ══════════════════════════════════════════════════════════════════════════
+
+case "${1:-}" in
+  --help|-h)
+    cmd_help
+    ;;
+  --auth)
+    cmd_auth "${2:-}"
+    ;;
+  --status)
+    cmd_status
+    ;;
+  --sync)
+    cmd_sync "${2:-}"
+    ;;
+  "")
+    cmd_interactive
+    ;;
+  *)
+    printf "  ${Y}Unknown option:${R} $1\n"
+    cmd_help
+    exit 1
+    ;;
+esac

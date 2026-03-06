@@ -30,12 +30,13 @@ COPY settings.json /home/pai/.claude/settings.json
 COPY CLAUDE.md /opt/nanoclaw/groups/main/CLAUDE.md
 COPY CLAUDE.md /CLAUDE.md
 
-# Universal launcher + dev-update + entrypoint
-COPY pai-launch /usr/local/bin/pai-launch
+# Universal launcher + dev-update + auto-git + entrypoint
+COPY claude-code-launch /usr/local/bin/claude-code-launch
 COPY ../setup/dev-update /usr/local/bin/dev-update
+COPY ../setup/auto-git /usr/local/bin/auto-git
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chown -R pai:pai /home/pai/.claude && \
-    chmod +x /usr/local/bin/pai-launch /usr/local/bin/dev-update /usr/local/bin/entrypoint.sh
+    chmod +x /usr/local/bin/claude-code-launch /usr/local/bin/dev-update /usr/local/bin/auto-git /usr/local/bin/entrypoint.sh
 
 # NanoClaw configuration — Clark cannot spawn containers
 ENV ASSISTANT_NAME=Clark

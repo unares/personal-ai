@@ -267,7 +267,7 @@ step_banner 3 3 "You're Ready — What To Do Next" \
   "Git push     = how your work leaves the container to GitHub"
 
 printf "  ${B}1. Enter your App Builder:${R}\n"
-printf "     ${G}docker exec -it ${CONTAINER} pai-launch${R}\n"
+printf "     ${G}docker exec -it ${CONTAINER} claude-code-launch${R}\n"
 printf "     ${D}Or directly: docker exec -it ${CONTAINER} claude --dangerously-skip-permissions${R}\n\n"
 printf "  ${B}2. First thing to say to Claude:${R}\n"
 printf "     ${D}\"Read NORTHSTAR.md. Then read /vault/Distilled/.\n"
@@ -276,7 +276,7 @@ printf "  ${B}3. When you're done working, commit and push:${R}\n"
 printf "     ${D}git add . && git commit -m \"your message\" && git push${R}\n\n"
 printf "  ${B}4. Pause and come back later:${R}\n"
 printf "     ${D}Just exit Claude Code — container keeps running.${R}\n"
-printf "     ${D}Re-attach: docker exec -it ${CONTAINER} pai-launch${R}\n\n"
+printf "     ${D}Re-attach: docker exec -it ${CONTAINER} claude-code-launch${R}\n\n"
 printf "  ${B}5. Stop the App Builder when done for the day:${R}\n"
 printf "     ${D}docker stop ${CONTAINER} && docker rm ${CONTAINER}${R}\n\n"
 

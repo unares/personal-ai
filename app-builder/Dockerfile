@@ -12,9 +12,10 @@ RUN mkdir -p /home/pai/.claude /workspace /vault
 
 COPY settings.json /home/pai/.claude/settings.json
 COPY git-credential-pat /usr/local/bin/git-credential-pat
-COPY pai-launch /usr/local/bin/pai-launch
+COPY claude-code-launch /usr/local/bin/claude-code-launch
 COPY ../setup/dev-update /usr/local/bin/dev-update
-RUN chmod +x /usr/local/bin/git-credential-pat /usr/local/bin/pai-launch /usr/local/bin/dev-update
+COPY ../setup/auto-git /usr/local/bin/auto-git
+RUN chmod +x /usr/local/bin/git-credential-pat /usr/local/bin/claude-code-launch /usr/local/bin/dev-update /usr/local/bin/auto-git
 RUN git config --global credential.helper '/usr/local/bin/git-credential-pat'
 RUN chown -R pai:pai /home/pai /workspace /vault
 
