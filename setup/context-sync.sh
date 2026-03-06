@@ -346,7 +346,7 @@ create_google_doc() {
 write_to_google_doc() {
   local doc_id="$1" content="$2" email="${3:-}"
   set_gws_account "$email"
-  gws docs +write --document "$doc_id" --text "$content" 2>/dev/null
+  gws docs +write --document "$doc_id" --text "$content" > /dev/null 2>&1
 }
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -739,24 +739,54 @@ Tabs:
       --json "{\"requests\": [{\"addDocumentTab\": {\"tabProperties\": {\"title\": \"${tname}\"}}}]}" 2>/dev/null)
 
     if [ -n "$tab_result" ]; then
-      # Extract the new tab ID
+      # Extract the new tab ID — try multiple response paths
       local tab_id; tab_id=$(echo "$tab_result" | node -e "
         const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
         const r=d.replies||[];
-        for(const rep of r){if(rep.addDocumentTab){console.log(rep.addDocumentTab.tabId||'');process.exit(0)}}
+        for(const rep of r){
+          const at=rep.addDocumentTab||rep.AddDocumentTab||{};
+          if(at.tabId){console.log(at.tabId);process.exit(0)}
+          if(at.tab&&at.tab.tabProperties){console.log(at.tab.tabProperties.tabId||'');process.exit(0)}
+        }
+        // Try to get tab from document itself
+        const tabs=d.tabs||[];
+        if(tabs.length>0){const last=tabs[tabs.length-1];console.log((last.tabProperties||{}).tabId||'');process.exit(0)}
         console.log('');
       " 2>/dev/null) || true
 
       if [ -n "$tab_id" ]; then
-        # Insert text into the new tab
-        local text_content; text_content=$(printf "${tdesc}")
+        # Insert text into the new tab — escape newlines for JSON
+        local json_text; json_text=$(echo "${tname} — ${tdesc}" | node -e "
+          const t=require('fs').readFileSync('/dev/stdin','utf8');
+          process.stdout.write(JSON.stringify(t).slice(1,-1));
+        " 2>/dev/null)
         gws docs documents batchUpdate \
           --params "{\"documentId\": \"${doc_id}\"}" \
-          --json "{\"requests\": [{\"insertText\": {\"text\": \"${tname} — ${text_content}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
+          --json "{\"requests\": [{\"insertText\": {\"text\": \"${json_text}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
         printf " ${G}done${R}\n"
         tab_ok=$((tab_ok + 1))
       else
-        printf " ${G}created${R} ${D}(text skipped)${R}\n"
+        # Tab created but can't get ID — try reading the doc to find it
+        local doc_data; doc_data=$(gws docs documents get --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null)
+        tab_id=$(echo "$doc_data" | node -e "
+          const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+          const tabs=d.tabs||[];
+          for(const t of tabs){if((t.tabProperties||{}).title==='${tname}'){console.log(t.tabProperties.tabId||'');process.exit(0)}}
+          console.log('');
+        " 2>/dev/null) || true
+
+        if [ -n "$tab_id" ]; then
+          local json_text; json_text=$(echo "${tname} — ${tdesc}" | node -e "
+            const t=require('fs').readFileSync('/dev/stdin','utf8');
+            process.stdout.write(JSON.stringify(t).slice(1,-1));
+          " 2>/dev/null)
+          gws docs documents batchUpdate \
+            --params "{\"documentId\": \"${doc_id}\"}" \
+            --json "{\"requests\": [{\"insertText\": {\"text\": \"${json_text}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
+          printf " ${G}done${R}\n"
+        else
+          printf " ${G}created${R} ${D}(text skipped)${R}\n"
+        fi
         tab_ok=$((tab_ok + 1))
       fi
     else
