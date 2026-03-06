@@ -1,5 +1,5 @@
 #!/bin/bash
-# Personal AI v0.4 — Clark Launcher (NanoClaw)
+# Personal AI — Clark Launcher (NanoClaw)
 # Usage: ./clark.sh [person-name]
 # Example: ./clark.sh michal
 # If no name given, uses owner from config.json
@@ -10,11 +10,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_DIR/version.sh"
 VAULT_PATH="$REPO_DIR/memory-vault"
 CONFIG_PATH="$REPO_DIR/config.json"
 NANOCLAW_CONFIG="$REPO_DIR/nanoclaw-config"
 IMAGE="personal-ai-clark"
 WHATSAPP_AUTH="$HOME/.config/personal-ai/whatsapp"
+ACCOUNTS_STORE="${ACCOUNTS_STORE:-$HOME/.config/personal-ai/claude-accounts}"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
 W=64
@@ -22,7 +24,7 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 banner() {
   printf "${B}${G}╔${LINE}\n"
-  printf "║  Personal AI v0.4 — Clark (NanoClaw)\n"
+  printf "║  Personal AI v${VERSION} — Clark (NanoClaw)\n"
   printf "║  Clarity Architect\n"
   printf "╚${LINE}${R}\n\n"
 }
@@ -83,7 +85,7 @@ fi
 docker network create personal-ai-net 2>/dev/null || true
 
 # Hydrate WELCOME.md
-WELCOME_TMP=$(mktemp /tmp/welcome-XXXXXX.md)
+WELCOME_TMP=$(mktemp /tmp/welcome-XXXXXX)
 HUMAN_LIST=$(node -e "const c=require('${CONFIG_PATH}'); console.log(c.clarks.filter(x=>x.projects).map(x=>x.name.replace('clark-','')).join(', '))")
 sed -e "s/{ROLE}/Clark/g" -e "s/{CONTAINER_NAME}/${CLARK_NAME}/g" -e "s/{ENTITY}/${PROJECTS}/g" -e "s/{HUMAN_LIST}/${HUMAN_LIST}/g" "$REPO_DIR/WELCOME.md" > "$WELCOME_TMP"
 
@@ -121,6 +123,29 @@ else
   printf "  ${D}ℹ${R} No WhatsApp auth found. Run setup/setup-whatsapp.sh to enable.\n"
 fi
 
+# Claude accounts (persistent OAuth)
+if [ -d "$ACCOUNTS_STORE" ]; then
+  MOUNTS+=(-v "$ACCOUNTS_STORE:/home/pai/.claude-accounts:ro")
+  printf "  ${G}✓${R} Claude accounts mounted\n"
+fi
+
+# Interactive account selection
+CLAUDE_ACCOUNT=""
+if [ -f "$REPO_DIR/accounts/select-account.sh" ]; then
+  export HUMAN_NAME="${HUMAN_NAME:-$(git config user.name 2>/dev/null || whoami)}"
+  source "$REPO_DIR/accounts/select-account.sh"
+  select_account "$HOME/.claude"
+  printf "\n"
+fi
+
+# Pre-copy credentials if account selected
+if [ -n "$CLAUDE_ACCOUNT" ] && [ -f "$ACCOUNTS_STORE/$CLAUDE_ACCOUNT/.credentials.json" ]; then
+  CLAUDE_CREDS_TMP=$(mktemp -d /tmp/claude-creds-XXXXXX)
+  cp "$ACCOUNTS_STORE/$CLAUDE_ACCOUNT/.credentials.json" "$CLAUDE_CREDS_TMP/.credentials.json"
+  MOUNTS+=(-v "$CLAUDE_CREDS_TMP/.credentials.json:/home/pai/.claude/.credentials.json:ro")
+  printf "  ${G}✓${R} Account credentials: ${CLAUDE_ACCOUNT}\n"
+fi
+
 # Load environment
 [ -f "$REPO_DIR/.env" ] && set -a && source "$REPO_DIR/.env" && set +a
 
@@ -129,12 +154,15 @@ ENV_ARGS=(
   -e "CLARK=${CLARK_NAME}"
   -e "PERSON=${PERSON}"
   -e "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}"
+  -e "CLAUDE_ACCOUNT=${CLAUDE_ACCOUNT:-}"
+  -e "HUMAN_NAME=${HUMAN_NAME:-$(git config user.name 2>/dev/null || whoami)}"
 )
 
 # NOTE: Clark stays on Claude for now (no hybrid routing). Gemini decision deferred.
 
 # Launch Clark with NanoClaw — NO Docker socket (cannot spawn containers)
 docker run -d --name "$CLARK_NAME" \
+  --hostname "$CLARK_NAME" \
   --network personal-ai-net \
   "${MOUNTS[@]}" \
   "${ENV_ARGS[@]}" \

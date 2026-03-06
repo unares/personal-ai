@@ -1,11 +1,12 @@
 #!/bin/bash
-# Personal AI v0.4 — Integration Test
+# Personal AI — Integration Test
 # Usage: ./test-integration.sh
 # End-to-end verification of the full system.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_DIR/version.sh"
 VAULT_PATH="$REPO_DIR/memory-vault"
 
 G="\033[32m" Y="\033[33m" R_="\033[31m" B="\033[1m" D="\033[2m" R="\033[0m"
@@ -20,7 +21,7 @@ fail() { printf "  ${R_}✗${R} %s\n" "$1"; FAIL=$((FAIL+1)); }
 section() { printf "\n  ${B}── %s ──${R}\n" "$1"; }
 
 printf "${B}${G}╔${LINE}\n"
-printf "║  Personal AI v0.4 — Integration Test\n"
+printf "║  Personal AI v${VERSION} — Integration Test\n"
 printf "╚${LINE}${R}\n"
 
 # ── Pre-checks ────────────────────────────────────────────────────────────

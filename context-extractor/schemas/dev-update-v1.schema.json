@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-ai.local/schemas/dev-update-v1.schema.json",
+  "title": "Dev Update v1.0",
+  "description": "Schema for structured development updates written by Claude Code instances to the vault. YAML frontmatter in the markdown file must conform to this schema.",
+  "type": "object",
+  "required": ["type", "version", "session_id", "agent_role", "entity", "timestamp"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "const": "dev-update",
+      "description": "Document type identifier — always 'dev-update'"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version (e.g. '1.0')"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[a-z-]+-[a-z]+-\\d{8}-[0-9a-f]{6}$",
+      "description": "Unique session identifier: {role}-{entity}-{YYYYMMDD}-{hex6}. Used for traceability back to chronicle.jsonl and session logs.",
+      "examples": ["aioo-onething-20260306-a3f1c2", "clark-inisio-20260306-b2e4d1"]
+    },
+    "agent_role": {
+      "type": "string",
+      "enum": ["clark", "aioo", "app-builder", "host-dev"],
+      "description": "Role of the Claude Code instance that generated this update"
+    },
+    "agent_label": {
+      "type": "string",
+      "description": "Human-readable role name (e.g. 'AI Operating Officer', 'Clarity Architect')"
+    },
+    "entity": {
+      "type": "string",
+      "description": "Target entity name from config.json (e.g. 'onething', 'inisio', 'procenteo')"
+    },
+    "human": {
+      "type": "string",
+      "description": "Human owner or collaborator name (e.g. 'michal', 'andras')"
+    },
+    "app": {
+      "type": ["string", "null"],
+      "description": "App name for app-builder role (null for non-builder roles)"
+    },
+    "branch": {
+      "type": "string",
+      "description": "Git branch active during the session"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the update was flushed"
+    }
+  },
+  "additionalProperties": false,
+
+  "$defs": {
+    "sections": {
+      "title": "Dev Update Sections",
+      "description": "Markdown ## sections and their Context Extractor routing",
+      "type": "object",
+      "properties": {
+        "What Was Built": {
+          "description": "Technical implementation details. Routes to: specification",
+          "type": "string"
+        },
+        "Why It Matters": {
+          "description": "Business context, strategic alignment, northstar connection. Routes to: shared-story",
+          "type": "string"
+        },
+        "Decisions Made": {
+          "description": "Architectural choices, trade-offs, rationale. Routes to: specification + shared-story",
+          "type": "string"
+        },
+        "Human Patterns Observed": {
+          "description": "Working style insights, preferences, communication patterns. Routes to: personal-story",
+          "type": "string"
+        },
+        "Current State": {
+          "description": "What works, what's blocked, what's next. Routes to: specification",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -15,7 +15,7 @@ const { initDistillSchema } = require('./distill');
 const { initStorySchema } = require('./story-blog');
 const { initAccessSchema } = require('./access');
 const cache = require('./cache');
-const { startBinPurgeSchedule } = require('./bin-purge');
+const { startBinAuditSchedule } = require('./bin-purge');
 const chronicle = require('./chronicle');
 
 const VAULT = process.env.VAULT_PATH || '/vault';
@@ -137,7 +137,7 @@ function main() {
   startWatchers();
   startPostProcessor(entityNames, 30000);
   cache.startCompactionSchedule();
-  startBinPurgeSchedule(VAULT, entityNames);
+  startBinAuditSchedule(VAULT, entityNames);
   const app = createApi(CONFIG, VAULT);
   app.listen(PORT, () => {
     console.log(`Context Extractor v0.4 (advanced mode) listening on port ${PORT}`);

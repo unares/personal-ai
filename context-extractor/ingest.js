@@ -17,8 +17,13 @@ function validatePayload(body, config) {
   return { valid: true };
 }
 
-function writeToRaw(entity, title, content, vaultPath) {
-  const rawDir = path.join(vaultPath, entity, 'Raw');
+function writeToRaw(entity, title, content, vaultPath, subfolder) {
+  let rawDir = path.join(vaultPath, entity, 'Raw');
+  if (subfolder) {
+    // Sanitize subfolder to prevent path traversal
+    const safe = subfolder.replace(/\.\./g, '').replace(/[^a-zA-Z0-9/_-]/g, '');
+    rawDir = path.join(rawDir, safe);
+  }
   fs.mkdirSync(rawDir, { recursive: true });
   const safeName = (title || 'untitled')
     .replace(/[^a-zA-Z0-9_-]/g, '_')
@@ -37,9 +42,9 @@ function createIngestHandler(config, vaultPath) {
       const status = validation.status || 400;
       return res.status(status).json({ error: validation.error });
     }
-    const { entity, title, content } = req.body;
+    const { entity, title, content, subfolder } = req.body;
     try {
-      const filePath = writeToRaw(entity, title, content, vaultPath);
+      const filePath = writeToRaw(entity, title, content, vaultPath, subfolder);
       res.json({
         ok: true,
         queued_path: path.relative(vaultPath, filePath),

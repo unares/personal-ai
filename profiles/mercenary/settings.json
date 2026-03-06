@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "mercenary",
+    "ROLE_LABEL": "Mercenary"
+  },
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Edit(**)",
+      "Write(**)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(mkdir*)",
+      "Bash(cp*)",
+      "Bash(mv*)",
+      "Bash(echo*)",
+      "Bash(touch*)",
+      "Bash(date*)",
+      "Bash(pwd*)",
+      "Bash(npm test*)",
+      "Bash(npm run*)",
+      "Bash(npm install*)",
+      "Bash(npx*)",
+      "Bash(node*)",
+      "Bash(docker run*)",
+      "Bash(docker ps*)",
+      "Bash(docker stop*)",
+      "Bash(docker rm*)",
+      "Bash(docker exec*)",
+      "Bash(docker logs*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(sudo*)",
+      "Bash(curl*|*bash*)",
+      "Bash(wget*|*bash*)",
+      "Bash(docker run*--privileged*)"
+    ]
+  },
+  "spinnerTipsEnabled": true,
+  "spinnerTipsOverride": {
+    "excludeDefault": true,
+    "tips": [
+      "Do One Thing. Execute with precision.",
+      "Read NORTHSTAR.md first — always.",
+      "Ship deliverables, not plans.",
+      "Log decisions. Stay accountable.",
+      "Run /compact at 70% context."
+    ]
+  }
+}

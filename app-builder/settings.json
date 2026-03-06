@@ -1,4 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "app-builder",
+    "ROLE_LABEL": "App Builder"
+  },
   "permissions": {
     "allow": [
       "Read(**)",
@@ -29,6 +34,7 @@
       "Bash(touch*)",
       "Bash(which*)",
       "Bash(pwd*)",
+      "Bash(dev-update*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],
@@ -41,11 +47,14 @@
     ]
   },
   "spinnerTipsEnabled": true,
-  "spinnerTipsOverride": [
-    "Do One Thing. Ship fast. No bloat.",
-    "Run /compact when approaching 70% context",
-    "Run /handoff to save state before ending",
-    "Functions < 30 lines. Files < 300 lines.",
-    "Read Distilled/ for project context — it's already there"
-  ]
+  "spinnerTipsOverride": {
+    "excludeDefault": true,
+    "tips": [
+      "Do One Thing. Ship fast. No bloat.",
+      "Run /compact when approaching 70% context.",
+      "Run /handoff to save state before ending.",
+      "Functions < 30 lines. Files < 300 lines.",
+      "Read Distilled/ for project context."
+    ]
+  }
 }

@@ -1,10 +1,11 @@
 #!/bin/bash
-# Personal AI v0.2 — Add a Human to an Entity
+# Personal AI — Add a Human to an Entity
 # Usage: ./add-human.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$REPO_DIR/version.sh"
 CONFIG_PATH="$REPO_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
@@ -13,7 +14,8 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step >= total ? 16 : step * 16 / total)) empty=$((16 - filled))
+  local filled=$((step >= total ? 16 : step * 16 / total))
+  local empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
@@ -52,7 +54,7 @@ ask_raw() {
 
 clear
 printf "${B}${G}╔${LINE}\n"
-printf "║  Personal AI v0.2 — Add Human\n"
+printf "║  Personal AI v${VERSION} — Add Human\n"
 printf "╚${LINE}${R}\n\n"
 
 if [ ! -f "$CONFIG_PATH" ]; then

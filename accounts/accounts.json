@@ -1,0 +1,22 @@
+{
+  "accounts": [
+    {
+      "id": "michal-personal",
+      "label": "Michal (Personal)",
+      "owner": "michal",
+      "type": "personal"
+    },
+    {
+      "id": "mateusz-personal",
+      "label": "Mateusz (Personal)",
+      "owner": "mateusz",
+      "type": "personal"
+    },
+    {
+      "id": "procenteo-shared",
+      "label": "Procenteo (Shared)",
+      "owner": "shared",
+      "type": "shared"
+    }
+  ]
+}

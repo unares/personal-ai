@@ -1,4 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "clark",
+    "ROLE_LABEL": "Clarity Architect"
+  },
   "permissions": {
     "allow": [
       "Read(**)",
@@ -8,6 +13,7 @@
       "Bash(grep*)",
       "Bash(echo*)",
       "Bash(pwd*)",
+      "Bash(dev-update*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],
@@ -24,11 +30,14 @@
     ]
   },
   "spinnerTipsEnabled": true,
-  "spinnerTipsOverride": [
-    "Clarity before action. What is the One Thing?",
-    "Read Distilled/ context before advising.",
-    "You are the Philosophical Brain, not the executor.",
-    "Surface patterns across entities.",
-    "Run /compact when approaching 70% context."
-  ]
+  "spinnerTipsOverride": {
+    "excludeDefault": true,
+    "tips": [
+      "Clarity before action. What is the One Thing?",
+      "Read Distilled/ context before advising.",
+      "You are the Philosophical Brain, not the executor.",
+      "Surface patterns across entities.",
+      "Run /compact when approaching 70% context."
+    ]
+  }
 }

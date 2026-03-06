@@ -1,0 +1,221 @@
+#!/bin/sh
+# dev-update — Write structured development updates to the vault
+# Baked into all Claude Code containers at /usr/local/bin/dev-update
+#
+# Usage:
+#   dev-update --section "What Was Built" "Implemented section-level routing..."
+#   dev-update --section "Decisions Made" "Chose X over Y because..."
+#   dev-update --flush                    # assemble + write to vault
+#   dev-update "What Was Built" "Quick single-section update"  # shortcut: accumulate + flush
+#
+# Environment:
+#   ENTITY       — target entity (required, e.g. "onething")
+#   ROLE         — agent role (required, e.g. "aioo", "clark", "app-builder")
+#   ROLE_LABEL   — human-readable role name (optional, e.g. "AI Operating Officer")
+#   VAULT_PATH   — vault mount path (default: /vault)
+#   HUMAN_NAME   — owner name (optional, from git config or env)
+#   APP_NAME     — app name for app-builder role (optional)
+#   CX_HOST      — Context Extractor host (default: context-extractor:27125)
+
+set -e
+
+VAULT="${VAULT_PATH:-/vault}"
+CX="${CX_HOST:-context-extractor:27125}"
+# Accumulator keyed by entity+role (stable across invocations within a container)
+ACCUMULATOR="/tmp/.dev-update-${ENTITY:-unknown}-${ROLE:-unknown}"
+
+# --- Helpers ---
+
+die() { echo "dev-update: $1" >&2; exit 1; }
+
+check_env() {
+  [ -z "$ENTITY" ] && die "ENTITY env var is required"
+  [ -z "$ROLE" ] && die "ROLE env var is required"
+}
+
+generate_session_id() {
+  local date_part
+  date_part=$(date -u +%Y%m%d)
+  local hash_part
+  hash_part=$(head -c 3 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  echo "${ROLE}-${ENTITY}-${date_part}-${hash_part}"
+}
+
+get_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown"
+}
+
+get_human() {
+  if [ -n "$HUMAN_NAME" ]; then
+    echo "$HUMAN_NAME"
+  else
+    git config user.name 2>/dev/null || echo "unknown"
+  fi
+}
+
+subfolder_for_role() {
+  case "$ROLE" in
+    clark)       echo "Clark" ;;
+    aioo)        echo "AIOO" ;;
+    app-builder)
+      if [ -n "$APP_NAME" ]; then
+        echo "app-builder/${APP_NAME}"
+      else
+        echo "app-builder"
+      fi
+      ;;
+    *)           echo "${ROLE}" ;;
+  esac
+}
+
+# --- Section accumulator ---
+
+accumulate_section() {
+  local header="$1"
+  local content="$2"
+
+  [ -z "$header" ] && die "Section header is required"
+  [ -z "$content" ] && die "Section content is required"
+
+  # Append to accumulator file
+  if [ -f "$ACCUMULATOR" ]; then
+    printf "\n" >> "$ACCUMULATOR"
+  fi
+  printf "## %s\n\n%s\n" "$header" "$content" >> "$ACCUMULATOR"
+
+  echo "dev-update: accumulated section '${header}'"
+}
+
+# --- Flush: assemble + write ---
+
+flush_update() {
+  if [ ! -f "$ACCUMULATOR" ]; then
+    die "Nothing to flush — no sections accumulated. Use: dev-update --section \"Header\" \"Content\" first"
+  fi
+
+  local session_id
+  session_id=$(generate_session_id)
+  local timestamp
+  timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  local branch
+  branch=$(get_branch)
+  local human
+  human=$(get_human)
+  local subfolder
+  subfolder=$(subfolder_for_role)
+  local label="${ROLE_LABEL:-$ROLE}"
+  local app_line=""
+  [ -n "$APP_NAME" ] && app_line="app: ${APP_NAME}"
+
+  # Build YAML frontmatter
+  local frontmatter
+  frontmatter=$(cat <<YAML
+---
+type: dev-update
+version: "1.0"
+session_id: ${session_id}
+agent_role: ${ROLE}
+agent_label: "${label}"
+entity: ${ENTITY}
+human: ${human}
+${app_line}branch: "${branch}"
+timestamp: "${timestamp}"
+---
+YAML
+)
+
+  # Read accumulated sections
+  local body
+  body=$(cat "$ACCUMULATOR")
+
+  # Full markdown content
+  local content="${frontmatter}
+
+${body}"
+
+  # Generate filename
+  local date_slug
+  date_slug=$(date -u +%Y-%m-%d)
+  local hash_slug
+  hash_slug=$(echo "$session_id" | tail -c 7)
+  local filename="dev-update-${date_slug}-${hash_slug}.md"
+
+  # Try Context Extractor API first
+  local api_success=false
+  if command -v curl >/dev/null 2>&1; then
+    local payload
+    payload=$(printf '{"entity":"%s","title":"dev-update-%s-%s","content":%s,"subfolder":"%s"}' \
+      "$ENTITY" "$ROLE" "$date_slug" \
+      "$(echo "$content" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))' 2>/dev/null || echo '""')" \
+      "$subfolder")
+
+    if curl -sf -X POST "http://${CX}/ingest" \
+         -H "Content-Type: application/json" \
+         -d "$payload" >/dev/null 2>&1; then
+      api_success=true
+      echo "dev-update: sent to Context Extractor API"
+    fi
+  fi
+
+  # Fallback: write directly to vault Raw/
+  if [ "$api_success" = false ]; then
+    local out_dir="${VAULT}/${ENTITY}/Raw/${subfolder}"
+    mkdir -p "$out_dir"
+    local out_path="${out_dir}/${filename}"
+    printf "%s" "$content" > "$out_path"
+    echo "dev-update: written to ${out_path}"
+  fi
+
+  # Log to chronicle
+  local log_dir="${VAULT}/${ENTITY}/Logs"
+  mkdir -p "$log_dir"
+  printf '[%s] DEV_UPDATE session_id=%s role=%s entity=%s file=%s\n' \
+    "$timestamp" "$session_id" "$ROLE" "$ENTITY" "$filename" \
+    >> "${log_dir}/context-extractor.log"
+
+  # Cleanup
+  rm -f "$ACCUMULATOR"
+
+  echo "dev-update: flushed ${session_id} (${filename})"
+}
+
+# --- Main ---
+
+check_env
+
+case "${1:-}" in
+  --section|-s)
+    shift
+    accumulate_section "$1" "$2"
+    ;;
+  --flush|-f)
+    flush_update
+    ;;
+  --help|-h)
+    cat <<'HELP'
+dev-update — Write structured development updates to the vault
+
+Usage:
+  dev-update --section "Header" "Content"   Accumulate a section
+  dev-update --flush                        Assemble and write to vault
+  dev-update "Header" "Content"             Single-section shortcut
+
+Sections (## headers) that Context Extractor routes:
+  "What Was Built"           → specification
+  "Why It Matters"           → shared-story
+  "Decisions Made"           → specification + shared-story
+  "Human Patterns Observed"  → personal-story
+  "Current State"            → specification
+
+Environment: ENTITY, ROLE, ROLE_LABEL, VAULT_PATH, HUMAN_NAME, APP_NAME
+HELP
+    ;;
+  "")
+    die "Usage: dev-update --section \"Header\" \"Content\" | --flush | \"Header\" \"Content\""
+    ;;
+  *)
+    # Single-section shortcut: accumulate + flush in one go
+    accumulate_section "$1" "$2"
+    flush_update
+    ;;
+esac

@@ -1,0 +1,8 @@
+{
+  "name": "mercenary",
+  "label": "Mercenary",
+  "description": "Surgical executor. One mission, full autonomy, zero deviation.",
+  "icon": "#",
+  "skills": [],
+  "notes": "Skills coming in v0.5"
+}
