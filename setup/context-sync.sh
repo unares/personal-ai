@@ -766,10 +766,9 @@ cmd_interactive() {
   require_config
   ensure_gws || exit 1
 
-  step_banner 1 3 "Context Sync" \
+  step_banner 1 3 "Personal AI v${VERSION} — Context Sync" \
     "Connect your Google account to sync Google Docs into your vault" \
-    "Context Extractor distills them for Clark and AIOO" \
-    "@gmail.com users: just type your username (e.g. john)"
+    "Context Extractor distills them for Clark and AIOO"
 
   # ── Entity selection ──────────────────────────────────────────
   local entities; entities=$(get_entities)
@@ -801,13 +800,16 @@ cmd_interactive() {
   fi
 
   # ── Google account ────────────────────────────────────────────
-  # Always prompt for email — ignore stale state
+  printf "  ${B}Next:${R} Connect your Google account for ${B}${entity}${R}\n"
+  printf "  ${D}You will select OAuth scopes, then authorize in your browser.${R}\n"
+  printf "  ${D}@gmail.com users — just type your username (e.g. john)${R}\n\n"
+
   local email=""
   while true; do
-    read -rp "  Google account (username or full email, Enter to skip): " email
+    read -rp "  Google account: " email
     if [ -z "$email" ]; then
-      printf "  ${D}Skipped.${R}\n\n"
-      return 0
+      printf "  ${Y}Google account is required for Context Sync.${R}\n"
+      continue
     fi
     # Auto-append @gmail.com if no @ present
     if [[ "$email" != *@* ]]; then
@@ -832,12 +834,11 @@ cmd_interactive() {
     printf " ${G}connected${R}\n"
     printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
   else
-    printf " ${Y}not yet authenticated${R}\n\n"
-    printf "  ${B}Two steps to authenticate:${R}\n"
-    printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
-    printf "    2. Open the URL printed below in your browser\n\n"
+    printf " ${Y}authenticating${R}\n\n"
+    printf "  ${B}Select scopes${R} — pick ${B}Recommended${R} and press Enter,\n"
+    printf "  then ${B}open the URL${R} in your browser to authorize.\n\n"
     if gws auth login --account="$email" --services drive,docs; then
-  
+
       printf "\n  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
       connected=true
     else
