@@ -303,21 +303,80 @@ list_docs_in_folder() {
 export_doc_as_md() {
   local doc_id="$1" output_path="$2" email="${3:-}"
   set_gws_account "$email"
-  local tmp_file="/tmp/pai-export-${doc_id}.md"
+  local tmp_file="/tmp/pai-export-$$.md"
+  local err_file="/tmp/pai-export-$$.err"
 
-  # Try markdown export first (available since mid-2024)
-  if gws drive files export --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/markdown\"}" > "$tmp_file" 2>/dev/null && [ -s "$tmp_file" ]; then
-    mv "$tmp_file" "$output_path"
+  # Method 1: gws export with --output flag (markdown)
+  if gws drive files export \
+    --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/markdown\"}" \
+    --output "$tmp_file" > /dev/null 2>"$err_file"; then
+    if [ -s "$tmp_file" ]; then
+      mv "$tmp_file" "$output_path"
+      rm -f "$err_file"
+      return 0
+    fi
+  fi
+
+  # Method 2: gws export with --output flag (plain text)
+  if gws drive files export \
+    --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/plain\"}" \
+    --output "$tmp_file" > /dev/null 2>"$err_file"; then
+    if [ -s "$tmp_file" ]; then
+      mv "$tmp_file" "$output_path"
+      rm -f "$err_file"
+      return 0
+    fi
+  fi
+
+  # Method 3: gws export to stdout (some versions write content to stdout)
+  local content=""
+  content=$(gws drive files export \
+    --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/plain\"}" 2>/dev/null) || true
+  # Only use if it looks like document content, not JSON metadata
+  if [ -n "$content" ] && ! echo "$content" | head -1 | grep -q '^{'; then
+    echo "$content" > "$output_path"
+    rm -f "$tmp_file" "$err_file"
     return 0
   fi
 
-  # Fallback: plain text export
-  if gws drive files export --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/plain\"}" > "$tmp_file" 2>/dev/null && [ -s "$tmp_file" ]; then
-    mv "$tmp_file" "$output_path"
-    return 0
+  # Method 4: Read doc content via Docs API and extract text
+  local doc_json=""
+  doc_json=$(gws docs documents get \
+    --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null) || true
+  if [ -n "$doc_json" ]; then
+    local extracted=""
+    extracted=$(echo "$doc_json" | node -e "
+      const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+      const tabs=d.tabs||[];
+      let out='';
+      for(const tab of tabs){
+        const title=(tab.tabProperties||{}).title||'';
+        const body=tab.documentTab&&tab.documentTab.body;
+        if(!body) continue;
+        if(title) out+='# '+title+'\n\n';
+        const elems=body.content||[];
+        for(const el of elems){
+          if(el.paragraph){
+            const text=el.paragraph.elements.map(e=>(e.textRun||{}).content||'').join('');
+            out+=text;
+          }
+        }
+        out+='\n---\n\n';
+      }
+      process.stdout.write(out);
+    " 2>/dev/null) || true
+    if [ -n "$extracted" ]; then
+      echo "$extracted" > "$output_path"
+      rm -f "$tmp_file" "$err_file"
+      return 0
+    fi
   fi
 
-  rm -f "$tmp_file"
+  # All methods failed — show last error
+  if [ -s "$err_file" ]; then
+    printf "  ${Y}Export error:${R} %s\n" "$(cat "$err_file")" >&2
+  fi
+  rm -f "$tmp_file" "$err_file"
   return 1
 }
 
