@@ -277,10 +277,9 @@ get_visible_entities() {
 # Ref: https://github.com/googleworkspace/cli
 
 set_gws_account() {
-  local email="${1:-}"
-  if [ -n "$email" ]; then
-    gws auth default "$email" 2>/dev/null || true
-  fi
+  # gws uses the most recently authenticated account by default.
+  # Multi-account switching not yet supported by gws CLI.
+  true
 }
 
 list_google_docs() {
@@ -399,7 +398,7 @@ cmd_auth() {
     printf "\n  ${G}✓${R} Google Drive authenticated for ${B}${email}${R}\n"
 
     # Set as default account for convenience
-    gws auth default "$email" 2>/dev/null || true
+
 
     log_setup "GDRIVE_CONNECTED" "" 50 "$email"
     printf "  ${G}+50 Pts.${R} for connecting Google Drive!\n\n"
@@ -838,7 +837,7 @@ cmd_interactive() {
     printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
     printf "    2. Open the URL printed below in your browser\n\n"
     if gws auth login --account="$email" --services drive,docs; then
-      gws auth default "$email" 2>/dev/null || true
+  
       printf "\n  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
       connected=true
     else
@@ -847,8 +846,6 @@ cmd_interactive() {
     fi
   fi
 
-  # Set as default account for all subsequent gws API calls
-  gws auth default "$email" 2>/dev/null || true
   log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
   save_sync_state "$entity" "$email" 0
 
