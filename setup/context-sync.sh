@@ -219,7 +219,13 @@ get_sync_state_file() {
 get_gdrive_email() {
   local entity="$1"
   local state_file; state_file=$(get_sync_state_file "$entity")
-  [ -f "$state_file" ] && node -e "const s=JSON.parse(require('fs').readFileSync('${state_file}','utf8')); console.log(s.email||'')" 2>/dev/null || echo ""
+  local raw_email=""
+  raw_email=$([ -f "$state_file" ] && node -e "const s=JSON.parse(require('fs').readFileSync('${state_file}','utf8')); console.log(s.email||'')" 2>/dev/null || echo "")
+  # Normalize: auto-append @gmail.com if missing
+  if [ -n "$raw_email" ] && [[ "$raw_email" != *@* ]]; then
+    raw_email="${raw_email}@gmail.com"
+  fi
+  echo "$raw_email"
 }
 
 get_last_sync() {
@@ -319,7 +325,17 @@ export_doc_as_md() {
 create_google_doc() {
   local title="$1" email="${2:-}"
   local acct; acct=$(gws_account_flag "$email")
-  gws $acct docs documents create --json "{\"title\": \"${title}\"}" 2>/dev/null
+  local err_file="/tmp/pai-gws-create-err.$$"
+  local result; result=$(gws $acct docs documents create --json "{\"title\": \"${title}\"}" 2>"$err_file")
+  local rc=$?
+  if [ $rc -ne 0 ] || [ -z "$result" ]; then
+    local err_msg; err_msg=$(cat "$err_file" 2>/dev/null)
+    [ -n "$err_msg" ] && printf "  ${D}gws error: %s${R}\n" "$err_msg" >&2
+    rm -f "$err_file"
+    return 1
+  fi
+  rm -f "$err_file"
+  echo "$result"
 }
 
 write_to_google_doc() {
