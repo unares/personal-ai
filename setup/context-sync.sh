@@ -488,7 +488,14 @@ sync_single_file() {
   " 2>/dev/null
 
   printf "\n"
-  read -rp "  Select document number: " DOC_NUM
+  local DOC_NUM=""
+  while true; do
+    read -rp "  Select document number: " DOC_NUM
+    if [[ "$DOC_NUM" =~ ^[0-9]+$ ]] && [ "$DOC_NUM" -ge 1 ] && [ "$DOC_NUM" -le "$doc_count" ]; then
+      break
+    fi
+    printf "  ${Y}Please enter a number between 1 and ${doc_count}.${R}\n"
+  done
 
   local doc_info; doc_info=$(echo "$doc_list" | node -e "
     const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
@@ -506,18 +513,19 @@ sync_single_file() {
 
   local doc_id; doc_id=$(echo "$doc_info" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).id)" 2>/dev/null)
   local doc_name; doc_name=$(echo "$doc_info" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).name)" 2>/dev/null)
-  local safe_name; safe_name=$(echo "$doc_name" | tr ' ' '-' | tr -cd '[:alnum:]-_')
+  # Sanitize filename: spaces to dashes, collapse multiple dashes, strip non-alphanum
+  local safe_name; safe_name=$(echo "$doc_name" | tr ' ' '-' | tr -cd '[:alnum:]-_' | sed 's/--*/-/g; s/^-//; s/-$//')
   local output_dir="$VAULT_PATH/$entity/Raw/Other"
   mkdir -p "$output_dir"
   local output_path="$output_dir/${safe_name}.md"
 
-  printf "\n  Exporting ${B}${doc_name}${R}...\n"
+  printf "\n  ${B}Exporting${R} ${doc_name}...\n"
   local bar; bar=$(progress_bar 8 16)
-  printf "  [${bar}] exporting...\r"
+  printf "  ${G}[${bar}]${R} exporting...\r"
 
   if export_doc_as_md "$doc_id" "$output_path" "$email"; then
     bar=$(progress_bar 16 16)
-    printf "  [${bar}] done ${G}✓${R}    \n"
+    printf "  ${G}[${bar}] done ✓${R}    \n"
     printf "  ${G}✓${R} ${doc_name} → Raw/Other/${safe_name}.md\n"
     printf "  ${D}Context Extractor will distill it automatically.${R}\n\n"
     save_sync_state "$entity" "$email" 1
@@ -609,7 +617,7 @@ sync_folder() {
     current=$((current + 1))
     local did; did=$(echo "$doc_line" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).id)" 2>/dev/null)
     local dname; dname=$(echo "$doc_line" | node -e "console.log(JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).name)" 2>/dev/null)
-    local safe; safe=$(echo "$dname" | tr ' ' '-' | tr -cd '[:alnum:]-_')
+    local safe; safe=$(echo "$dname" | tr ' ' '-' | tr -cd '[:alnum:]-_' | sed 's/--*/-/g; s/^-//; s/-$//')
     local out="$output_dir/${safe}.md"
 
     # Show current file progress
