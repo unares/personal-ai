@@ -746,6 +746,10 @@ cmd_interactive() {
   require_config
   ensure_gws || exit 1
 
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  Personal AI v${VERSION} — Context Sync\n"
+  printf "╚${LINE}${R}\n\n"
+
   local entities; entities=$(get_entities)
   local entity_arr=($entities)
   local entity=""
@@ -754,42 +758,50 @@ cmd_interactive() {
     die "No entities found. Run ./install.sh first."
   elif [ "${#entity_arr[@]}" -eq 1 ]; then
     entity="${entity_arr[0]}"
+    printf "  Entity: ${B}${entity}${R}\n\n"
   else
-    printf "  ${B}Select entity:${R}\n"
+    printf "  ${B}Select entity (enter number):${R}\n"
     local idx=1
     for e in "${entity_arr[@]}"; do
       printf "    ${C}%s.${R} %s\n" "$idx" "$e"
       idx=$((idx + 1))
     done
     printf "\n"
-    read -rp "  Select: " ECHOICE
-    if [[ "$ECHOICE" =~ ^[0-9]+$ ]] && [ "$ECHOICE" -ge 1 ] && [ "$ECHOICE" -le "${#entity_arr[@]}" ]; then
-      entity="${entity_arr[$((ECHOICE - 1))]}"
-    else
-      die "Invalid selection."
-    fi
+    while true; do
+      read -rp "  Select [1-${#entity_arr[@]}]: " ECHOICE
+      if [[ "$ECHOICE" =~ ^[0-9]+$ ]] && [ "$ECHOICE" -ge 1 ] && [ "$ECHOICE" -le "${#entity_arr[@]}" ]; then
+        entity="${entity_arr[$((ECHOICE - 1))]}"
+        break
+      fi
+      printf "  ${Y}Please enter a number between 1 and ${#entity_arr[@]}.${R}\n"
+    done
+    printf "\n  Entity: ${B}${entity}${R}\n\n"
   fi
 
   # Determine email from existing state or prompt
   local email; email=$(get_gdrive_email "$entity")
   if [ -z "$email" ]; then
-    printf "\n  ${D}No Google Drive connected for ${entity}.${R}\n"
+    printf "  ${D}No Google Drive connected for ${entity}.${R}\n"
     read -rp "  Google account email (or Enter to skip): " email
     if [ -z "$email" ]; then
       printf "  ${D}Skipped.${R}\n\n"
       return 0
     fi
-    # Attempt auth
-    printf "  Authenticating ${B}${email}${R}...\n"
-    printf "  ${D}This will open your browser for Google OAuth consent.${R}\n\n"
-    if gws auth login --account "$email" -s drive,docs 2>/dev/null; then
-      printf "  ${G}✓${R} Connected\n\n"
-      log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
-      save_sync_state "$entity" "$email" 0
+    # Check if already authenticated with gws
+    if gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
+      printf "  ${G}✓${R} Already authenticated as ${B}${email}${R}\n\n"
     else
-      printf "  ${Y}!${R} Auth failed. Run: context-sync.sh --auth ${email}\n\n"
-      return 1
+      printf "  Authenticating ${B}${email}${R}...\n"
+      printf "  ${D}Open the URL printed below in your browser.${R}\n\n"
+      if gws auth login --account "$email" -s drive,docs; then
+        printf "  ${G}✓${R} Connected\n\n"
+      else
+        printf "  ${Y}!${R} Auth failed. Run: context-sync.sh --auth ${email}\n\n"
+        return 1
+      fi
     fi
+    log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
+    save_sync_state "$entity" "$email" 0
   fi
 
   step_banner 2 3 "Context Sync — ${entity}" \
