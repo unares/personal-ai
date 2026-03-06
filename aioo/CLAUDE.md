@@ -39,6 +39,12 @@ Your full vault is at /vault/ — you have read-write access.
 - `/distill-now` — trigger immediate distillation
 - `/chronicle-log` — log an event to Chronicle
 
+## Plan Archiving
+When a development plan is approved (exiting plan mode), save a copy to /vault/claude-plans/:
+- Filename: descriptive-kebab-case.md (e.g., `auto-git-gamification.md`)
+- Include the plan content as-is — plans are meaning-dense context
+- This creates a permanent record that can be contrasted with the actual codebase
+
 ## Dev Updates
 After significant milestones or at session end, write a dev update:
 - Run: `dev-update --section "What Was Built" "..."` for implementation details
@@ -47,6 +53,17 @@ After significant milestones or at session end, write a dev update:
 - Run: `dev-update --section "Human Patterns Observed" "..."` if you noticed working style patterns
 - Run: `dev-update --flush` to send to Context Extractor
 - Your session_id links the update back to this session for traceability
+
+## Auto-Git Workflow
+auto-git tracks your GitHub activity and awards Git Karma points.
+- Commit after each completed feature, fix, or logical milestone (+10 karma)
+- Use semantic prefixes: feat:, fix:, chore:, docs: (+10 karma)
+- Push after every 2-3 commits — auto-git will remind you (+5 karma)
+- Work on feature branches, never commit directly to main (+5 karma)
+- Create PRs for significant work (+15 karma)
+- Tag releases for version milestones (+25 karma)
+- auto-git provides git context at session start — read it
+- At session end, karma is flushed to dev-update for the semantic layer
 
 ## Rules
 - Always read NORTHSTAR.md and recent Distilled/ before starting work

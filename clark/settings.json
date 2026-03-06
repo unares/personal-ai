@@ -14,6 +14,7 @@
       "Bash(echo*)",
       "Bash(pwd*)",
       "Bash(dev-update*)",
+      "Bash(auto-git*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],
@@ -29,6 +30,10 @@
       "Bash(wget*)"
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "/usr/local/bin/auto-git --status-line"
+  },
   "spinnerTipsEnabled": true,
   "spinnerTipsOverride": {
     "excludeDefault": true,
@@ -37,7 +42,8 @@
       "Read Distilled/ context before advising.",
       "You are the Philosophical Brain, not the executor.",
       "Surface patterns across entities.",
-      "Run /compact when approaching 70% context."
+      "Run /compact when approaching 70% context.",
+      "auto-git: The dev branch shows working patterns. Awareness is clarity."
     ]
   }
 }

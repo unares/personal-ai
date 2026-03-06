@@ -35,6 +35,7 @@
       "Bash(which*)",
       "Bash(pwd*)",
       "Bash(dev-update*)",
+      "Bash(auto-git*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],
@@ -46,6 +47,26 @@
       "Bash(wget*|*bash*)"
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "/usr/local/bin/auto-git --status-line"
+  },
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "/usr/local/bin/auto-git --session-start"
+      }]
+    }],
+    "Stop": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "/usr/local/bin/auto-git --checkpoint"
+      }]
+    }]
+  },
   "spinnerTipsEnabled": true,
   "spinnerTipsOverride": {
     "excludeDefault": true,
@@ -54,7 +75,11 @@
       "Run /compact when approaching 70% context.",
       "Run /handoff to save state before ending.",
       "Functions < 30 lines. Files < 300 lines.",
-      "Read Distilled/ for project context."
+      "Read Distilled/ for project context.",
+      "auto-git: Commit early, commit often. Each commit = a save point. +10 karma.",
+      "auto-git: Push after every few commits. Unpushed work is unbackedup work. +5 karma.",
+      "auto-git: Feature branches keep main clean. Never commit to main directly. +5 karma.",
+      "auto-git: Semantic prefixes (feat:, fix:, chore:) = structured history. +10 karma."
     ]
   }
 }
