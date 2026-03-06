@@ -331,12 +331,12 @@ create_google_doc() {
   local result; result=$(cat "$out_file" 2>/dev/null)
   rm -f "$out_file"
   if [ $rc -ne 0 ] || [ -z "$result" ]; then
-    [ -n "$result" ] && printf "  ${Y}gws:${R} %s\n" "$result"
+    printf "  ${Y}gws error (rc=%s):${R} %s\n" "$rc" "${result:-<no output>}" >&2
     return 1
   fi
   # Check if result looks like JSON with an error
   if echo "$result" | grep -qi '"error"'; then
-    printf "  ${Y}gws:${R} %s\n" "$result"
+    printf "  ${Y}gws error:${R} %s\n" "$result" >&2
     return 1
   fi
   echo "$result"
