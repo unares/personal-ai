@@ -279,7 +279,7 @@ get_visible_entities() {
 gws_account_flag() {
   local email="${1:-}"
   if [ -n "$email" ]; then
-    echo "--account $email"
+    echo "--account=$email"
   fi
 }
 
@@ -395,7 +395,7 @@ cmd_auth() {
   printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
   printf "    2. Open the URL in your browser to authorize\n\n"
 
-  if gws auth login --account "$email" --services drive,docs; then
+  if gws auth login --account="$email" --services drive,docs; then
     printf "\n  ${G}✓${R} Google Drive authenticated for ${B}${email}${R}\n"
 
     # Set as default account for convenience
@@ -825,7 +825,7 @@ cmd_interactive() {
   for i in 1 2 3 4 5 6; do printf "."; sleep 0.15; done
 
   # Check if gws has credentials for this account
-  if gws auth status --account "$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
+  if gws auth status --account="$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
     connected=true
   fi
 
@@ -837,7 +837,7 @@ cmd_interactive() {
     printf "  ${B}Two steps to authenticate:${R}\n"
     printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
     printf "    2. Open the URL printed below in your browser\n\n"
-    if gws auth login --account "$email" --services drive,docs; then
+    if gws auth login --account="$email" --services drive,docs; then
       printf "\n  ${G}✓${R} Google Drive: ${B}${email}${R}\n\n"
       connected=true
     else
