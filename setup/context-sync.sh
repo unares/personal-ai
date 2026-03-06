@@ -285,7 +285,7 @@ set_gws_account() {
 list_google_docs() {
   local email="${1:-}"
   set_gws_account "$email"
-  gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\"", "pageSize": 50, "fields": "files(id,name,modifiedTime)"}' 2>/dev/null
+  gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\" and trashed=false", "pageSize": 50, "fields": "files(id,name,modifiedTime)", "orderBy": "modifiedTime desc"}' 2>/dev/null
 }
 
 list_drive_folders() {
@@ -521,7 +521,8 @@ sync_single_file() {
   local entity="$1" email="$2"
   ensure_gws || return 1
 
-  printf "\n  Listing your Google Docs...\n\n"
+  printf "\n  ${B}Your recent Google Docs:${R}\n"
+  printf "  ${D}To see more, edit them in Google Drive.${R}\n\n"
   local doc_list; doc_list=$(list_google_docs "$email") || {
     printf "  ${Y}!${R} Could not list documents. Run: context-sync.sh --auth ${email}\n\n"
     return 1
