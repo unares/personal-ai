@@ -599,10 +599,10 @@ sync_single_file() {
   if export_doc_as_md "$doc_id" "$output_path" "$email"; then
     bar=$(progress_bar 16 16)
     printf "  ${G}[${bar}] done ✓${R}    \n"
-    printf "  ${G}✓${R} ${doc_name} → Raw/Other/${safe_name}.md\n\n"
+    printf "  ${G}✓${R} Exported ${B}${doc_name}${R}\n\n"
     save_sync_state "$entity" "$email" 1
 
-    # Wait for Context Extractor to process the file
+    # Wait for Context Extractor to process and distill
     local distilled_dir="$VAULT_PATH/$entity/Distilled"
     local wait_secs=0
     local max_wait=10
@@ -624,10 +624,16 @@ sync_single_file() {
     if [ -n "$distilled_files" ]; then
       printf "  ${G}✓${R} ${B}Distilled by Context Extractor:${R}\n"
       while IFS= read -r dfile; do
-        # Show path relative to vault
         local rel_path="${dfile#$VAULT_PATH/}"
-        printf "    ${D}→${R} ${rel_path}\n"
+        printf "    ${G}→${R} ${rel_path}\n"
       done <<< "$distilled_files"
+      # Show where the original went
+      local bin_file=""
+      bin_file=$(find "$VAULT_PATH/$entity/Bin" -name "${safe_name}.md" -type f 2>/dev/null | sort | tail -1)
+      if [ -n "$bin_file" ]; then
+        local bin_rel="${bin_file#$VAULT_PATH/}"
+        printf "    ${D}→ Original archived: ${bin_rel}${R}\n"
+      fi
       printf "\n"
     else
       printf "  ${D}Context Extractor will distill it when the container is running.${R}\n\n"
