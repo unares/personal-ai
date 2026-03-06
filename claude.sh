@@ -6,6 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/version.sh"
 PROFILES_DIR="$SCRIPT_DIR/profiles"
+ACCOUNTS_DIR="$SCRIPT_DIR/accounts"
 CLAUDE_FLAGS="--dangerously-skip-permissions"
 
 # ── Detect human identity ────────────────────────────────────
@@ -214,6 +215,12 @@ activate_profile() {
 
   if [ "$name" = "vanilla" ]; then
     printf "  ${G}+${R} Vanilla — launching stock Claude Code (autonomous mode).\n\n"
+    export PROFILE_NAME="vanilla"
+    if [ -f "$ACCOUNTS_DIR/select-account.sh" ]; then
+      source "$ACCOUNTS_DIR/select-account.sh"
+      select_account "$HOME/.claude"
+      printf "\n"
+    fi
     exec claude $CLAUDE_FLAGS
   fi
 
@@ -272,7 +279,15 @@ activate_profile() {
   cp "$assembled" "$PWD/CLAUDE.md" 2>/dev/null || cp "$assembled" "/tmp/CLAUDE.md"
   rm -f "$assembled"
 
-  printf "  ${G}+${R} Autonomous mode enabled (--dangerously-skip-permissions)\n"
+  # Account selection
+  export PROFILE_NAME="$name"
+  if [ -f "$ACCOUNTS_DIR/select-account.sh" ]; then
+    printf "\n"
+    source "$ACCOUNTS_DIR/select-account.sh"
+    select_account "$HOME/.claude"
+  fi
+
+  printf "\n  ${G}+${R} Autonomous mode enabled (--dangerously-skip-permissions)\n"
   printf "  ${D}Launching Claude Code...${R}\n\n"
   exec claude $CLAUDE_FLAGS
 }
