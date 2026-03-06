@@ -6,6 +6,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/version.sh"
 PROFILES_DIR="$SCRIPT_DIR/profiles"
+CLAUDE_FLAGS="--dangerously-skip-permissions"
+
+# ── Detect human identity ────────────────────────────────────
+# Set HUMAN_NAME from env, git config, or system user
+if [ -z "${HUMAN_NAME:-}" ]; then
+  HUMAN_NAME=$(git config user.name 2>/dev/null || whoami)
+fi
+export HUMAN_NAME
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
 W=64
@@ -15,7 +23,7 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 banner() {
   printf "${B}${G}╔${LINE}\n"
   printf "║  Personal AI v${VERSION} — Claude Code\n"
-  printf "║  Select a profile to configure your session.\n"
+  printf "║  Human: ${HUMAN_NAME}  |  Select a profile.\n"
   printf "╚${LINE}${R}\n\n"
 }
 
@@ -67,14 +75,26 @@ inspect_profile() {
   printf "║  ${desc}\n"
   printf "╚${LINE}${R}\n\n"
 
+  printf "  ${B}Mode:${R} Autonomous (--dangerously-skip-permissions)\n"
+  printf "  ${B}Human:${R} ${HUMAN_NAME} (from git config / env)\n\n"
+
   if [ "$name" = "vanilla" ]; then
-    printf "  ${D}Vanilla profile — stock Claude Code, no configuration.${R}\n\n"
+    printf "  ${D}Vanilla — stock Claude Code, no custom settings.${R}\n"
+    printf "  ${D}Vault: none  |  Northstar: none  |  Entity context: none${R}\n\n"
     return
+  fi
+
+  # Vault access summary from CLAUDE.md
+  if [ -f "$dir/CLAUDE.md" ]; then
+    local vault_line=$(grep -i 'vault access' "$dir/CLAUDE.md" | head -1 | sed 's/^.*\*\*Vault access\*\*: //' | sed 's/^- //')
+    if [ -n "$vault_line" ]; then
+      printf "  ${B}Vault:${R} %s\n" "$vault_line"
+    fi
   fi
 
   # Settings diff
   if [ -f "$dir/settings.json" ] && command -v node > /dev/null 2>&1; then
-    printf "  ${B}Settings (vs. vanilla):${R}\n"
+    printf "\n  ${B}Settings (vs. vanilla):${R}\n"
     node -e "
       const s = require('$dir/settings.json');
       if (s.env) {
@@ -193,8 +213,8 @@ activate_profile() {
   local dir="$PROFILES_DIR/$name"
 
   if [ "$name" = "vanilla" ]; then
-    printf "  ${G}+${R} Vanilla — launching stock Claude Code.\n\n"
-    exec claude
+    printf "  ${G}+${R} Vanilla — launching stock Claude Code (autonomous mode).\n\n"
+    exec claude $CLAUDE_FLAGS
   fi
 
   if [ ! -d "$dir" ] || [ ! -f "$dir/profile.json" ]; then
@@ -209,11 +229,20 @@ activate_profile() {
     cat "$PROFILES_DIR/_standard/STANDARD.md" >> "$assembled"
   fi
 
-  # Copy settings.json to ~/.claude/
+  # Copy settings.json to ~/.claude/ and inject HUMAN_NAME
   if [ -f "$dir/settings.json" ]; then
     mkdir -p "$HOME/.claude"
-    cp "$dir/settings.json" "$HOME/.claude/settings.json"
-    printf "  ${G}+${R} Settings loaded from profiles/${name}/settings.json\n"
+    if command -v node > /dev/null 2>&1; then
+      node -e "
+        const s = JSON.parse(require('fs').readFileSync('$dir/settings.json','utf8'));
+        s.env = s.env || {};
+        s.env.HUMAN_NAME = '$HUMAN_NAME';
+        require('fs').writeFileSync('$HOME/.claude/settings.json', JSON.stringify(s, null, 2) + '\n');
+      " 2>/dev/null || cp "$dir/settings.json" "$HOME/.claude/settings.json"
+    else
+      cp "$dir/settings.json" "$HOME/.claude/settings.json"
+    fi
+    printf "  ${G}+${R} Settings loaded (profile: ${name}, human: ${HUMAN_NAME})\n"
   fi
 
   # Display the assembled CLAUDE.md
@@ -243,8 +272,9 @@ activate_profile() {
   cp "$assembled" "$PWD/CLAUDE.md" 2>/dev/null || cp "$assembled" "/tmp/CLAUDE.md"
   rm -f "$assembled"
 
+  printf "  ${G}+${R} Autonomous mode enabled (--dangerously-skip-permissions)\n"
   printf "  ${D}Launching Claude Code...${R}\n\n"
-  exec claude
+  exec claude $CLAUDE_FLAGS
 }
 
 # ── Main ──────────────────────────────────────────────────────

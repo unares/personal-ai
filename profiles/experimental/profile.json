@@ -1,8 +1,8 @@
 {
   "name": "experimental",
   "label": "Experimental",
-  "description": "Vanilla clone. Test setups, transfer what works into profiles.",
+  "description": "Sandbox with northstar context. Test configs, export what works.",
   "icon": "!",
   "skills": [],
-  "notes": "Use this to prototype Claude Code configurations before committing them to a real profile"
+  "notes": "Loads NORTHSTAR.md and entity northstars. Use to prototype Claude Code configurations."
 }

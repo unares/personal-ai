@@ -7,23 +7,34 @@
   "permissions": {
     "allow": [
       "Read(**)",
+      "Edit(**)",
+      "Write(**)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
       "Bash(ls*)",
       "Bash(cat*)",
       "Bash(find*)",
       "Bash(grep*)",
+      "Bash(mkdir*)",
+      "Bash(cp*)",
+      "Bash(mv*)",
       "Bash(echo*)",
+      "Bash(touch*)",
       "Bash(pwd*)",
       "Bash(wc*)",
       "Bash(head*)",
       "Bash(tail*)",
+      "Bash(node*)",
       "WebFetch(*)",
       "WebSearch(*)"
     ],
     "deny": [
-      "Bash(rm*)",
+      "Bash(rm -rf*)",
       "Bash(sudo*)",
       "Bash(git push*)",
-      "Bash(npm*)",
       "Bash(curl*|*bash*)",
       "Bash(wget*|*bash*)"
     ]
@@ -34,7 +45,7 @@
     "tips": [
       "Explore possibilities. Surface patterns.",
       "Read Distilled/ before researching further.",
-      "Produce summaries, not essays.",
+      "Write findings, not essays.",
       "Test ideas before recommending them.",
       "Run /compact at 70% context."
     ]
