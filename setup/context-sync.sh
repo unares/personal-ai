@@ -809,14 +809,14 @@ cmd_interactive() {
   fi
 
   step_banner 2 3 "Context Sync — ${entity}" \
-    "Google Drive powers context loading for your entity" \
-    "Files are exported as .md and processed by Context Extractor" \
+    "Google Docs are exported as .md into your vault" \
+    "Context Extractor then distills them for Clark and AIOO" \
     "+50 Pts. for connecting Google Drive!"
 
   printf "  What would you like to do?\n"
-  printf "    ${C}1.${R} Upload a single file          ${D}(pick one Google Doc)${R}\n"
-  printf "    ${C}2.${R} Upload a folder               ${D}(all docs in a Drive folder)${R}\n"
-  printf "    ${C}3.${R} Create Context Dump template  ${D}(empty skeleton doc for later sync)${R}\n"
+  printf "    ${C}1.${R} Pull a Google Doc             ${D}(pick one doc, export as .md)${R}\n"
+  printf "    ${C}2.${R} Pull all docs from a folder   ${D}(export every doc in a Drive folder)${R}\n"
+  printf "    ${C}3.${R} Create Context Dump doc       ${D}(skeleton doc in Drive for later sync)${R}\n"
   printf "    ${C}S.${R} Skip\n\n"
 
   read -rp "  Select [1/2/3/S]: " SYNC_CHOICE
