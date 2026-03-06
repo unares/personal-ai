@@ -285,7 +285,14 @@ set_gws_account() {
 list_google_docs() {
   local email="${1:-}"
   set_gws_account "$email"
-  gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\" and trashed=false", "pageSize": 50, "fields": "files(id,name,modifiedTime)", "orderBy": "modifiedTime desc"}' 2>/dev/null
+  # Request trashed+size fields; filter client-side since some Drive backends delay trash state
+  local raw; raw=$(gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\" and trashed = false", "pageSize": 50, "fields": "files(id,name,modifiedTime,size,trashed)", "orderBy": "modifiedTime desc"}' 2>/dev/null) || return 1
+  # Double-filter: remove any files where trashed is true
+  echo "$raw" | node -e "
+    const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    d.files=(d.files||[]).filter(f=>f.trashed!==true);
+    console.log(JSON.stringify(d));
+  " 2>/dev/null
 }
 
 list_drive_folders() {
@@ -538,12 +545,18 @@ sync_single_file() {
     return 0
   fi
 
-  # Display numbered list
+  # Display numbered list with dates and sizes
   echo "$doc_list" | node -e "
     const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
-    (d.files||[]).forEach((f,i) => {
-      const mod = f.modifiedTime ? '  ' + f.modifiedTime.substring(0,10) : '';
-      console.log('    ' + (i+1) + '. ' + f.name + '\x1b[2m' + mod + '\x1b[0m');
+    const files=d.files||[];
+    const maxName=Math.min(40, Math.max(...files.map(f=>f.name.length)));
+    files.forEach((f,i) => {
+      const name=f.name.length>40?f.name.substring(0,37)+'...':f.name;
+      const mod=f.modifiedTime?f.modifiedTime.substring(0,10):'';
+      const sz=f.size?((parseInt(f.size)/1024).toFixed(0)+'K'):'';
+      const pad=' '.repeat(Math.max(1,42-name.length));
+      const num=String(i+1).padStart(String(files.length).length);
+      console.log('    '+num+'. '+name+pad+'\x1b[2m'+mod+(sz?' '+sz:'')+'\x1b[0m');
     });
   " 2>/dev/null
 
