@@ -325,8 +325,10 @@ export_doc_as_md() {
 create_google_doc() {
   local title="$1" email="${2:-}"
   local acct; acct=$(gws_account_flag "$email")
+  # Escape special chars in title for JSON
+  local safe_title; safe_title=$(echo "$title" | sed "s/'/\\\\u0027/g; s/\"/\\\\\"/g")
   local out_file="/tmp/pai-gws-create.$$.out"
-  gws $acct docs documents create --json "{\"title\": \"${title}\"}" > "$out_file" 2>&1
+  gws $acct docs documents create --json "{\"title\": \"${safe_title}\"}" > "$out_file" 2>&1
   local rc=$?
   local result; result=$(cat "$out_file" 2>/dev/null)
   rm -f "$out_file"
@@ -773,10 +775,12 @@ cmd_interactive() {
   require_config
   ensure_gws || exit 1
 
-  printf "${B}${G}╔${LINE}\n"
-  printf "║  Personal AI v${VERSION} — Context Sync\n"
-  printf "╚${LINE}${R}\n\n"
+  step_banner 1 3 "Context Sync" \
+    "Connect your Google account to sync Google Docs into your vault" \
+    "Context Extractor distills them for Clark and AIOO" \
+    "@gmail.com users: just type your username (e.g. john)"
 
+  # ── Entity selection ──────────────────────────────────────────
   local entities; entities=$(get_entities)
   local entity_arr=($entities)
   local entity=""
@@ -787,7 +791,7 @@ cmd_interactive() {
     entity="${entity_arr[0]}"
     printf "  Entity: ${B}${entity}${R}\n\n"
   else
-    printf "  ${B}Select entity (enter number):${R}\n"
+    printf "  ${B}Select entity:${R}\n"
     local idx=1
     for e in "${entity_arr[@]}"; do
       printf "    ${C}%s.${R} %s\n" "$idx" "$e"
@@ -805,42 +809,69 @@ cmd_interactive() {
     printf "\n  Entity: ${B}${entity}${R}\n\n"
   fi
 
-  # Determine email from existing state or prompt
-  local email; email=$(get_gdrive_email "$entity")
-  if [ -z "$email" ]; then
-    printf "  ${D}No Google Drive connected for ${entity}.${R}\n"
-    while true; do
-      read -rp "  Google account email (or Enter to skip): " email
-      if [ -z "$email" ]; then
-        printf "  ${D}Skipped.${R}\n\n"
-        return 0
-      fi
-      # Auto-append @gmail.com if no @ present
-      if [[ "$email" != *@* ]]; then
-        email="${email}@gmail.com"
-        printf "  ${D}→ Using ${email}${R}\n"
-      fi
-      break
-    done
-    # Check if already authenticated with gws
-    if gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
-      printf "  ${G}✓${R} Already authenticated as ${B}${email}${R}\n\n"
-    else
-      printf "  Authenticating ${B}${email}${R}...\n\n"
-      printf "  ${B}Two steps:${R}\n"
-      printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
-      printf "    2. Open the URL in your browser to authorize\n\n"
-      if gws auth login --account "$email" --services drive,docs; then
-        printf "  ${G}✓${R} Connected\n\n"
-      else
-        printf "  ${Y}!${R} Auth failed. Run: context-sync.sh --auth ${email}\n\n"
-        return 1
-      fi
+  # ── Google account ────────────────────────────────────────────
+  # Always prompt for email — ignore stale state
+  local email=""
+  while true; do
+    read -rp "  Google account (username or full email, Enter to skip): " email
+    if [ -z "$email" ]; then
+      printf "  ${D}Skipped.${R}\n\n"
+      return 0
     fi
-    log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
-    save_sync_state "$entity" "$email" 0
+    # Auto-append @gmail.com if no @ present
+    if [[ "$email" != *@* ]]; then
+      email="${email}@gmail.com"
+    fi
+    printf "  ${D}→ ${email}${R}\n\n"
+    break
+  done
+
+  # ── Connecting ────────────────────────────────────────────────
+  printf "  Connecting to Google Drive"
+
+  # Animated progress bar while checking auth
+  local connected=false
+  for i in 1 2 3 4 5 6 7 8; do
+    printf "."
+    sleep 0.2
+  done
+
+  if gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
+    connected=true
   fi
 
+  if $connected; then
+    printf " ${G}done${R}\n"
+    printf "  ${G}✓${R} Connected as ${B}${email}${R}\n\n"
+  else
+    printf " ${Y}not authenticated${R}\n\n"
+    printf "  ${B}Two steps to authenticate:${R}\n"
+    printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
+    printf "    2. Open the URL in your browser to authorize\n\n"
+    if gws auth login --account "$email" --services drive,docs; then
+      # Verify connection after auth
+      printf "\n  Verifying"
+      for i in 1 2 3 4; do printf "."; sleep 0.3; done
+      if gws --account "$email" drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
+        connected=true
+        printf " ${G}done${R}\n"
+        printf "  ${G}✓${R} Connected as ${B}${email}${R}\n\n"
+      else
+        printf " ${Y}failed${R}\n"
+        printf "  ${Y}!${R} Auth succeeded but Drive access could not be verified.\n"
+        printf "  ${D}  Make sure Google Drive API is enabled in your GCP project.${R}\n\n"
+        return 1
+      fi
+    else
+      printf "  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
+      return 1
+    fi
+  fi
+
+  log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
+  save_sync_state "$entity" "$email" 0
+
+  # ── Sync options ──────────────────────────────────────────────
   step_banner 2 3 "Context Sync — ${entity}" \
     "Google Docs are exported as .md into your vault" \
     "Context Extractor then distills them for Clark and AIOO" \
