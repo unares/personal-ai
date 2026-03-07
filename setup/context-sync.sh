@@ -280,19 +280,15 @@ get_visible_entities() {
 # All gws commands use --params for API parameters and return JSON.
 # Ref: https://github.com/googleworkspace/cli
 
-GWS_ACTIVE_ACCOUNT=""
-
 set_gws_account() {
-  GWS_ACTIVE_ACCOUNT="${1:-}"
+  # gws uses the most recently authenticated account.
+  # Account switching happens via gws auth login --account=<email>.
+  true
 }
 
-# Wrapper: runs gws with --account if one is set
+# Wrapper: runs gws (account is set globally via auth login)
 run_gws() {
-  if [ -n "$GWS_ACTIVE_ACCOUNT" ]; then
-    gws --account="$GWS_ACTIVE_ACCOUNT" "$@"
-  else
-    gws "$@"
-  fi
+  gws "$@"
 }
 
 # Returns the email of the currently active gws Google account (no --account forcing)
@@ -1768,10 +1764,23 @@ cmd_interactive() {
       gws auth login --account="$email" --services drive,docs
       local auth_rc=$?
       if [ $auth_rc -eq 0 ]; then
-        printf "\n  Connecting"
+        printf "\n  Verifying"
         for i in 1 2 3 4 5 6 7 8; do printf "."; sleep 0.2; done
-        printf " ${G}connected${R}\n\n"
-        connected=true
+        # Verify the active account actually matches
+        local verified_email; verified_email=$(get_active_gws_email)
+        if [ "$verified_email" = "$email" ]; then
+          printf " ${G}connected${R} (${email})\n\n"
+          connected=true
+        elif [ -n "$verified_email" ]; then
+          printf " ${Y}account mismatch${R}\n\n"
+          printf "  ${Y}!${R} Authenticated as ${B}${email}${R} but gws is still using ${B}${verified_email}${R}\n"
+          printf "  ${D}  gws supports only one active account at a time.${R}\n"
+          printf "  ${D}  Try: gws auth login --account=${email} --services drive,docs${R}\n\n"
+          return 1
+        else
+          printf " ${G}connected${R}\n\n"
+          connected=true
+        fi
       else
         printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
         return 1
