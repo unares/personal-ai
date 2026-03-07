@@ -627,16 +627,12 @@ sync_single_file() {
         local rel_path="${dfile#$VAULT_PATH/}"
         printf "    ${G}→${R} ${rel_path}\n"
       done <<< "$distilled_files"
-      # Show where the original went
-      local bin_file=""
-      bin_file=$(find "$VAULT_PATH/$entity/Bin" -name "${safe_name}.md" -type f 2>/dev/null | sort | tail -1)
-      if [ -n "$bin_file" ]; then
-        local bin_rel="${bin_file#$VAULT_PATH/}"
-        printf "    ${D}→ Original archived: ${bin_rel}${R}\n"
-      fi
+      printf "    ${D}→ Raw: ${entity}/Raw/Other/${safe_name}.md${R}\n"
       printf "\n"
     else
-      printf "  ${D}Context Extractor will distill it when the container is running.${R}\n\n"
+      printf "  ${G}✓${R} ${B}Saved to Memory:${R}\n"
+      printf "    ${G}→${R} ${entity}/Raw/Other/${safe_name}.md\n"
+      printf "    ${D}Context Extractor will distill it when the container is running.${R}\n\n"
     fi
 
     return 0
