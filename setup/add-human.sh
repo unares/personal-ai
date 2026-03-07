@@ -14,8 +14,8 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step >= total ? 16 : step * 16 / total))
-  local empty=$((16 - filled))
+  local filled; filled=$((step >= total ? 16 : step * 16 / total))
+  local empty; empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
@@ -31,6 +31,15 @@ step_banner() {
 }
 
 lower() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'; }
+
+log_setup() {
+  local event="$1" entity="${2:-}" pts="${3:-0}" detail="${4:-}"
+  local log_dir="$REPO_DIR/memory-vault/Logs"
+  mkdir -p "$log_dir"
+  local ts; ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+  local entry="{\"ts\":\"$ts\",\"event\":\"$event\",\"entity\":\"$entity\",\"pts\":$pts,\"detail\":\"$detail\"}"
+  echo "$entry" >> "$log_dir/setup.jsonl" 2>/dev/null || true
+}
 
 confirm() {
   while true; do
@@ -147,6 +156,7 @@ NODEEOF
 VAULT_PATH="$REPO_DIR/memory-vault"
 mkdir -p "$VAULT_PATH/$ENTITY_NAME/Raw/${HU_NAME}/{Clark,Submissions,HITLs,Coding}"
 mkdir -p "$VAULT_PATH/$ENTITY_NAME/Distilled/${HU_NAME}"
+log_setup "HUMAN_ADDED" "$ENTITY_NAME" 0 "$HU_CLARK"
 printf "  ${G}✓${R} ${HU_CLARK} added — Clark + AIOO access for ${ENTITY_NAME}\n"
 printf "  ${G}✓${R} Raw/${HU_NAME}/ and Distilled/${HU_NAME}/ created\n"
 printf "  ${G}✓${R} config.json updated\n\n"

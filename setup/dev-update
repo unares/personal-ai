@@ -29,8 +29,8 @@ ACCUMULATOR="/tmp/.dev-update-${ENTITY:-unknown}-${ROLE:-unknown}"
 die() { echo "dev-update: $1" >&2; exit 1; }
 
 check_env() {
-  [ -z "$ENTITY" ] && die "ENTITY env var is required"
-  [ -z "$ROLE" ] && die "ROLE env var is required"
+  if [ -z "$ENTITY" ]; then die "ENTITY env var is required"; fi
+  if [ -z "$ROLE" ]; then die "ROLE env var is required"; fi
 }
 
 generate_session_id() {
@@ -74,8 +74,8 @@ accumulate_section() {
   local header="$1"
   local content="$2"
 
-  [ -z "$header" ] && die "Section header is required"
-  [ -z "$content" ] && die "Section content is required"
+  if [ -z "$header" ]; then die "Section header is required"; fi
+  if [ -z "$content" ]; then die "Section content is required"; fi
 
   # Append to accumulator file
   if [ -f "$ACCUMULATOR" ]; then
@@ -123,6 +123,15 @@ timestamp: "${timestamp}"
 ---
 YAML
 )
+
+  # Append Git Karma section if auto-git has karma data
+  if command -v auto-git >/dev/null 2>&1; then
+    local karma_section
+    karma_section=$(auto-git --flush-karma 2>/dev/null || true)
+    if [ -n "$karma_section" ]; then
+      printf "\n%s\n" "$karma_section" >> "$ACCUMULATOR"
+    fi
+  fi
 
   # Read accumulated sections
   local body

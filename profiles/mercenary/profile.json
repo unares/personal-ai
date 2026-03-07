@@ -4,5 +4,12 @@
   "description": "Surgical executor. One mission, full autonomy, zero deviation.",
   "icon": "#",
   "skills": [],
-  "notes": "Skills coming in v0.5"
+  "notes": "Skills coming in v0.5",
+  "capabilities": {
+    "vault": "rw",
+    "push": true,
+    "docker": true,
+    "web": true,
+    "decision_log": true
+  }
 }

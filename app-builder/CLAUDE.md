@@ -28,10 +28,27 @@ Claude Code Opus 4.6 (planning) / Sonnet 4.6 (execution agents).
 - `/vault-search` — search distilled vault content
 - `/query-vault` — query structured vault context
 
+## Auto-Git Workflow
+auto-git tracks your GitHub activity and awards Git Karma points.
+- Commit after each completed feature, fix, or logical milestone (+10 karma)
+- Use semantic prefixes: feat:, fix:, chore:, docs: (+10 karma)
+- Push after every 2-3 commits — auto-git will remind you (+5 karma)
+- Work on feature branches, never commit directly to main (+5 karma)
+- Create PRs for significant work (+15 karma)
+- Tag releases for version milestones (+25 karma)
+- auto-git provides git context at session start — read it
+- At session end, karma is flushed to dev-update for the semantic layer
+
 ## Git Rules
 - Always work on a branch, never commit directly to main.
 - Never force push.
 - Ask before any git push if unsure.
+
+## Plan Archiving
+When a development plan is approved (exiting plan mode), include the full plan as a dev-update section:
+- Run: `dev-update --section "Development Plan" "<full plan content>"`
+- Context Extractor will route it to the vault's claude-plans archive
+- Plans are meaning-dense context that can be contrasted with the actual codebase
 
 ## Dev Updates
 After each feature/fix is complete or before session end:

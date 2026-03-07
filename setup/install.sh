@@ -14,8 +14,8 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step >= total ? 16 : step * 16 / total))
-  local empty=$((16 - filled))
+  local filled; filled=$((step >= total ? 16 : step * 16 / total))
+  local empty; empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
@@ -32,6 +32,26 @@ step_banner() {
 
 upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
 lower() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'; }
+
+check_context() {
+  local entity="$1"
+  local raw_dir="$VAULT_PATH/$entity/Raw"
+  local md_count; md_count=$(find "$raw_dir" -name "*.md" -type f 2>/dev/null | wc -l)
+  if [ "$md_count" -eq 0 ]; then
+    printf "\n  ${Y}!${R} ${B}${entity}${R} vault is empty — no .md files in Raw/\n"
+    printf "  ${D}  Drop .md notes into memory-vault/${entity}/Raw/ to feed Context Extractor.${R}\n"
+    printf "  ${D}  Or run ./setup/context-sync.sh to pull from Google Drive.${R}\n\n"
+  fi
+}
+
+log_setup() {
+  local event="$1" entity="${2:-}" pts="${3:-0}" detail="${4:-}"
+  local log_dir="$VAULT_PATH/Logs"
+  mkdir -p "$log_dir"
+  local ts; ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+  local entry="{\"ts\":\"$ts\",\"event\":\"$event\",\"entity\":\"$entity\",\"pts\":$pts,\"detail\":\"$detail\"}"
+  echo "$entry" >> "$log_dir/setup.jsonl" 2>/dev/null || true
+}
 
 confirm() {
   while true; do
@@ -180,6 +200,7 @@ while true; do
   ENTITY_NAMES+=("$PROJ_NAME")
   HUMAN_CLARKS+=("$HU_ENTRY")
 
+  log_setup "ENTITY_CREATED" "$PROJ_NAME" 0 "$AIOO_NAME"
   printf "  ${G}✓${R} ${B}${PROJ_NAME}${R} entity registered — ${B}${AIOO_NAME}${R} assigned.\n"
   printf "  ${D}AIOO is the AI Operating Officer of ${PROJ_NAME}. It drives\n"
   printf "  execution, maintains the northstar, and spawns App Builders.${R}\n\n"
@@ -215,6 +236,7 @@ step_banner 3 4 "Creating Vault & Config" \
   "Logs/       = every agent action recorded, scoped per entity"
 
 printf "{\n  \"owner\": \"${OWNER_NAME}\",\n  \"vaultPath\": \"${VAULT_PATH}\",\n  \"clarks\": [\n${CLARKS_JSON}\n  ],\n  \"entities\": [${ENTITIES_JSON}\n  ]\n}\n" > "$CONFIG_PATH"
+log_setup "CONFIG_UPDATED" "" 0 "initial setup"
 printf "  ${G}✓${R} config.json written\n"
 
 for PROJ in "${ENTITY_NAMES[@]}"; do
@@ -254,6 +276,10 @@ for PROJ in "${ENTITY_NAMES[@]}"; do
 done
 printf "\n"
 
+for PROJ in "${ENTITY_NAMES[@]}"; do
+  check_context "$PROJ"
+done
+
 # ── Step 4: Start Context Extractor ────────────────────────────────────────
 step_banner 4 4 "Starting Context Extractor" \
   "Context Extractor = watches Raw/ and distills notes for agents" \
@@ -275,6 +301,19 @@ docker build -t personal-ai-clark "$REPO_DIR/clark/" 2>&1 | tail -1 || true
 docker build -t personal-ai-app-builder "$REPO_DIR/app-builder/" 2>&1 | tail -1 || true
 printf "  ${G}✓${R} Agent images built\n"
 
+# Optional: Google Drive Context Sync
+printf "\n  ${B}Google Drive Context Sync (optional)${R}\n"
+printf "  ${D}Connect Google Drive to pull docs into your vault as context.${R}\n"
+while true; do
+  read -rp "  Set up Google Drive sync now? [y/n]: " GD_SETUP
+  case "$GD_SETUP" in y*|Y*|n*|N*) break;; esac
+done
+if [[ "$GD_SETUP" == "y"* || "$GD_SETUP" == "Y"* ]]; then
+  "$REPO_DIR/setup/context-sync.sh"
+else
+  printf "  ${D}Skipped — run setup/context-sync.sh later to enable.${R}\n"
+fi
+
 # Optional: WhatsApp setup
 printf "\n  ${B}WhatsApp Setup (optional)${R}\n"
 printf "  ${D}WhatsApp enables messaging with your agents from your phone.${R}\n"
@@ -292,6 +331,8 @@ fi
 printf "\n  Running verification...\n\n"
 "$REPO_DIR/setup/verify.sh" || true
 
+log_setup "SETUP_COMPLETE" "" 0 "v${VERSION}"
+
 printf "\n${B}${G}╔${LINE}\n"
 printf "║  Setup complete. Personal AI v${VERSION} is live.\n"
 printf "╚${LINE}${R}\n\n"
@@ -305,4 +346,5 @@ printf "  Spawn builder:  ${B}./app-builder/app-builder.sh <entity> <app-name>${
 printf "  Drop notes:     memory-vault/{entity}/Raw/\n"
 printf "  Add entity:     ${B}./setup/add-entity.sh${R}\n"
 printf "  Add human:      ${B}./setup/add-human.sh${R}\n"
+printf "  Context sync:   ${B}./setup/context-sync.sh${R}\n"
 printf "  Verify system:  ${B}./setup/verify.sh${R}\n\n"
