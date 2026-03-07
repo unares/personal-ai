@@ -280,35 +280,55 @@ get_visible_entities() {
 # All gws commands use --params for API parameters and return JSON.
 # Ref: https://github.com/googleworkspace/cli
 
+# ── Per-account gws isolation ─────────────────────────────────
+# gws stores tokens in ~/.config/gws/ and cannot switch accounts.
+# We isolate each account by giving it its own config directory
+# via XDG_CONFIG_HOME, with shared OAuth client config symlinked in.
+GWS_ACCOUNT_DIR=""
+
+# Activate a per-account gws config directory.
+# Copies the OAuth client config (from gws auth setup) into the
+# account-specific directory so gws can find it.
 set_gws_account() {
-  true  # gws uses the single authenticated account
+  local email="${1:-}"
+  [ -z "$email" ] && return
+  local safe; safe=$(echo "$email" | tr '@.' '__')
+  GWS_ACCOUNT_DIR="${HOME}/.config/gws-accounts/${safe}"
+  mkdir -p "$GWS_ACCOUNT_DIR/gws"
+  # Copy OAuth client config from the main gws dir if not already present
+  local main_dir="${HOME}/.config/gws"
+  if [ -f "$main_dir/client_secret.json" ] && [ ! -f "$GWS_ACCOUNT_DIR/gws/client_secret.json" ]; then
+    cp "$main_dir/client_secret.json" "$GWS_ACCOUNT_DIR/gws/client_secret.json"
+  fi
+  # Copy encryption key if present
+  if [ -f "$main_dir/.encryption_key" ] && [ ! -f "$GWS_ACCOUNT_DIR/gws/.encryption_key" ]; then
+    cp "$main_dir/.encryption_key" "$GWS_ACCOUNT_DIR/gws/.encryption_key"
+  fi
 }
 
+# Run gws using the per-account config directory
 run_gws() {
-  gws "$@"
+  if [ -n "$GWS_ACCOUNT_DIR" ]; then
+    XDG_CONFIG_HOME="$GWS_ACCOUNT_DIR" gws "$@"
+  else
+    gws "$@"
+  fi
 }
 
-# Returns the email of the currently active gws Google account
+# Check which Google account is active in the current gws config
 get_active_gws_email() {
-  gws drive about get --params '{"fields": "user(emailAddress)"}' 2>/dev/null | \
+  run_gws drive about get --params '{"fields": "user(emailAddress)"}' 2>/dev/null | \
     node -e "
       const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
       if(d.user&&d.user.emailAddress) process.stdout.write(d.user.emailAddress);
     " 2>/dev/null || true
 }
 
-# Clear all gws credential files and re-authenticate for a specific account.
-# gws only supports one active account — credential files from other accounts
-# in ~/.config/gws/ confuse it. This removes ALL .enc files before re-auth.
+# Authenticate into the per-account gws config directory
 gws_force_login() {
   local target_email="$1"
-  local gws_dir="${HOME}/.config/gws"
-
-  # Remove ALL credential files (gws picks up stale .enc files)
-  find "$gws_dir" -name '*.enc' -delete 2>/dev/null || true
-
-  # Fresh login — only this account's credentials will exist
-  gws auth login --account="$target_email" --services drive,docs
+  set_gws_account "$target_email"
+  XDG_CONFIG_HOME="$GWS_ACCOUNT_DIR" gws auth login --account="$target_email" --services drive,docs
 }
 
 list_google_docs() {
@@ -1696,7 +1716,8 @@ cmd_interactive() {
   email=$(get_gdrive_email "$entity")
 
   if [ -n "$email" ]; then
-    # Have stored email — check if correct account is active
+    # Activate per-account config directory, then check if auth exists
+    set_gws_account "$email"
     printf "  Connecting"
     for i in 1 2 3; do printf "."; sleep 0.1; done
     local active_email; active_email=$(get_active_gws_email)
@@ -1729,6 +1750,9 @@ cmd_interactive() {
         break
       done
     fi
+
+    # Activate per-account config directory for this email
+    set_gws_account "$email"
 
     # ── Step 2: OAuth authentication ────────────────────────────
     step_banner 2 3 "Authenticate" \
