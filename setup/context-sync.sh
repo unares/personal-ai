@@ -281,10 +281,9 @@ get_visible_entities() {
 # Ref: https://github.com/googleworkspace/cli
 
 set_gws_account() {
-  true  # no-op; switching done by swap_gws_credentials
+  true  # gws uses the single authenticated account
 }
 
-# Wrapper: runs gws (account set by credential swap)
 run_gws() {
   gws "$@"
 }
@@ -298,42 +297,18 @@ get_active_gws_email() {
     " 2>/dev/null || true
 }
 
-# Swap gws credentials to switch active account.
-# gws stores all creds in one file and always uses it — no multi-account support.
-# We keep per-account copies and swap them in.
-swap_gws_credentials() {
+# Clear all gws credential files and re-authenticate for a specific account.
+# gws only supports one active account — credential files from other accounts
+# in ~/.config/gws/ confuse it. This removes ALL .enc files before re-auth.
+gws_force_login() {
   local target_email="$1"
   local gws_dir="${HOME}/.config/gws"
-  local creds_file="${gws_dir}/credentials.enc"
-  local safe_target; safe_target=$(echo "$target_email" | tr '@.' '__')
-  local target_creds="${gws_dir}/credentials.${safe_target}.enc"
 
-  # Save current credentials under the active account's name
-  local current_email; current_email=$(get_active_gws_email)
-  if [ -n "$current_email" ] && [ -f "$creds_file" ]; then
-    local safe_current; safe_current=$(echo "$current_email" | tr '@.' '__')
-    cp "$creds_file" "${gws_dir}/credentials.${safe_current}.enc" 2>/dev/null || true
-  fi
+  # Remove ALL credential files (gws picks up stale .enc files)
+  find "$gws_dir" -name '*.enc' -delete 2>/dev/null || true
 
-  # If we have stored credentials for the target, swap them in
-  if [ -f "$target_creds" ]; then
-    cp "$target_creds" "$creds_file"
-    return 0
-  fi
-
-  # No stored credentials for this account
-  return 1
-}
-
-# Save a copy of the current credentials under the active email
-save_gws_credentials() {
-  local email="$1"
-  local gws_dir="${HOME}/.config/gws"
-  local creds_file="${gws_dir}/credentials.enc"
-  if [ -f "$creds_file" ] && [ -n "$email" ]; then
-    local safe_email; safe_email=$(echo "$email" | tr '@.' '__')
-    cp "$creds_file" "${gws_dir}/credentials.${safe_email}.enc" 2>/dev/null || true
-  fi
+  # Fresh login — only this account's credentials will exist
+  gws auth login --account="$target_email" --services drive,docs
 }
 
 list_google_docs() {
@@ -516,17 +491,8 @@ cmd_auth() {
   printf "    1. Select scopes — pick ${B}Recommended${R} and press Enter\n"
   printf "    2. Open the URL in your browser to authorize\n\n"
 
-  # Save current account credentials before auth overwrites them
-  local current_gws; current_gws=$(get_active_gws_email)
-  if [ -n "$current_gws" ]; then
-    save_gws_credentials "$current_gws"
-  fi
-
-  if gws auth login --account="$email" --services drive,docs; then
+  if gws_force_login "$email"; then
     printf "\n  ${G}✓${R} Google Drive authenticated for ${B}${email}${R}\n"
-
-    # Save credentials for this account so we can swap back later
-    save_gws_credentials "$email"
 
     log_setup "GDRIVE_CONNECTED" "" 50 "$email"
     printf "  ${G}+50 Pts.${R} for connecting Google Drive!\n\n"
@@ -1734,22 +1700,9 @@ cmd_interactive() {
     printf "  Connecting"
     for i in 1 2 3; do printf "."; sleep 0.1; done
     local active_email; active_email=$(get_active_gws_email)
-    if [ -n "$active_email" ] && [ "$active_email" = "$email" ]; then
+    if [ "$active_email" = "$email" ]; then
       connected=true
       printf " ${G}connected${R} (${email})\n\n"
-    elif [ -n "$active_email" ]; then
-      # Wrong account — try credential swap first (no OAuth needed)
-      if swap_gws_credentials "$email"; then
-        local swapped_email; swapped_email=$(get_active_gws_email)
-        if [ "$swapped_email" = "$email" ]; then
-          connected=true
-          printf " ${G}connected${R} (${email})\n\n"
-        else
-          printf " ${Y}needs authentication${R}\n\n"
-        fi
-      else
-        printf " ${Y}needs authentication${R}\n\n"
-      fi
     else
       printf " ${Y}needs authentication${R}\n\n"
     fi
@@ -1777,78 +1730,41 @@ cmd_interactive() {
       done
     fi
 
-    # ── Try credential swap before OAuth ──────────────────────
-    local check_email; check_email=$(get_active_gws_email)
-    if [ "$check_email" != "$email" ] && swap_gws_credentials "$email" 2>/dev/null; then
-      check_email=$(get_active_gws_email)
-    fi
+    # ── Step 2: OAuth authentication ────────────────────────────
+    step_banner 2 3 "Authenticate" \
+      "A scope selector will open — use arrow keys to select Recommended" \
+      "Press Space to select, then Enter to confirm"
 
-    if [ "$check_email" = "$email" ]; then
-      connected=true
-      printf "  ${G}✓${R} Switched to ${B}${email}${R}\n\n"
-    else
-      # ── Step 2: OAuth authentication ────────────────────────────
-      # Save current credentials before OAuth overwrites them
-      if [ -n "$check_email" ]; then
-        save_gws_credentials "$check_email"
-      fi
+    printf "  ${B}What will happen:${R}\n"
+    printf "    1. A scope selector opens in this terminal\n"
+    printf "       ${D}Use arrow keys to navigate to ${B}Recommended${D},${R}\n"
+    printf "       ${D}press ${B}Space${D} to select it, then ${B}Enter${D} to confirm${R}\n"
+    printf "    2. Open the URL displayed in your browser\n"
+    printf "       ${D}Sign in with ${B}${email}${D} and approve access${R}\n\n"
 
-      step_banner 2 3 "Authenticate" \
-        "A scope selector will open — use arrow keys to select Recommended" \
-        "Press Space to select, then Enter to confirm"
+    while true; do
+      read -rp "  Ready to launch Google OAuth? [y]: " OAUTH_READY
+      [ -z "$OAUTH_READY" ] || [[ "$OAUTH_READY" == [yY]* ]] && break
+    done
+    printf "\n"
 
-      printf "  ${B}What will happen:${R}\n"
-      printf "    1. A scope selector opens in this terminal\n"
-      printf "       ${D}Use arrow keys to navigate to ${B}Recommended${D},${R}\n"
-      printf "       ${D}press ${B}Space${D} to select it, then ${B}Enter${D} to confirm${R}\n"
-      printf "    2. Open the URL displayed in your browser\n"
-      printf "       ${D}Sign in with ${B}${email}${D} and approve access${R}\n\n"
-
-      while true; do
-        read -rp "  Ready to launch Google OAuth? [y]: " OAUTH_READY
-        [ -z "$OAUTH_READY" ] || [[ "$OAUTH_READY" == [yY]* ]] && break
-      done
-      printf "\n"
-
-      # Launch gws auth — scope picker is interactive TUI, can't redirect stdout.
-      gws auth login --account="$email" --services drive,docs
-      local auth_rc=$?
-      if [ $auth_rc -eq 0 ]; then
-        # Save credentials for this account so we can swap back later
-        save_gws_credentials "$email"
-        printf "\n  Verifying"
-        for i in 1 2 3 4 5 6 7 8; do printf "."; sleep 0.2; done
-        local verified_email; verified_email=$(get_active_gws_email)
-        if [ "$verified_email" = "$email" ]; then
-          printf " ${G}connected${R} (${email})\n\n"
-          connected=true
-        elif [ -n "$verified_email" ]; then
-          # Auth succeeded but gws still reports old account.
-          # The credentials file now has both accounts. We need to
-          # isolate the new account's credentials. Delete the main
-          # file and re-auth cleanly (credentials file will only
-          # contain the new account).
-          local creds_file="${HOME}/.config/gws/credentials.enc"
-          rm -f "$creds_file" 2>/dev/null || true
-          printf " ${Y}re-authenticating${R}\n"
-          printf "  ${D}  gws cached both accounts. Re-authenticating cleanly for ${email}...${R}\n\n"
-          gws auth login --account="$email" --services drive,docs
-          if [ $? -eq 0 ]; then
-            save_gws_credentials "$email"
-            printf "\n  ${G}✓${R} Connected (${email})\n\n"
-            connected=true
-          else
-            printf "\n  ${Y}!${R} Auth failed on retry.\n\n"
-            return 1
-          fi
-        else
-          printf " ${G}connected${R}\n\n"
-          connected=true
-        fi
+    # Clear ALL .enc files and re-auth — gws only supports one active account
+    gws_force_login "$email"
+    local auth_rc=$?
+    if [ $auth_rc -eq 0 ]; then
+      printf "\n  Verifying"
+      for i in 1 2 3 4 5; do printf "."; sleep 0.15; done
+      local verified_email; verified_email=$(get_active_gws_email)
+      if [ "$verified_email" = "$email" ]; then
+        printf " ${G}connected${R} (${email})\n\n"
+        connected=true
       else
-        printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
-        return 1
+        printf " ${G}connected${R}\n\n"
+        connected=true
       fi
+    else
+      printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
+      return 1
     fi
   fi
 
