@@ -280,13 +280,22 @@ get_visible_entities() {
 # All gws commands use --params for API parameters and return JSON.
 # Ref: https://github.com/googleworkspace/cli
 
+GWS_ACTIVE_ACCOUNT=""
+
 set_gws_account() {
-  # gws uses the most recently authenticated account by default.
-  # Multi-account switching not yet supported by gws CLI.
-  true
+  GWS_ACTIVE_ACCOUNT="${1:-}"
 }
 
-# Returns the email of the currently active gws Google account
+# Wrapper: runs gws with --account if one is set
+run_gws() {
+  if [ -n "$GWS_ACTIVE_ACCOUNT" ]; then
+    gws --account="$GWS_ACTIVE_ACCOUNT" "$@"
+  else
+    gws "$@"
+  fi
+}
+
+# Returns the email of the currently active gws Google account (no --account forcing)
 get_active_gws_email() {
   gws drive about get --params '{"fields": "user(emailAddress)"}' 2>/dev/null | \
     node -e "
@@ -299,7 +308,7 @@ list_google_docs() {
   local email="${1:-}"
   set_gws_account "$email"
   # Request trashed+size fields; filter client-side since some Drive backends delay trash state
-  local raw; raw=$(gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\" and trashed = false", "pageSize": 50, "fields": "files(id,name,modifiedTime,size,trashed)", "orderBy": "modifiedTime desc"}' 2>/dev/null) || return 1
+  local raw; raw=$(run_gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.document\" and trashed = false", "pageSize": 50, "fields": "files(id,name,modifiedTime,size,trashed)", "orderBy": "modifiedTime desc"}' 2>/dev/null) || return 1
   # Double-filter: remove any files where trashed is true
   echo "$raw" | node -e "
     const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
@@ -311,13 +320,13 @@ list_google_docs() {
 list_drive_folders() {
   local email="${1:-}"
   set_gws_account "$email"
-  gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.folder\"", "pageSize": 50, "fields": "files(id,name)"}' 2>/dev/null
+  run_gws drive files list --params '{"q": "mimeType=\"application/vnd.google-apps.folder\"", "pageSize": 50, "fields": "files(id,name)"}' 2>/dev/null
 }
 
 list_docs_in_folder() {
   local folder_id="$1" email="${2:-}"
   set_gws_account "$email"
-  gws drive files list --params "{\"q\": \"'${folder_id}' in parents and mimeType='application/vnd.google-apps.document'\", \"pageSize\": 50, \"fields\": \"files(id,name,modifiedTime)\"}" 2>/dev/null
+  run_gws drive files list --params "{\"q\": \"'${folder_id}' in parents and mimeType='application/vnd.google-apps.document'\", \"pageSize\": 50, \"fields\": \"files(id,name,modifiedTime)\"}" 2>/dev/null
 }
 
 export_doc_as_md() {
@@ -327,7 +336,7 @@ export_doc_as_md() {
   local err_file="/tmp/pai-export-$$.err"
 
   # Method 1: gws export with --output flag (markdown)
-  if gws drive files export \
+  if run_gws drive files export \
     --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/markdown\"}" \
     --output "$tmp_file" > /dev/null 2>"$err_file"; then
     if [ -s "$tmp_file" ]; then
@@ -338,7 +347,7 @@ export_doc_as_md() {
   fi
 
   # Method 2: gws export with --output flag (plain text)
-  if gws drive files export \
+  if run_gws drive files export \
     --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/plain\"}" \
     --output "$tmp_file" > /dev/null 2>"$err_file"; then
     if [ -s "$tmp_file" ]; then
@@ -350,7 +359,7 @@ export_doc_as_md() {
 
   # Method 3: gws export to stdout (some versions write content to stdout)
   local content=""
-  content=$(gws drive files export \
+  content=$(run_gws drive files export \
     --params "{\"fileId\": \"${doc_id}\", \"mimeType\": \"text/plain\"}" 2>/dev/null) || true
   # Only use if it looks like document content, not JSON metadata
   if [ -n "$content" ] && ! echo "$content" | head -1 | grep -q '^{'; then
@@ -361,7 +370,7 @@ export_doc_as_md() {
 
   # Method 4: Read doc content via Docs API and extract text
   local doc_json=""
-  doc_json=$(gws docs documents get \
+  doc_json=$(run_gws docs documents get \
     --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null) || true
   if [ -n "$doc_json" ]; then
     local extracted=""
@@ -406,7 +415,7 @@ create_google_doc() {
   # Escape special chars in title for JSON
   local safe_title; safe_title=$(echo "$title" | sed "s/'/\\\\u0027/g; s/\"/\\\\\"/g")
   local out_file="/tmp/pai-gws-create.$$.out"
-  gws docs documents create --json "{\"title\": \"${safe_title}\"}" > "$out_file" 2>&1
+  run_gws docs documents create --json "{\"title\": \"${safe_title}\"}" > "$out_file" 2>&1
   local rc=$?
   local result; result=$(cat "$out_file" 2>/dev/null)
   rm -f "$out_file"
@@ -425,7 +434,7 @@ create_google_doc() {
 write_to_google_doc() {
   local doc_id="$1" content="$2" email="${3:-}"
   set_gws_account "$email"
-  gws docs +write --document "$doc_id" --text "$content" > /dev/null 2>&1
+  run_gws docs +write --document "$doc_id" --text "$content" > /dev/null 2>&1
 }
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -841,7 +850,7 @@ create_context_dump() {
   " "$doc_title" 2>/dev/null) || true
   local existing_id=""
   if [ -n "$query_params" ]; then
-    local existing; existing=$(gws drive files list --params "$query_params" 2>/dev/null) || true
+    local existing; existing=$(run_gws drive files list --params "$query_params" 2>/dev/null) || true
     if [ -n "$existing" ]; then
       existing_id=$(echo "$existing" | node -e "
         const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
@@ -887,7 +896,7 @@ create_context_dump() {
   printf "  ${G}✓${R} Document created\n"
 
   # Step 2: Get the default tab ID so we can delete it after creating named tabs
-  local default_tab_id; default_tab_id=$(gws docs documents get \
+  local default_tab_id; default_tab_id=$(run_gws docs documents get \
     --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null | node -e "
     const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
     const tabs=d.tabs||[];
@@ -1489,7 +1498,7 @@ ${STARS}
 
     # Create tab via batchUpdate — use node to safely escape tab name
     local safe_tname; safe_tname=$(node -e "process.stdout.write(JSON.stringify(process.argv[1]).slice(1,-1))" "$tname" 2>/dev/null)
-    local tab_result; tab_result=$(gws docs documents batchUpdate \
+    local tab_result; tab_result=$(run_gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
       --json "{\"requests\": [{\"addDocumentTab\": {\"tabProperties\": {\"title\": \"${safe_tname}\"}}}]}" 2>/dev/null)
 
@@ -1514,14 +1523,14 @@ ${STARS}
         local json_text; json_text=$(node -e "
           const t=process.argv[1];
           process.stdout.write(JSON.stringify(t).slice(1,-1));" "$tdesc" 2>/dev/null)
-        gws docs documents batchUpdate \
+        run_gws docs documents batchUpdate \
           --params "{\"documentId\": \"${doc_id}\"}" \
           --json "{\"requests\": [{\"insertText\": {\"text\": \"${json_text}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
         printf " ${G}done${R}\n"
         tab_ok=$((tab_ok + 1))
       else
         # Tab created but can't get ID — try reading the doc to find it
-        local doc_data; doc_data=$(gws docs documents get --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null)
+        local doc_data; doc_data=$(run_gws docs documents get --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null)
         tab_id=$(echo "$doc_data" | node -e "
           const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
           const name=process.argv[1];
@@ -1535,7 +1544,7 @@ ${STARS}
             const t=require('fs').readFileSync('/dev/stdin','utf8');
             process.stdout.write(JSON.stringify(t).slice(1,-1));
           " 2>/dev/null)
-          gws docs documents batchUpdate \
+          run_gws docs documents batchUpdate \
             --params "{\"documentId\": \"${doc_id}\"}" \
             --json "{\"requests\": [{\"insertText\": {\"text\": \"${json_text}\", \"location\": {\"tabId\": \"${tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
           printf " ${G}done${R}\n"
@@ -1550,21 +1559,30 @@ ${STARS}
     fi
   done
 
-  # Try to delete the default "Tab 1"; if that fails, write a redirect message
-  if [ -n "$default_tab_id" ]; then
-    if ! gws docs documents batchUpdate \
+  # Try to delete the default "Tab 1" now that other tabs exist
+  if [ -n "$default_tab_id" ] && [ $tab_ok -gt 0 ]; then
+    # Attempt 1: delete via deleteDocumentTab
+    if ! run_gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
       --json "{\"requests\": [{\"deleteDocumentTab\": {\"tabId\": \"${default_tab_id}\"}}]}" > /dev/null 2>&1; then
-      # Deletion failed — write redirect text into Tab 1
-      local redirect_text="This is a Context Dump Template for ${upper_entity}. See the Personal AI tab for instructions."
-      local redirect_json; redirect_json=$(node -e "
-        const t=process.argv[1];
-        process.stdout.write(JSON.stringify(t).slice(1,-1));
-      " "$redirect_text" 2>/dev/null) || true
-      if [ -n "$redirect_json" ]; then
-        gws docs documents batchUpdate \
+      # Attempt 2: delete via deleteTab (alternative API name)
+      if ! run_gws docs documents batchUpdate \
+        --params "{\"documentId\": \"${doc_id}\"}" \
+        --json "{\"requests\": [{\"deleteTab\": {\"tabId\": \"${default_tab_id}\"}}]}" > /dev/null 2>&1; then
+        # Deletion failed — rename Tab 1 and write redirect
+        run_gws docs documents batchUpdate \
           --params "{\"documentId\": \"${doc_id}\"}" \
-          --json "{\"requests\": [{\"insertText\": {\"text\": \"${redirect_json}\", \"location\": {\"tabId\": \"${default_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1 || true
+          --json "{\"requests\": [{\"updateDocumentTab\": {\"tabProperties\": {\"tabId\": \"${default_tab_id}\", \"title\": \"Start Here\"}, \"fields\": \"title\"}}]}" > /dev/null 2>&1 || true
+        local redirect_text="Welcome to your Personal AI Context Dump for ${upper_entity}. Go to the Personal AI tab for instructions."
+        local redirect_json; redirect_json=$(node -e "
+          const t=process.argv[1];
+          process.stdout.write(JSON.stringify(t).slice(1,-1));
+        " "$redirect_text" 2>/dev/null) || true
+        if [ -n "$redirect_json" ]; then
+          run_gws docs documents batchUpdate \
+            --params "{\"documentId\": \"${doc_id}\"}" \
+            --json "{\"requests\": [{\"insertText\": {\"text\": \"${redirect_json}\", \"location\": {\"tabId\": \"${default_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1 || true
+        fi
       fi
     fi
   fi
