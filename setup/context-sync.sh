@@ -823,12 +823,18 @@ create_context_dump() {
   printf "\n  Checking for existing template"
   for i in 1 2 3; do printf "."; sleep 0.15; done
 
-  # Check if doc already exists in Drive
+  # Check if doc already exists in Drive — escape title for query
   set_gws_account "$email"
-  local existing; existing=$(gws drive files list --params "{\"q\": \"name='${doc_title}' and mimeType='application/vnd.google-apps.document' and trashed=false\", \"pageSize\": 1, \"fields\": \"files(id,name)\"}" 2>/dev/null)
+  local safe_query_title; safe_query_title=$(node -e "
+    const t=process.argv[1].replace(/\\\\/g,'\\\\\\\\').replace(/'/g,\"\\\\'\" );
+    process.stdout.write(t);
+  " "$doc_title" 2>/dev/null) || true
   local existing_id=""
-  if [ -n "$existing" ]; then
-    existing_id=$(echo "$existing" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const f=(d.files||[])[0]; console.log(f?f.id:'')" 2>/dev/null) || true
+  if [ -n "$safe_query_title" ]; then
+    local existing; existing=$(gws drive files list --params "{\"q\": \"name='${safe_query_title}' and mimeType='application/vnd.google-apps.document' and trashed=false\", \"pageSize\": 1, \"fields\": \"files(id,name)\"}" 2>/dev/null) || true
+    if [ -n "$existing" ]; then
+      existing_id=$(echo "$existing" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const f=(d.files||[])[0]; if(f&&f.id) process.stdout.write(f.id)" 2>/dev/null) || true
+    fi
   fi
 
   if [ -n "$existing_id" ]; then
@@ -836,9 +842,14 @@ create_context_dump() {
     printf "  ${B}${doc_title}${R} is already in your Google Drive.\n"
     printf "  ${D}  Open it, fill in each tab, then run:${R}\n"
     printf "  ${B}  ./setup/context-sync.sh --sync ${entity}${R}\n\n"
-    return 0
+    read -rp "  Create a new template anyway? [y/N]: " RECREATE
+    if [[ ! "$RECREATE" =~ ^[yY] ]]; then
+      return 0
+    fi
+    printf "\n"
+  else
+    printf " ${G}ok${R}\n"
   fi
-  printf " ${G}ok${R}\n"
 
   printf "  Creating ${B}${doc_title}${R}...\n"
 
