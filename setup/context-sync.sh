@@ -841,7 +841,33 @@ Everything you write here gets synced into your memory vault and distilled into 
 4. Customers (Users) - Who your users are, what they need, feedback
 5. Specifications - Product specs, technical requirements, feature definitions
 6. Transcripts - Video calls, WhatsApp chats, conversation logs
-7. Other - Anything that does not fit the other tabs
+7. Prompts - Your favourite prompts, prompting style, prompts to improve
+8. Other - Anything that does not fit the other tabs
+
+## Automated Extractions
+
+Each tab includes a Memory Extraction Prompt at the top. You can use it with your favourite AI chat (ChatGPT, Claude, Gemini, Grok) to recall what it already knows about you on that topic.
+
+How it works:
+1. Open a chat with your AI (memory must be ON — it is by default)
+2. Copy the prompt from the top of the tab and send it
+3. Your AI will recall everything it remembers about that topic
+4. Copy its reply into the tab sections below
+
+If the reply is not useful, continue the conversation with your AI to establish the narrative you see fit, then give it the prompt again — this time it will apply it to just the current chat.
+
+You can always skip this and populate sections with raw content directly.
+
+## Scratchpad
+
+Each tab starts with a Scratchpad section at the very top, separated by starred lines (***).
+
+Use the Scratchpad for:
+- Draft and work-in-progress notes before they are ready
+- Ideation and brainstorming for that topic
+- Working on context before giving it to Personal AI
+
+After your first sync, only the Scratchpad content in each tab (including any new tabs you add) will be synced on subsequent runs. The template sections below it are one-time scaffolding.
 
 ---
 
@@ -864,10 +890,16 @@ Everything you write here gets synced into your memory vault and distilled into 
   fi
 
   # Step 3: Create tabs and write content to each
-  local tab_names=("NORTHSTAR" "About ${upper_entity}" "Research" "Customers (Users)" "Specifications" "Transcripts" "Other")
+  local tab_names=("NORTHSTAR" "About ${upper_entity}" "Research" "Customers (Users)" "Specifications" "Transcripts" "Prompts" "Other")
   # Tab descriptions — using node to build the array avoids bash newline issues
   local tab_descs=()
-  tab_descs+=("# NORTHSTAR
+  tab_descs+=("***
+Scratchpad: Your Notes on NORTHSTAR for ${upper_entity}
+***
+
+# NORTHSTAR
+
+Memory extraction prompt (feel free to edit): \"Recall everything you know about my long-term vision, mission, and core values for ${upper_entity}. Copy everything below — include goals, priorities, and any strategic direction I have shared.\"
 
 ## Your North Star Vision
 
@@ -884,7 +916,13 @@ What is the single most important thing right now?
 ---
 *Write freely. This shapes how your AI agents prioritize and make decisions.*")
 
-  tab_descs+=("# About ${upper_entity}
+  tab_descs+=("***
+Scratchpad: Your Notes on About ${upper_entity} for ${upper_entity}
+***
+
+# About ${upper_entity}
+
+Memory extraction prompt (feel free to edit): \"Recall everything you know about ${upper_entity} — what it is, who is behind it, how it works, and what stage it is at. Copy everything below — include any details about the team, business model, and how ${upper_entity} creates value.\"
 
 ## What is ${upper_entity}?
 
@@ -905,7 +943,13 @@ Where are you now? Idea, MVP, growth, scale?
 ---
 *The more your AI knows about ${upper_entity}, the better it can represent you.*")
 
-  tab_descs+=("# Research
+  tab_descs+=("***
+Scratchpad: Your Notes on Research for ${upper_entity}
+***
+
+# Research
+
+Memory extraction prompt (feel free to edit): \"Recall everything you know about the market, competitors, and research insights related to ${upper_entity}. Copy everything below — include market trends, competitor analysis, and any data or findings I have shared.\"
 
 ## Market Landscape
 
@@ -922,7 +966,13 @@ What have you learned from research, conversations, data?
 ---
 *Paste links, notes, summaries — anything that informs your strategy.*")
 
-  tab_descs+=("# Customers (Users)
+  tab_descs+=("***
+Scratchpad: Your Notes on Customers (Users) for ${upper_entity}
+***
+
+# Customers (Users)
+
+Memory extraction prompt (feel free to edit): \"Recall everything you know about the users and customers of ${upper_entity} — who they are, what they need, and any feedback they have given. Copy everything below — include demographics, pain points, quotes, and user research.\"
 
 ## Who are your users?
 
@@ -939,7 +989,13 @@ What have users told you? Quotes, reviews, support requests.
 ---
 *Your AI uses this to understand who you serve and why.*")
 
-  tab_descs+=("# Specifications
+  tab_descs+=("***
+Scratchpad: Your Notes on Specifications for ${upper_entity}
+***
+
+# Specifications
+
+Memory extraction prompt (feel free to edit): \"Recall everything you know about the product specifications and technical requirements for ${upper_entity}. Copy everything below — include features, architecture, integrations, and any technical decisions I have shared.\"
 
 ## Product Overview
 
@@ -956,7 +1012,13 @@ Detailed specs for features in progress or planned.
 ---
 *Paste PRDs, feature briefs, technical docs — the more detail the better.*")
 
-  tab_descs+=("# Transcripts
+  tab_descs+=("***
+Scratchpad: Your Notes on Transcripts for ${upper_entity}
+***
+
+# Transcripts
+
+Memory extraction prompt (feel free to edit): \"Recall any meeting notes, conversation summaries, or call transcripts I have shared related to ${upper_entity}. Copy everything below — include key decisions, action items, and important quotes from any conversations.\"
 
 ## Video Calls
 
@@ -973,7 +1035,40 @@ Slack threads, email exchanges, voice memo transcriptions.
 ---
 *Raw transcripts are fine — Context Extractor will distill the key points.*")
 
-  tab_descs+=("# Other
+  tab_descs+=("***
+Scratchpad: Your Notes on Prompts for ${upper_entity}
+***
+
+# Prompts
+
+Memory extraction prompt (feel free to edit): \"Recall any prompts, prompt templates, or prompting techniques I have shared or asked about. Copy everything below — include prompts I use frequently, ones I want to improve, and any prompting strategies we have discussed.\"
+
+## Favourite Prompts
+
+What prompts do you use most often? Paste them here with a note on what they do.
+
+## Prompts You Want to Try
+
+Any prompts you have saved, bookmarked, or been meaning to use but never did.
+
+## Prompts to Improve
+
+Prompts that work but could be better. Paste them and note what you would like to change.
+
+## Prompting Style
+
+How do you like to prompt? Short and direct, detailed with examples, conversational? What works best for you?
+
+---
+*Your AI agents use this to understand your prompting skill and preferences, and can suggest improvements.*")
+
+  tab_descs+=("***
+Scratchpad: Your Notes on Other for ${upper_entity}
+***
+
+# Other
+
+Memory extraction prompt (feel free to edit): \"Recall any ideas, references, meeting notes, or miscellaneous context I have shared about ${upper_entity} that does not fit a specific category. Copy everything below — include random thoughts, links, and anything worth keeping.\"
 
 ## Meeting Notes
 
