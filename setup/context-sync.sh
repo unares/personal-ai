@@ -760,7 +760,61 @@ create_context_dump() {
 
   # Capitalize first letter (macOS-compatible)
   local upper_entity; upper_entity=$(echo "$entity" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+
+  # Detect co-founders from config: owner is always AI architect, entity.human is co-founder
+  local owner_name="" cofounder_name="" is_joint=false
+  owner_name=$(node -e "const c=require('${CONFIG_PATH}'); process.stdout.write((c.owner||'').replace(/^\w/,c=>c.toUpperCase()))" 2>/dev/null) || true
+  cofounder_name=$(node -e "
+    const c=require('${CONFIG_PATH}');
+    const e=(c.entities||[]).find(x=>x.name==='${entity}');
+    if(e && e.human) process.stdout.write(e.human.replace(/^\w/,c=>c.toUpperCase()));
+  " 2>/dev/null) || true
+  if [ -n "$cofounder_name" ]; then
+    is_joint=true
+  fi
+
   local doc_title="Personal AI Context Dump - ${upper_entity}"
+  local title_line="# Personal AI Context Dump - ${upper_entity}"
+  local title_line_pl="# Personal AI Context Dump - ${upper_entity}"
+  local howto_items=""
+  local howto_items_pl=""
+  if [ -n "$cofounder_name" ]; then
+    is_joint=true
+    doc_title="Personal AI Context Dump - ${upper_entity} (${cofounder_name} & ${owner_name})"
+    title_line="# Personal AI Context Dump - ${upper_entity} (joint project by ${cofounder_name} and ${owner_name})"
+    title_line_pl="# Personal AI Context Dump - ${upper_entity} (wspólny projekt ${cofounder_name} i ${owner_name})"
+    howto_items="1. Open each tab of this Google Doc and write freely (top left corner to see the tabs)
+2. You can tag content by author using <${cofounder_name}>content</${cofounder_name}> or <${owner_name}>content</${owner_name}> — only where it matters, this is optional and helps improve context accuracy
+3. Each tab has instructions explaining what belongs there (you can leave or delete them)
+   Tip: Extract memories from your AI Chat (see the prompt below)
+4. Do not worry about formatting. Raw thoughts are perfectly fine
+5. Volume matters. The more context you provide, the smarter your AI becomes
+6. Feel free to add more tabs if you need additional categories
+7. When ready, your Context Dump can be synced"
+    howto_items_pl="1. Otwórz każdą kartę tego dokumentu i pisz swobodnie (karty widoczne w lewym górnym rogu)
+2. Możesz oznaczać treść autorem używając <${cofounder_name}>treść</${cofounder_name}> lub <${owner_name}>treść</${owner_name}> — tylko tam, gdzie to ma znaczenie, opcjonalne, pomaga poprawić dokładność kontekstu
+3. Każda karta zawiera instrukcje wyjaśniające, co do niej pasuje (możesz je zostawić lub usunąć)
+   Wskazówka: Wyciągnij wspomnienia z czatu AI (patrz prompt poniżej)
+4. Nie martw się formatowaniem. Surowe myśli są w porządku
+5. Ilość ma znaczenie. Im więcej kontekstu podasz, tym mądrzejsze będzie Twoje AI
+6. Możesz dodawać więcej kart, jeśli potrzebujesz dodatkowych kategorii
+7. Gdy będziesz gotowy, Context Dump może zostać zsynchronizowany"
+  else
+    howto_items="1. Open each tab of this Google Doc and write freely (top left corner to see the tabs)
+2. Each tab has instructions explaining what belongs there (you can leave or delete them)
+   Tip: Extract memories from your AI Chat (see the prompt below)
+3. Do not worry about formatting. Raw thoughts are perfectly fine
+4. Volume matters. The more context you provide, the smarter your AI becomes
+5. Feel free to add more tabs if you need additional categories
+6. When ready, your Context Dump can be synced"
+    howto_items_pl="1. Otwórz każdą kartę tego dokumentu i pisz swobodnie (karty widoczne w lewym górnym rogu)
+2. Każda karta zawiera instrukcje wyjaśniające, co do niej pasuje (możesz je zostawić lub usunąć)
+   Wskazówka: Wyciągnij wspomnienia z czatu AI (patrz prompt poniżej)
+3. Nie martw się formatowaniem. Surowe myśli są w porządku
+4. Ilość ma znaczenie. Im więcej kontekstu podasz, tym mądrzejsze będzie Twoje AI
+5. Możesz dodawać więcej kart, jeśli potrzebujesz dodatkowych kategorii
+6. Gdy będziesz gotowy, Context Dump może zostać zsynchronizowany"
+  fi
 
   printf "\n  Checking for existing template"
   for i in 1 2 3; do printf "."; sleep 0.15; done
@@ -816,7 +870,7 @@ create_context_dump() {
   # Tab descriptions — using node to build the array avoids bash newline issues
   local tab_descs=()
   local STARS; STARS=$(printf '*%.0s' $(seq 1 100))
-  tab_descs+=("# Personal AI Context Dump - ${upper_entity}
+  tab_descs+=("${title_line}
 
 ## What is this?
 
@@ -826,13 +880,7 @@ Everything you write here gets synced into your memory vault and distilled into 
 
 ## How to use it
 
-1. Open each tab of this Google Doc and write freely (top left corner to see the tabs)
-2. Each tab has instructions explaining what belongs there (you can leave or delete them)
-   Tip: Extract memories from your AI Chat (see the prompt below)
-3. Do not worry about formatting. Raw thoughts are perfectly fine
-4. Volume matters. The more context you provide, the smarter your AI becomes
-5. Feel free to add more tabs if you need additional categories
-6. When ready, your Context Dump can be synced
+${howto_items}
 
 ## Automated Extractions
 
@@ -1113,7 +1161,7 @@ ${STARS}
   if [ "$TEMPLATE_LANG" = "pl" ]; then
     tab_names=("Personal AI" "NORTHSTAR" "O ${upper_entity}" "Badania" "Klienci (Użytkownicy)" "Specyfikacje" "Transkrypcje" "Prompty" "Inne")
     tab_descs=()
-    tab_descs+=("# Personal AI Context Dump - ${upper_entity}
+    tab_descs+=("${title_line_pl}
 
 ## Co to jest?
 
@@ -1123,13 +1171,7 @@ Wszystko, co tutaj zapiszesz, zostanie zsynchronizowane do Twojego memory vault 
 
 ## Jak tego używać
 
-1. Otwórz każdą kartę tego dokumentu i pisz swobodnie (karty widoczne w lewym górnym rogu)
-2. Każda karta zawiera instrukcje wyjaśniające, co do niej pasuje (możesz je zostawić lub usunąć)
-   Wskazówka: Wyciągnij wspomnienia z czatu AI (patrz prompt poniżej)
-3. Nie martw się formatowaniem. Surowe myśli są w porządku
-4. Ilość ma znaczenie. Im więcej kontekstu podasz, tym mądrzejsze będzie Twoje AI
-5. Możesz dodawać więcej kart, jeśli potrzebujesz dodatkowych kategorii
-6. Gdy będziesz gotowy, Context Dump może zostać zsynchronizowany
+${howto_items_pl}
 
 ## Automatyczna ekstrakcja
 
