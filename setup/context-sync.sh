@@ -286,6 +286,15 @@ set_gws_account() {
   true
 }
 
+# Returns the email of the currently active gws Google account
+get_active_gws_email() {
+  gws drive about get --params '{"fields": "user(emailAddress)"}' 2>/dev/null | \
+    node -e "
+      const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+      if(d.user&&d.user.emailAddress) process.stdout.write(d.user.emailAddress);
+    " 2>/dev/null || true
+}
+
 list_google_docs() {
   local email="${1:-}"
   set_gws_account "$email"
@@ -785,8 +794,8 @@ create_context_dump() {
   if [ -n "$cofounder_name" ]; then
     is_joint=true
     doc_title="Personal AI Context Dump - ${upper_entity} (${cofounder_name} & ${owner_name})"
-    title_line="# Personal AI Context Dump - ${upper_entity} (joint project by ${cofounder_name} and ${owner_name})"
-    title_line_pl="# Personal AI Context Dump - ${upper_entity} (wspólny projekt ${cofounder_name} i ${owner_name})"
+    title_line="# Personal AI Context Dump - ${upper_entity} (joint workspace by ${cofounder_name} and ${owner_name})"
+    title_line_pl="# Personal AI Context Dump - ${upper_entity} (wspólny workspace ${cofounder_name} i ${owner_name})"
     howto_items="1. Open each tab of this Google Doc and write freely (top left corner to see the tabs)
 2. You can tag content by author using <${cofounder_name}>content</${cofounder_name}> or <${owner_name}>content</${owner_name}> — only where it matters, this is optional and helps improve context accuracy
 3. Each tab has instructions explaining what belongs there (you can leave or delete them)
@@ -1665,12 +1674,17 @@ cmd_interactive() {
   email=$(get_gdrive_email "$entity")
 
   if [ -n "$email" ]; then
-    # Have stored email — verify auth works with a real API call
+    # Have stored email — verify auth works AND correct account is active
     printf "  Connecting"
     for i in 1 2 3; do printf "."; sleep 0.1; done
-    if gws drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
+    local active_email; active_email=$(get_active_gws_email)
+    if [ -n "$active_email" ] && [ "$active_email" = "$email" ]; then
       connected=true
       printf " ${G}connected${R} (${email})\n\n"
+    elif [ -n "$active_email" ]; then
+      printf " ${Y}wrong account${R}\n\n"
+      printf "  ${D}  Google Drive is connected to: ${B}${active_email}${R}\n"
+      printf "  ${D}  Entity ${B}${entity}${D} needs: ${B}${email}${R}\n\n"
     else
       printf " ${Y}needs re-authentication${R}\n\n"
     fi
@@ -1702,11 +1716,17 @@ cmd_interactive() {
     printf "  Connecting"
     for i in 1 2 3 4 5 6; do printf "."; sleep 0.15; done
 
-    if gws drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
+    # Verify both that auth works AND that the correct account is active
+    local check_email; check_email=$(get_active_gws_email)
+    if [ -n "$check_email" ] && [ "$check_email" = "$email" ]; then
       connected=true
       printf " ${G}connected${R}\n\n"
     else
-      printf " ${Y}not yet authenticated${R}\n\n"
+      if [ -n "$check_email" ] && [ "$check_email" != "$email" ]; then
+        printf " ${Y}switching account${R}\n\n"
+      else
+        printf " ${Y}not yet authenticated${R}\n\n"
+      fi
 
       # ── Step 2: OAuth authentication ────────────────────────────
       step_banner 2 3 "Authenticate" \
