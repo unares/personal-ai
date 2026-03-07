@@ -816,7 +816,7 @@ create_context_dump() {
     # Rename default "Tab 1" to "Personal AI"
     gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
-      --json "{\"requests\": [{\"updateTabProperties\": {\"tabProperties\": {\"tabId\": \"${first_tab_id}\", \"title\": \"Personal AI\"}, \"fields\": \"title\"}}]}" > /dev/null 2>&1
+      --json "{\"requests\": [{\"updateTabProperties\": {\"tabProperties\": {\"tabId\": \"${first_tab_id}\", \"title\": \"Personal AI\"}, \"fields\": \"title\"}}]}" > /dev/null 2>&1 || true
   fi
 
   local intro_text="# Personal AI Context Dump - ${upper_entity}
@@ -858,7 +858,8 @@ How it works:
 3. Your AI will recall everything it remembers about that topic
 4. Copy its reply into the tab sections of this Context Dump Template
 
-Memory extraction prompt (feel free to edit): \"Recall everything you know about me related to the topics below. Include not just facts but the journey — timelines, key milestones, obstacles I faced, and how things evolved over time. Share any direct quotes, strong opinions, or memorable phrases I used, as they capture my authentic voice. Where you remember specific people, decisions, or turning points, include those with context and approximate dates. Organize your response with clear headings matching the sections below so I can paste it directly into my notes.\"
+Memory extraction prompt (feel free to edit):
+Recall everything you know about me related to the topics below. Include not just facts but the journey — timelines, key milestones, obstacles I faced, and how things evolved over time. Share any direct quotes, strong opinions, or memorable phrases I used, as they capture my authentic voice. Where you remember specific people, decisions, or turning points, include those with context and approximate dates. Organize your response with clear headings matching the sections below so I can paste it directly into my notes.
 
 Tip: If the reply is not useful, continue the conversation with your AI to establish the narrative you see fit, then give it the prompt again — this time it will apply it to just the current chat.
 
@@ -884,11 +885,12 @@ After your first sync, only the Scratchpad content in each tab (including any ne
   local intro_json; intro_json=$(node -e "
     const t=process.argv[1];
     process.stdout.write(JSON.stringify(t).slice(1,-1));
-  " "$intro_text" 2>/dev/null)
+  " "$intro_text" 2>/dev/null) || true
   if [ -n "$first_tab_id" ]; then
     gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
-      --json "{\"requests\": [{\"insertText\": {\"text\": \"${intro_json}\", \"location\": {\"tabId\": \"${first_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1
+      --json "{\"requests\": [{\"insertText\": {\"text\": \"${intro_json}\", \"location\": {\"tabId\": \"${first_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1 || \
+    write_to_google_doc "$doc_id" "$intro_text" "$email"
     printf " ${G}done${R}\n"
   else
     write_to_google_doc "$doc_id" "$intro_text" "$email"
@@ -1173,7 +1175,8 @@ Jak to działa:
 3. AI przywoła wszystko, co pamięta o danym temacie
 4. Skopiuj odpowiedź do sekcji w odpowiedniej karcie tego Context Dump
 
-Prompt do ekstrakcji pamięci (możesz go edytować): \"Przypomnij sobie wszystko, co wiesz o mnie w kontekście poniższych tematów. Uwzględnij nie tylko fakty, ale i przebieg — oś czasu, kluczowe kamienie milowe, przeszkody, które pokonałem/am, i jak rzeczy ewoluowały. Przytocz moje bezpośrednie cytaty, silne opinie lub zapadające w pamięć sformułowania, bo oddają mój autentyczny głos. Tam, gdzie pamiętasz konkretne osoby, decyzje lub punkty zwrotne, podaj je z kontekstem i przybliżonymi datami. Uporządkuj odpowiedź z nagłówkami pasującymi do sekcji poniżej, żebym mógł/mogła ją bezpośrednio wkleić do notatek.\"
+Prompt do ekstrakcji pamięci (możesz go edytować):
+Przypomnij sobie wszystko, co wiesz o mnie w kontekście poniższych tematów. Uwzględnij nie tylko fakty, ale i przebieg — oś czasu, kluczowe kamienie milowe, przeszkody, które pokonałem/am, i jak rzeczy ewoluowały. Przytocz moje bezpośrednie cytaty, silne opinie lub zapadające w pamięć sformułowania, bo oddają mój autentyczny głos. Tam, gdzie pamiętasz konkretne osoby, decyzje lub punkty zwrotne, podaj je z kontekstem i przybliżonymi datami. Uporządkuj odpowiedź z nagłówkami pasującymi do sekcji poniżej, żebym mógł/mogła ją bezpośrednio wkleić do notatek.
 
 Wskazówka: Jeśli odpowiedź nie jest przydatna, kontynuuj rozmowę z AI, żeby ustalić narrację, a potem daj mu prompt ponownie — tym razem zastosuje go tylko do bieżącego czatu.
 
