@@ -837,17 +837,6 @@ Everything you write here gets synced into your memory vault and distilled into 
 5. Feel free to add more tabs if you need additional categories
 6. When ready, your Context Dump can be synced
 
-## Tabs
-
-1. NORTHSTAR - Your long-term vision and mission for ${upper_entity}
-2. About ${upper_entity} - What ${upper_entity} is, who it serves, how it works
-3. Research - Market research, competitor analysis, industry insights
-4. Customers (Users) - Who your users are, what they need, feedback
-5. Specifications - Product specs, technical requirements, feature definitions
-6. Transcripts - Video calls, WhatsApp chats, conversation logs
-7. Prompts - Your favourite prompts, prompting style, prompts to improve
-8. Other - Anything that does not fit the other tabs
-
 ## Automated Extractions
 
 Life hack: You can use it with your favourite AI chat (ChatGPT, Claude, Gemini, Grok) to recall what it already knows about you on that topic.
@@ -878,7 +867,18 @@ After your first sync, only the Scratchpad content in each tab (including any ne
 
 ---
 
-*Add more tabs as needed. Your AI agents will process all of them.*"
+*Add more tabs as needed. Your AI agents will process all of them.*
+
+## Tabs
+
+1. NORTHSTAR - Your long-term vision and mission for ${upper_entity}
+2. About ${upper_entity} - What ${upper_entity} is, who it serves, how it works
+3. Research - Market research, competitor analysis, industry insights
+4. Customers (Users) - Who your users are, what they need, feedback
+5. Specifications - Product specs, technical requirements, feature definitions
+6. Transcripts - Video calls, WhatsApp chats, conversation logs
+7. Prompts - Your favourite prompts, prompting style, prompts to improve
+8. Other - Anything that does not fit the other tabs"
 
   printf "  Writing intro to Personal AI tab"
   for i in 1 2 3; do printf "."; sleep 0.15; done
@@ -1154,17 +1154,6 @@ Wszystko, co tutaj zapiszesz, zostanie zsynchronizowane do Twojego memory vault 
 5. Możesz dodawać więcej kart, jeśli potrzebujesz dodatkowych kategorii
 6. Gdy będziesz gotowy, Context Dump może zostać zsynchronizowany
 
-## Karty
-
-1. NORTHSTAR - Twoja długoterminowa wizja i misja dla ${upper_entity}
-2. O ${upper_entity} - Czym jest ${upper_entity}, komu służy, jak działa
-3. Badania - Badania rynku, analiza konkurencji, spostrzeżenia branżowe
-4. Klienci (Użytkownicy) - Kim są Twoi użytkownicy, czego potrzebują, opinie
-5. Specyfikacje - Specyfikacje produktu, wymagania techniczne, definicje funkcji
-6. Transkrypcje - Rozmowy wideo, czaty WhatsApp, zapisy rozmów
-7. Prompty - Twoje ulubione prompty, styl promptowania, prompty do poprawy
-8. Inne - Wszystko, co nie pasuje do innych kart
-
 ## Automatyczna ekstrakcja
 
 Life hack: Możesz użyć swojego ulubionego czatu AI (ChatGPT, Claude, Gemini, Grok), żeby wyciągnąć to, co już o Tobie wie na dany temat.
@@ -1195,7 +1184,18 @@ Po pierwszej synchronizacji, tylko zawartość Brudnopisu w każdej karcie (wł�
 
 ---
 
-*Dodawaj więcej kart w razie potrzeby. Twoje agenty AI przetworzą je wszystkie.*"
+*Dodawaj więcej kart w razie potrzeby. Twoje agenty AI przetworzą je wszystkie.*
+
+## Karty
+
+1. NORTHSTAR - Twoja długoterminowa wizja i misja dla ${upper_entity}
+2. O ${upper_entity} - Czym jest ${upper_entity}, komu służy, jak działa
+3. Badania - Badania rynku, analiza konkurencji, spostrzeżenia branżowe
+4. Klienci (Użytkownicy) - Kim są Twoi użytkownicy, czego potrzebują, opinie
+5. Specyfikacje - Specyfikacje produktu, wymagania techniczne, definicje funkcji
+6. Transkrypcje - Rozmowy wideo, czaty WhatsApp, zapisy rozmów
+7. Prompty - Twoje ulubione prompty, styl promptowania, prompty do poprawy
+8. Inne - Wszystko, co nie pasuje do innych kart"
 
     tab_names=("NORTHSTAR" "O ${upper_entity}" "Badania" "Klienci (Użytkownicy)" "Specyfikacje" "Transkrypcje" "Prompty" "Inne")
     tab_descs=()
