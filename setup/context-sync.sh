@@ -8,6 +8,7 @@
 #   context-sync.sh --status           # show all entities' Drive connection status
 #   context-sync.sh --sync <entity>    # trigger sync for entity
 #   context-sync.sh --auth <email>     # authenticate Google account
+#   context-sync.sh --lang-polish       # interactive mode, Polish template
 #   context-sync.sh --help             # show usage
 set -euo pipefail
 
@@ -18,6 +19,7 @@ VAULT_PATH="$REPO_DIR/memory-vault"
 CONFIG_PATH="$REPO_DIR/config.json"
 
 G="\033[32m" Y="\033[33m" C="\033[36m" B="\033[1m" D="\033[2m" R="\033[0m"
+TEMPLATE_LANG=""  # set to "pl" by --lang-polish
 W=64
 LINE=$(printf '═%.0s' $(seq 1 $W))
 
@@ -428,6 +430,7 @@ cmd_help() {
   printf "    context-sync.sh --status           ${D}# show Drive connection status${R}\n"
   printf "    context-sync.sh --sync <entity>    ${D}# trigger sync for entity${R}\n"
   printf "    context-sync.sh --auth <email>     ${D}# authenticate Google account${R}\n"
+  printf "    context-sync.sh --lang-polish       ${D}# interactive mode, Polish template${R}\n"
   printf "    context-sync.sh --help             ${D}# this help${R}\n\n"
   printf "  ${B}Prerequisites:${R}\n"
   printf "    Node.js (for gws CLI) — the script auto-installs gws if missing.\n"
@@ -802,7 +805,7 @@ create_context_dump() {
   # Step 2: Rename the default first tab to "Personal AI" and write intro
   # The first tab already exists — rename it via batchUpdate
   local first_tab_id; first_tab_id=$(gws docs documents get \
-    --params "{\"documentId\": \"${doc_id}\"}" 2>/dev/null | node -e "
+    --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null | node -e "
     const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
     const tabs=d.tabs||[];
     if(tabs.length>0) console.log((tabs[0].tabProperties||{}).tabId||'');
@@ -828,6 +831,7 @@ Everything you write here gets synced into your memory vault and distilled into 
 
 1. Open each tab of this Google Doc and write freely (top left corner to see the tabs)
 2. Each tab has instructions explaining what belongs there (you can leave or delete them)
+   Tip: Extract memories from your AI Chat (see the prompt below)
 3. Do not worry about formatting. Raw thoughts are perfectly fine
 4. Volume matters. The more context you provide, the smarter your AI becomes
 5. Feel free to add more tabs if you need additional categories
@@ -846,15 +850,17 @@ Everything you write here gets synced into your memory vault and distilled into 
 
 ## Automated Extractions
 
-Each tab includes a Memory Extraction Prompt at the top. You can use it with your favourite AI chat (ChatGPT, Claude, Gemini, Grok) to recall what it already knows about you on that topic.
+Life hack: You can use it with your favourite AI chat (ChatGPT, Claude, Gemini, Grok) to recall what it already knows about you on that topic.
 
 How it works:
 1. Open a chat with your AI (memory must be ON — it is by default)
-2. Copy the prompt from the top of the tab and send it
+2. Paste the prompt below (don't send yet), paste the questions from any tab, then send it
 3. Your AI will recall everything it remembers about that topic
-4. Copy its reply into the tab sections below
+4. Copy its reply into the tab sections of this Context Dump Template
 
-If the reply is not useful, continue the conversation with your AI to establish the narrative you see fit, then give it the prompt again — this time it will apply it to just the current chat.
+Memory extraction prompt (feel free to edit): \"Recall everything you know about me related to the topics below. Include not just facts but the journey — timelines, key milestones, obstacles I faced, and how things evolved over time. Share any direct quotes, strong opinions, or memorable phrases I used, as they capture my authentic voice. Where you remember specific people, decisions, or turning points, include those with context and approximate dates. Organize your response with clear headings matching the sections below so I can paste it directly into my notes.\"
+
+Tip: If the reply is not useful, continue the conversation with your AI to establish the narrative you see fit, then give it the prompt again — this time it will apply it to just the current chat.
 
 You can always skip this and populate sections with raw content directly.
 
@@ -867,7 +873,7 @@ Use the Scratchpad for:
 - Ideation and brainstorming for that topic
 - Working on context before giving it to Personal AI
 
-After your first sync, only the Scratchpad content in each tab (including any new tabs you add) will be synced on subsequent runs. The template sections below it are one-time scaffolding.
+After your first sync, only the Scratchpad content in each tab (including any new tabs you add) will be synced on subsequent runs (on request, not automated). The template sections below it are one-time scaffolding you can keep or delete.
 
 ---
 
@@ -893,13 +899,15 @@ After your first sync, only the Scratchpad content in each tab (including any ne
   local tab_names=("NORTHSTAR" "About ${upper_entity}" "Research" "Customers (Users)" "Specifications" "Transcripts" "Prompts" "Other")
   # Tab descriptions — using node to build the array avoids bash newline issues
   local tab_descs=()
-  tab_descs+=("***
+  local STARS; STARS=$(printf '*%.0s' $(seq 1 100))
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on NORTHSTAR for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # NORTHSTAR
-
-Memory extraction prompt (feel free to edit): \"Recall everything you know about my long-term vision, mission, and core values for ${upper_entity}. Copy everything below — include goals, priorities, and any strategic direction I have shared.\"
 
 ## Your North Star Vision
 
@@ -914,15 +922,20 @@ What principles guide every decision?
 What is the single most important thing right now?
 
 ---
-*Write freely. This shapes how your AI agents prioritize and make decisions.*")
+*Write freely. This shapes how your AI agents prioritize and make decisions.*
 
-  tab_descs+=("***
+${STARS}
+
+[Paste context here]")
+
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on About ${upper_entity} for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # About ${upper_entity}
-
-Memory extraction prompt (feel free to edit): \"Recall everything you know about ${upper_entity} — what it is, who is behind it, how it works, and what stage it is at. Copy everything below — include any details about the team, business model, and how ${upper_entity} creates value.\"
 
 ## What is ${upper_entity}?
 
@@ -941,15 +954,20 @@ The core mechanism — how does ${upper_entity} create value?
 Where are you now? Idea, MVP, growth, scale?
 
 ---
-*The more your AI knows about ${upper_entity}, the better it can represent you.*")
+*The more your AI knows about ${upper_entity}, the better it can represent you.*
 
-  tab_descs+=("***
+${STARS}
+
+[Paste context here]")
+
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on Research for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # Research
-
-Memory extraction prompt (feel free to edit): \"Recall everything you know about the market, competitors, and research insights related to ${upper_entity}. Copy everything below — include market trends, competitor analysis, and any data or findings I have shared.\"
 
 ## Market Landscape
 
@@ -964,15 +982,20 @@ Who else is doing this? What do they do well? Where do they fall short?
 What have you learned from research, conversations, data?
 
 ---
-*Paste links, notes, summaries — anything that informs your strategy.*")
+*Paste links, notes, summaries — anything that informs your strategy.*
 
-  tab_descs+=("***
+${STARS}
+
+[Paste context here]")
+
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on Customers (Users) for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # Customers (Users)
-
-Memory extraction prompt (feel free to edit): \"Recall everything you know about the users and customers of ${upper_entity} — who they are, what they need, and any feedback they have given. Copy everything below — include demographics, pain points, quotes, and user research.\"
 
 ## Who are your users?
 
@@ -987,15 +1010,20 @@ What problem are you solving for them?
 What have users told you? Quotes, reviews, support requests.
 
 ---
-*Your AI uses this to understand who you serve and why.*")
+*Your AI uses this to understand who you serve and why.*
 
-  tab_descs+=("***
+${STARS}
+
+[Paste context here]")
+
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on Specifications for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # Specifications
-
-Memory extraction prompt (feel free to edit): \"Recall everything you know about the product specifications and technical requirements for ${upper_entity}. Copy everything below — include features, architecture, integrations, and any technical decisions I have shared.\"
 
 ## Product Overview
 
@@ -1010,15 +1038,20 @@ Stack, architecture, integrations, constraints.
 Detailed specs for features in progress or planned.
 
 ---
-*Paste PRDs, feature briefs, technical docs — the more detail the better.*")
+*Paste PRDs, feature briefs, technical docs — the more detail the better.*
 
-  tab_descs+=("***
+${STARS}
+
+[Paste context here]")
+
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on Transcripts for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # Transcripts
-
-Memory extraction prompt (feel free to edit): \"Recall any meeting notes, conversation summaries, or call transcripts I have shared related to ${upper_entity}. Copy everything below — include key decisions, action items, and important quotes from any conversations.\"
 
 ## Video Calls
 
@@ -1033,15 +1066,20 @@ Copy-paste important WhatsApp conversations and threads.
 Slack threads, email exchanges, voice memo transcriptions.
 
 ---
-*Raw transcripts are fine — Context Extractor will distill the key points.*")
+*Raw transcripts are fine — Context Extractor will distill the key points.*
 
-  tab_descs+=("***
+${STARS}
+
+[Paste context here]")
+
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on Prompts for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # Prompts
-
-Memory extraction prompt (feel free to edit): \"Recall any prompts, prompt templates, or prompting techniques I have shared or asked about. Copy everything below — include prompts I use frequently, ones I want to improve, and any prompting strategies we have discussed.\"
 
 ## Favourite Prompts
 
@@ -1060,15 +1098,20 @@ Prompts that work but could be better. Paste them and note what you would like t
 How do you like to prompt? Short and direct, detailed with examples, conversational? What works best for you?
 
 ---
-*Your AI agents use this to understand your prompting skill and preferences, and can suggest improvements.*")
+*Your AI agents use this to understand your prompting skill and preferences, and can suggest improvements.*
 
-  tab_descs+=("***
+${STARS}
+
+[Paste context here]")
+
+  tab_descs+=("${STARS}
 Scratchpad: Your Notes on Other for ${upper_entity}
-***
+
+[Type here]
+
+${STARS}
 
 # Other
-
-Memory extraction prompt (feel free to edit): \"Recall any ideas, references, meeting notes, or miscellaneous context I have shared about ${upper_entity} that does not fit a specific category. Copy everything below — include random thoughts, links, and anything worth keeping.\"
 
 ## Meeting Notes
 
@@ -1083,7 +1126,308 @@ Random thoughts, inspirations, things to explore later.
 Links, articles, resources worth keeping.
 
 ---
-*Anything that does not fit the other tabs goes here. Add more tabs if a category grows large enough.*")
+*Anything that does not fit the other tabs goes here. Add more tabs if a category grows large enough.*
+
+${STARS}
+
+[Paste context here]")
+
+  # ── Polish language override ──────────────────────────────────────────
+  if [ "$TEMPLATE_LANG" = "pl" ]; then
+    intro_text="# Personal AI Context Dump - ${upper_entity}
+
+## Co to jest?
+
+Ten dokument Google to uporządkowany zrzut wiedzy dla Twojego systemu Personal AI.
+
+Wszystko, co tutaj zapiszesz, zostanie zsynchronizowane do Twojego memory vault i przetworzone w wiedzę dla Twoich agentów AI.
+
+## Jak tego używać
+
+1. Otwórz każdą kartę tego dokumentu i pisz swobodnie (karty widoczne w lewym górnym rogu)
+2. Każda karta zawiera instrukcje wyjaśniające, co do niej pasuje (możesz je zostawić lub usunąć)
+   Wskazówka: Wyciągnij wspomnienia z czatu AI (patrz prompt poniżej)
+3. Nie martw się formatowaniem. Surowe myśli są w porządku
+4. Ilość ma znaczenie. Im więcej kontekstu podasz, tym mądrzejsze będzie Twoje AI
+5. Możesz dodawać więcej kart, jeśli potrzebujesz dodatkowych kategorii
+6. Gdy będziesz gotowy, Context Dump może zostać zsynchronizowany
+
+## Karty
+
+1. NORTHSTAR - Twoja długoterminowa wizja i misja dla ${upper_entity}
+2. O ${upper_entity} - Czym jest ${upper_entity}, komu służy, jak działa
+3. Badania - Badania rynku, analiza konkurencji, spostrzeżenia branżowe
+4. Klienci (Użytkownicy) - Kim są Twoi użytkownicy, czego potrzebują, opinie
+5. Specyfikacje - Specyfikacje produktu, wymagania techniczne, definicje funkcji
+6. Transkrypcje - Rozmowy wideo, czaty WhatsApp, zapisy rozmów
+7. Prompty - Twoje ulubione prompty, styl promptowania, prompty do poprawy
+8. Inne - Wszystko, co nie pasuje do innych kart
+
+## Automatyczna ekstrakcja
+
+Life hack: Możesz użyć swojego ulubionego czatu AI (ChatGPT, Claude, Gemini, Grok), żeby wyciągnąć to, co już o Tobie wie na dany temat.
+
+Jak to działa:
+1. Otwórz czat z AI (pamięć musi być WŁĄCZONA — domyślnie jest)
+2. Wklej poniższy prompt (jeszcze nie wysyłaj), wklej pytania z wybranej karty, potem wyślij
+3. AI przywoła wszystko, co pamięta o danym temacie
+4. Skopiuj odpowiedź do sekcji w odpowiedniej karcie tego Context Dump
+
+Prompt do ekstrakcji pamięci (możesz go edytować): \"Przypomnij sobie wszystko, co wiesz o mnie w kontekście poniższych tematów. Uwzględnij nie tylko fakty, ale i przebieg — oś czasu, kluczowe kamienie milowe, przeszkody, które pokonałem/am, i jak rzeczy ewoluowały. Przytocz moje bezpośrednie cytaty, silne opinie lub zapadające w pamięć sformułowania, bo oddają mój autentyczny głos. Tam, gdzie pamiętasz konkretne osoby, decyzje lub punkty zwrotne, podaj je z kontekstem i przybliżonymi datami. Uporządkuj odpowiedź z nagłówkami pasującymi do sekcji poniżej, żebym mógł/mogła ją bezpośrednio wkleić do notatek.\"
+
+Wskazówka: Jeśli odpowiedź nie jest przydatna, kontynuuj rozmowę z AI, żeby ustalić narrację, a potem daj mu prompt ponownie — tym razem zastosuje go tylko do bieżącego czatu.
+
+Zawsze możesz to pominąć i wypełnić sekcje bezpośrednio własną treścią.
+
+## Brudnopis
+
+Każda karta zaczyna się sekcją Brudnopis na samej górze, oddzieloną liniami gwiazdek (***).
+
+Używaj Brudnopisu do:
+- Notatek roboczych i szkiców, zanim będą gotowe
+- Burzy mózgów i pomysłów na dany temat
+- Pracy nad kontekstem przed przekazaniem go do Personal AI
+
+Po pierwszej synchronizacji, tylko zawartość Brudnopisu w każdej karcie (włącznie z nowymi kartami) będzie synchronizowana przy kolejnych uruchomieniach (na żądanie, nie automatycznie). Sekcje szablonu poniżej to jednorazowe rusztowanie, które możesz zostawić lub usunąć.
+
+---
+
+*Dodawaj więcej kart w razie potrzeby. Twoje agenty AI przetworzą je wszystkie.*"
+
+    tab_names=("NORTHSTAR" "O ${upper_entity}" "Badania" "Klienci (Użytkownicy)" "Specyfikacje" "Transkrypcje" "Prompty" "Inne")
+    tab_descs=()
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o NORTHSTAR dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# NORTHSTAR
+
+## Twoja Gwiazda Północna
+
+Jaka jest długoterminowa misja ${upper_entity}? Gdzie chcesz być za rok? Za 5 lat?
+
+## Podstawowe wartości
+
+Jakie zasady kierują każdą decyzją?
+
+## Aktualny priorytet
+
+Co jest teraz najważniejsze?
+
+---
+*Pisz swobodnie. To kształtuje sposób, w jaki Twoje agenty AI ustalają priorytety i podejmują decyzje.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o ${upper_entity} dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# O ${upper_entity}
+
+## Czym jest ${upper_entity}?
+
+Opisz swój projekt własnymi słowami.
+
+## Kto za tym stoi?
+
+Założyciele, zespół, kluczowe osoby i ich role.
+
+## Jak to działa?
+
+Główny mechanizm — jak ${upper_entity} tworzy wartość?
+
+## Etap
+
+Na jakim etapie jesteś? Pomysł, MVP, wzrost, skala?
+
+---
+*Im więcej Twoje AI wie o ${upper_entity}, tym lepiej może Cię reprezentować.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o Badaniach dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# Badania
+
+## Krajobraz rynkowy
+
+Na jakim rynku działasz? Jak duży jest? Kluczowe trendy?
+
+## Konkurencja
+
+Kto jeszcze to robi? Co robią dobrze? Gdzie mają braki?
+
+## Wnioski
+
+Czego dowiedziałeś/aś się z badań, rozmów, danych?
+
+---
+*Wklejaj linki, notatki, podsumowania — wszystko, co wpływa na Twoją strategię.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o Klientach dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# Klienci (Użytkownicy)
+
+## Kim są Twoi użytkownicy?
+
+Opisz idealnego klienta. Demografia, zachowania, problemy.
+
+## Czego potrzebują?
+
+Jaki problem dla nich rozwiązujesz?
+
+## Opinie
+
+Co powiedzieli użytkownicy? Cytaty, recenzje, zgłoszenia.
+
+---
+*Twoje AI używa tego, żeby zrozumieć, komu służysz i dlaczego.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o Specyfikacjach dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# Specyfikacje
+
+## Przegląd produktu
+
+Co budujesz? Kluczowe funkcje i możliwości.
+
+## Wymagania techniczne
+
+Stack, architektura, integracje, ograniczenia.
+
+## Definicje funkcji
+
+Szczegółowe specyfikacje funkcji w trakcie realizacji lub planowanych.
+
+---
+*Wklejaj PRD-y, briefy funkcji, dokumentację techniczną — im więcej szczegółów, tym lepiej.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o Transkrypcjach dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# Transkrypcje
+
+## Rozmowy wideo
+
+Wklej transkrypcje lub notatki z Zoom, Google Meet, Teams.
+
+## Czaty WhatsApp
+
+Skopiuj i wklej ważne rozmowy i wątki WhatsApp.
+
+## Inne rozmowy
+
+Wątki Slack, wymiana maili, transkrypcje notatek głosowych.
+
+---
+*Surowe transkrypcje są w porządku — Context Extractor wyciągnie z nich kluczowe punkty.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o Promptach dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# Prompty
+
+## Ulubione prompty
+
+Jakich promptów używasz najczęściej? Wklej je z opisem, co robią.
+
+## Prompty do wypróbowania
+
+Prompty, które zapisałeś/aś, dodałeś/aś do zakładek, albo chcesz użyć, ale jeszcze tego nie zrobiłeś/aś.
+
+## Prompty do poprawy
+
+Prompty, które działają, ale mogłyby być lepsze. Wklej je i opisz, co chcesz zmienić.
+
+## Styl promptowania
+
+Jak lubisz promptować? Krótko i bezpośrednio, szczegółowo z przykładami, konwersacyjnie? Co działa najlepiej?
+
+---
+*Twoje agenty AI używają tego, żeby zrozumieć Twój poziom promptowania i preferencje, i mogą zaproponować ulepszenia.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+
+    tab_descs+=("${STARS}
+Brudnopis: Twoje notatki o Inne dla ${upper_entity}
+
+[Pisz tutaj]
+
+${STARS}
+
+# Inne
+
+## Notatki ze spotkań
+
+Wrzuć notatki ze spotkań, rozmów, konwersacji.
+
+## Pomysły
+
+Losowe myśli, inspiracje, rzeczy do zbadania później.
+
+## Odniesienia
+
+Linki, artykuły, materiały warte zachowania.
+
+---
+*Wszystko, co nie pasuje do innych kart, trafia tutaj. Dodaj więcej kart, jeśli kategoria rozrośnie się wystarczająco.*
+
+${STARS}
+
+[Wklej kontekst tutaj]")
+  fi
 
   local tab_ok=0
   local tab_fail=0
@@ -1354,6 +1698,10 @@ case "${1:-}" in
     ;;
   --sync)
     cmd_sync "${2:-}"
+    ;;
+  --lang-polish)
+    TEMPLATE_LANG="pl"
+    cmd_interactive
     ;;
   "")
     cmd_interactive
