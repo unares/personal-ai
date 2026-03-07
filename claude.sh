@@ -42,13 +42,25 @@ list_profiles() {
       local label=$(node -e "const p=require('$dir/profile.json'); console.log(p.label)" 2>/dev/null || echo "$name")
       local desc=$(node -e "const p=require('$dir/profile.json'); console.log(p.description)" 2>/dev/null || echo "")
       local icon=$(node -e "const p=require('$dir/profile.json'); console.log(p.icon||'')" 2>/dev/null || echo "")
+      local caps=$(node -e "
+        const p=require('$dir/profile.json');
+        const c=p.capabilities||{};
+        const v=c.vault||'none';
+        const push=c.push?'✓':'✗';
+        const docker=c.docker?'✓':'✗';
+        const web=c.web?'✓':'✗';
+        const log=c.decision_log?'✓':'✗';
+        console.log('vault: '+v+' | push: '+push+' | docker: '+docker+' | web: '+web+' | log: '+log);
+      " 2>/dev/null || echo "")
     else
       local label="$name"
       local desc=""
       local icon=""
+      local caps=""
     fi
 
     printf "  ${C}%s.${R} %-16s ${D}%s${R}\n" "$i" "$label" "$desc"
+    [ -n "$caps" ] && printf "     %-16s ${D}%s${R}\n" "" "$caps"
     i=$((i + 1))
   done
 }

@@ -1,8 +1,15 @@
 {
   "name": "experimental",
   "label": "Experimental",
-  "description": "Sandbox with northstar context. Test configs, export what works.",
+  "description": "Evolve while building. Full autonomy, all powers.",
   "icon": "!",
   "skills": [],
-  "notes": "Loads NORTHSTAR.md and entity northstars. Use to prototype Claude Code configurations."
+  "notes": "Most permissive profile. Superset of all others.",
+  "capabilities": {
+    "vault": "rw",
+    "push": true,
+    "docker": true,
+    "web": true,
+    "decision_log": true
+  }
 }

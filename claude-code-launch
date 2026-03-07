@@ -10,35 +10,47 @@ W=64
 LINE=$(printf '═%.0s' $(seq 1 $W))
 
 # ── Detect context from environment ──────────────────────────────────────
-PAI_VERSION="${VERSION:-0.4}"
-PAI_HUMAN="${HUMAN_NAME:-unknown}"
-PAI_ENTITY="${ENTITY:-unknown}"
-PAI_ROLE="${ROLE:-unknown}"
-PAI_ROLE_LABEL="${ROLE_LABEL:-$PAI_ROLE}"
-PAI_CONTAINER="${CONTAINER:-$(hostname 2>/dev/null || echo unknown)}"
+PERSONAL_AI_VERSION="${VERSION:-0.4}"
+
+# Bare Mac vs container defaults
+if [ -f "/.dockerenv" ]; then
+  _DEFAULT_HUMAN="unknown"
+  _DEFAULT_ENTITY="unknown"
+  _DEFAULT_ROLE="unknown"
+else
+  _DEFAULT_HUMAN="michal"
+  _DEFAULT_ENTITY="superentity"
+  _DEFAULT_ROLE="superuser"
+fi
+
+PERSONAL_AI_HUMAN="${HUMAN_NAME:-$_DEFAULT_HUMAN}"
+PERSONAL_AI_ENTITY="${ENTITY:-$_DEFAULT_ENTITY}"
+PERSONAL_AI_ROLE="${ROLE:-$_DEFAULT_ROLE}"
+PERSONAL_AI_ROLE_LABEL="${ROLE_LABEL:-$PERSONAL_AI_ROLE}"
+PERSONAL_AI_CONTAINER="${CONTAINER:-$(hostname 2>/dev/null || echo unknown)}"
 
 # Try to source version.sh if available
 for VPATH in /workspace/version.sh ./version.sh; do
   if [ -f "$VPATH" ]; then
     source "$VPATH"
-    PAI_VERSION="$VERSION"
+    PERSONAL_AI_VERSION="$VERSION"
     break
   fi
 done
 
 # ── Banner ────────────────────────────────────────────────────────────────
 printf "\n${B}${G}╔${LINE}\n"
-printf "║  Personal AI v${PAI_VERSION} — Claude Code\n"
-if [ "$PAI_HUMAN" != "unknown" ]; then
-  printf "║  Human: ${PAI_HUMAN}\n"
+printf "║  Personal AI v${PERSONAL_AI_VERSION} — Claude Code\n"
+if [ "$PERSONAL_AI_HUMAN" != "unknown" ]; then
+  printf "║  Human: ${PERSONAL_AI_HUMAN}\n"
 fi
 printf "╚${LINE}${R}\n\n"
 
 # ── Where you are ─────────────────────────────────────────────────────────
 printf "  ${B}Where you are:${R}\n"
-printf "    Container:  ${B}${PAI_CONTAINER}${R}\n"
-printf "    Entity:     ${B}${PAI_ENTITY}${R}\n"
-printf "    Role:       ${B}${PAI_ROLE_LABEL}${R}\n"
+printf "    Container:  ${B}${PERSONAL_AI_CONTAINER}${R}\n"
+printf "    Entity:     ${B}${PERSONAL_AI_ENTITY}${R}\n"
+printf "    Role:       ${B}${PERSONAL_AI_ROLE_LABEL}${R}\n"
 printf "\n"
 
 # ── Vault access ──────────────────────────────────────────────────────────
@@ -73,8 +85,8 @@ GH_STATUS=""
 
 # Try to read from config.json (host mode)
 for CFG in /workspace/config.json ./config.json; do
-  if [ -f "$CFG" ] && command -v node > /dev/null 2>&1 && [ "$PAI_ENTITY" != "unknown" ]; then
-    GH_REPO=$(node -e "const c=require('${CFG}'); const e=(c.entities||[]).find(x=>x.name==='${PAI_ENTITY}'); console.log(e&&e.github?e.github.repo:'')" 2>/dev/null) || true
+  if [ -f "$CFG" ] && command -v node > /dev/null 2>&1 && [ "$PERSONAL_AI_ENTITY" != "unknown" ]; then
+    GH_REPO=$(node -e "const c=require('${CFG}'); const e=(c.entities||[]).find(x=>x.name==='${PERSONAL_AI_ENTITY}'); console.log(e&&e.github?e.github.repo:'')" 2>/dev/null) || true
     break
   fi
 done
@@ -142,10 +154,23 @@ if [ -n "$PROFILES_DIR" ] && command -v node > /dev/null 2>&1; then
     # Skip vanilla — it's the "skip" option
     [ "$PNAME" = "vanilla" ] && continue
 
+    # Read capability flags
+    PCAPS=$(node -e "
+      const p=require('${PJ}');
+      const c=p.capabilities||{};
+      const v=c.vault||'none';
+      const push=c.push?'✓':'✗';
+      const docker=c.docker?'✓':'✗';
+      const web=c.web?'✓':'✗';
+      const log=c.decision_log?'✓':'✗';
+      console.log('vault: '+v+' | push: '+push+' | docker: '+docker+' | web: '+web+' | log: '+log);
+    " 2>/dev/null) || PCAPS=""
+
     PROFILE_DIRS+=("$(dirname "$PJ")")
     PROFILE_LABELS+=("$PLABEL")
     PROFILE_DESCS+=("$PDESC")
     printf "    ${C}%s.${R} %-16s ${D}%s${R}\n" "$IDX" "$PLABEL" "$PDESC"
+    [ -n "$PCAPS" ] && printf "       %-16s ${D}%s${R}\n" "" "$PCAPS"
     IDX=$((IDX + 1))
   done
 
@@ -212,14 +237,14 @@ if [ -n "$ACCOUNTS_SCRIPT" ]; then
 fi
 
 # ── Companion AI Launch: AIOO enriched banner ─────────────────────────────
-if [ "$PAI_ROLE" = "aioo" ]; then
+if [ "$PERSONAL_AI_ROLE" = "aioo" ]; then
   printf "  ${B}${G}╔${LINE}\n"
   printf "║  Companion AI Launch — AIOO\n"
   printf "╠${LINE}${R}\n"
-  printf "║  Entity:    ${B}${PAI_ENTITY}${R}\n"
+  printf "║  Entity:    ${B}${PERSONAL_AI_ENTITY}${R}\n"
   # Show northstar headline if available
   NS_PATH=""
-  for NP in "/vault/$(echo "$PAI_ENTITY" | tr '[:lower:]' '[:upper:]')_NORTHSTAR.md" /vault/*NORTHSTAR*.md; do
+  for NP in "/vault/$(echo "$PERSONAL_AI_ENTITY" | tr '[:lower:]' '[:upper:]')_NORTHSTAR.md" /vault/*NORTHSTAR*.md; do
     [ -f "$NP" ] && NS_PATH="$NP" && break
   done
   if [ -n "$NS_PATH" ]; then
@@ -231,7 +256,7 @@ if [ "$PAI_ROLE" = "aioo" ]; then
     if [ -f "$CFG" ] && command -v node > /dev/null 2>&1; then
       HUMANS=$(node -e "
         const c=require('${CFG}');
-        const cls=(c.clarks||[]).filter(cl=>cl.projects&&cl.projects.includes('${PAI_ENTITY}'));
+        const cls=(c.clarks||[]).filter(cl=>cl.projects&&cl.projects.includes('${PERSONAL_AI_ENTITY}'));
         console.log(cls.map(cl=>cl.name).join(', '));
       " 2>/dev/null) || true
       [ -n "$HUMANS" ] && printf "║  Humans:    ${B}${HUMANS}${R}\n"
@@ -258,7 +283,7 @@ _suggest_resync() {
   local last_epoch; last_epoch=$(date -d "$last_ts" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%SZ" "$last_ts" +%s 2>/dev/null) || return
   local age_h; age_h=$(( (now_epoch - last_epoch) / 3600 ))
   if [ "$age_h" -ge 24 ]; then
-    printf "  ${Y}!${R} Google Drive last synced ${age_h}h ago. Run ${B}context-sync.sh --sync ${PAI_ENTITY}${R} to refresh.\n\n"
+    printf "  ${Y}!${R} Google Drive last synced ${age_h}h ago. Run ${B}context-sync.sh --sync ${PERSONAL_AI_ENTITY}${R} to refresh.\n\n"
   fi
 }
 _suggest_resync 2>/dev/null || true
@@ -275,7 +300,7 @@ _log_launch() {
 
   if [ -n "$vault_logs" ]; then
     local ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
-    local entry="{\"ts\":\"$ts\",\"event\":\"launch\",\"human\":\"${PAI_HUMAN}\",\"entity\":\"${PAI_ENTITY}\",\"role\":\"${PAI_ROLE}\",\"container\":\"${PAI_CONTAINER}\",\"profile\":\"${PROFILE_NAME:-default}\",\"account\":\"${CLAUDE_ACCOUNT:-unknown}\"}"
+    local entry="{\"ts\":\"$ts\",\"event\":\"launch\",\"human\":\"${PERSONAL_AI_HUMAN}\",\"entity\":\"${PERSONAL_AI_ENTITY}\",\"role\":\"${PERSONAL_AI_ROLE}\",\"container\":\"${PERSONAL_AI_CONTAINER}\",\"profile\":\"${PROFILE_NAME:-default}\",\"account\":\"${CLAUDE_ACCOUNT:-unknown}\"}"
     echo "$entry" >> "$vault_logs/sessions.jsonl" 2>/dev/null || true
   fi
 }

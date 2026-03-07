@@ -2,5 +2,12 @@
   "name": "vanilla",
   "label": "Vanilla",
   "description": "Stock Claude Code. Clean slate, full defaults.",
-  "icon": "~"
+  "icon": "~",
+  "capabilities": {
+    "vault": "none",
+    "push": false,
+    "docker": false,
+    "web": false,
+    "decision_log": false
+  }
 }
