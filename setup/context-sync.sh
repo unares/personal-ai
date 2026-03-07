@@ -1524,11 +1524,23 @@ ${STARS}
     fi
   done
 
-  # Delete the default "Tab 1" now that all named tabs exist
+  # Try to delete the default "Tab 1"; if that fails, write a redirect message
   if [ -n "$default_tab_id" ]; then
-    gws docs documents batchUpdate \
+    if ! gws docs documents batchUpdate \
       --params "{\"documentId\": \"${doc_id}\"}" \
-      --json "{\"requests\": [{\"deleteDocumentTab\": {\"tabId\": \"${default_tab_id}\"}}]}" > /dev/null 2>&1 || true
+      --json "{\"requests\": [{\"deleteDocumentTab\": {\"tabId\": \"${default_tab_id}\"}}]}" > /dev/null 2>&1; then
+      # Deletion failed — write redirect text into Tab 1
+      local redirect_text="This is a Context Dump Template for ${upper_entity}. See the Personal AI tab for instructions."
+      local redirect_json; redirect_json=$(node -e "
+        const t=process.argv[1];
+        process.stdout.write(JSON.stringify(t).slice(1,-1));
+      " "$redirect_text" 2>/dev/null) || true
+      if [ -n "$redirect_json" ]; then
+        gws docs documents batchUpdate \
+          --params "{\"documentId\": \"${doc_id}\"}" \
+          --json "{\"requests\": [{\"insertText\": {\"text\": \"${redirect_json}\", \"location\": {\"tabId\": \"${default_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1 || true
+      fi
+    fi
   fi
 
   printf "\n"
@@ -1634,14 +1646,14 @@ cmd_interactive() {
   email=$(get_gdrive_email "$entity")
 
   if [ -n "$email" ]; then
-    # Have stored email — check if gws is still authenticated
+    # Have stored email — verify auth works with a real API call
     printf "  Connecting"
     for i in 1 2 3; do printf "."; sleep 0.1; done
-    if gws auth status --account="$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
+    if gws drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
       connected=true
       printf " ${G}connected${R} (${email})\n\n"
     else
-      printf " ${Y}stored but expired${R}\n\n"
+      printf " ${Y}needs re-authentication${R}\n\n"
     fi
   fi
 
@@ -1671,7 +1683,7 @@ cmd_interactive() {
     printf "  Connecting"
     for i in 1 2 3 4 5 6; do printf "."; sleep 0.15; done
 
-    if gws auth status --account="$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
+    if gws drive files list --params '{"pageSize": 1, "fields": "files(id)"}' > /dev/null 2>&1; then
       connected=true
       printf " ${G}connected${R}\n\n"
     else
