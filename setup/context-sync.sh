@@ -823,23 +823,29 @@ create_context_dump() {
   printf "\n  Checking for existing template"
   for i in 1 2 3; do printf "."; sleep 0.15; done
 
-  # Check if doc already exists in Drive — escape title for query
+  # Check if doc already exists in Drive — build query params entirely in node
   set_gws_account "$email"
-  local safe_query_title; safe_query_title=$(node -e "
-    const t=process.argv[1].replace(/\\\\/g,'\\\\\\\\').replace(/'/g,\"\\\\'\" );
-    process.stdout.write(t);
+  local query_params; query_params=$(node -e "
+    const title = process.argv[1];
+    const q = 'name=' + JSON.stringify(title) + ' and mimeType=' + JSON.stringify('application/vnd.google-apps.document') + ' and trashed=false';
+    process.stdout.write(JSON.stringify({q, pageSize:1, fields:'files(id,name)'}));
   " "$doc_title" 2>/dev/null) || true
   local existing_id=""
-  if [ -n "$safe_query_title" ]; then
-    local existing; existing=$(gws drive files list --params "{\"q\": \"name='${safe_query_title}' and mimeType='application/vnd.google-apps.document' and trashed=false\", \"pageSize\": 1, \"fields\": \"files(id,name)\"}" 2>/dev/null) || true
+  if [ -n "$query_params" ]; then
+    local existing; existing=$(gws drive files list --params "$query_params" 2>/dev/null) || true
     if [ -n "$existing" ]; then
-      existing_id=$(echo "$existing" | node -e "const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); const f=(d.files||[])[0]; if(f&&f.id) process.stdout.write(f.id)" 2>/dev/null) || true
+      existing_id=$(echo "$existing" | node -e "
+        const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+        const f=(d.files||[])[0];
+        if(f&&f.id) process.stdout.write(f.id);
+      " 2>/dev/null) || true
     fi
   fi
 
   if [ -n "$existing_id" ]; then
     printf " ${Y}already exists${R}\n\n"
     printf "  ${B}${doc_title}${R} is already in your Google Drive.\n"
+    printf "  ${D}  https://docs.google.com/document/d/${existing_id}/edit${R}\n\n"
     printf "  ${D}  Open it, fill in each tab, then run:${R}\n"
     printf "  ${B}  ./setup/context-sync.sh --sync ${entity}${R}\n\n"
     read -rp "  Create a new template anyway? [y/N]: " RECREATE
@@ -889,9 +895,9 @@ create_context_dump() {
 
 ## What is this?
 
-This Google Doc is a structured brain dump for your Personal AI system.
+This is a Context Dump for your Personal AI Workspace.
 
-Everything you write here gets synced into your memory vault and distilled into actionable knowledge for your AI agents.
+Everything you write here gets synced into your memory vault and distilled into actionable knowledge. This context will inform your Personal AI Workspace — where AI Agents build Apps and Business Automations for ${upper_entity}.
 
 ## How to use it
 
@@ -1180,9 +1186,9 @@ ${STARS}
 
 ## Co to jest?
 
-Ten dokument Google to uporządkowany zrzut wiedzy dla Twojego systemu Personal AI.
+To jest Context Dump dla Twojego Personal AI Workspace.
 
-Wszystko, co tutaj zapiszesz, zostanie zsynchronizowane do Twojego memory vault i przetworzone w wiedzę dla Twoich agentów AI.
+Wszystko, co tutaj zapiszesz, zostanie zsynchronizowane do Twojego memory vault i przetworzone w wiedzę. Ten kontekst będzie zasilał Twój Personal AI Workspace — gdzie Agenci AI budują Aplikacje i Automatyzacje Biznesowe dla ${upper_entity}.
 
 ## Jak tego używać
 
@@ -1565,8 +1571,10 @@ ${STARS}
     printf "  ${D}  Tabs could not be created — add sections manually.${R}\n\n"
   fi
 
+  local doc_url="https://docs.google.com/document/d/${doc_id}/edit"
+  printf "  ${D}${doc_url}${R}\n\n"
   printf "  ${B}Next steps:${R}\n"
-  printf "    1. Open ${B}${doc_title}${R} in Google Drive\n"
+  printf "    1. Open the link above\n"
   printf "    2. Fill in each tab with your context\n"
   printf "    3. Run: ${B}./setup/context-sync.sh --sync ${entity}${R}\n\n"
 
