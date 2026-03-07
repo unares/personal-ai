@@ -10,6 +10,7 @@
 #   context-sync.sh --status           # show all entities' Drive connection status
 #   context-sync.sh --sync <entity>    # trigger sync for entity
 #   context-sync.sh --auth <email>     # authenticate Google account
+#   context-sync.sh --check <email>    # diagnostic: show gws config & auth status
 #   context-sync.sh --lang-polish [entity]  # Polish template (interactive or direct)
 #   context-sync.sh --help             # show usage
 set -euo pipefail
@@ -27,6 +28,7 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
 lower() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'; }
+normalize_email() { local e="$1"; [[ "$e" != *@* ]] && e="${e}@gmail.com"; echo "$e"; }
 
 step_banner() {
   local step=$1 total=$2 title="$3"
@@ -226,8 +228,8 @@ get_gdrive_email() {
   local raw_email=""
   raw_email=$([ -f "$state_file" ] && node -e "const s=JSON.parse(require('fs').readFileSync('${state_file}','utf8')); console.log(s.email||'')" 2>/dev/null || echo "")
   # Normalize: auto-append @gmail.com if missing
-  if [ -n "$raw_email" ] && [[ "$raw_email" != *@* ]]; then
-    raw_email="${raw_email}@gmail.com"
+  if [ -n "$raw_email" ]; then
+    raw_email=$(normalize_email "$raw_email")
   fi
   echo "$raw_email"
 }
@@ -283,7 +285,7 @@ get_visible_entities() {
 # ── Per-account gws isolation ─────────────────────────────────
 # gws stores tokens in ~/.config/gws/ and cannot switch accounts.
 # We isolate each account by giving it its own config directory
-# via XDG_CONFIG_HOME, with shared OAuth client config symlinked in.
+# via GOOGLE_WORKSPACE_CLI_CONFIG_DIR, with shared OAuth client config copied in.
 GWS_ACCOUNT_DIR=""
 
 # Activate a per-account gws config directory.
@@ -309,7 +311,7 @@ set_gws_account() {
 # Run gws using the per-account config directory
 run_gws() {
   if [ -n "$GWS_ACCOUNT_DIR" ]; then
-    XDG_CONFIG_HOME="$GWS_ACCOUNT_DIR" gws "$@"
+    GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$GWS_ACCOUNT_DIR/gws" gws "$@"
   else
     gws "$@"
   fi
@@ -328,7 +330,10 @@ get_active_gws_email() {
 gws_force_login() {
   local target_email="$1"
   set_gws_account "$target_email"
-  XDG_CONFIG_HOME="$GWS_ACCOUNT_DIR" gws auth login --account="$target_email" --services drive,docs
+  # Clear any default config credentials to prevent gws falling back to ~/.config/gws/
+  gws auth logout 2>/dev/null || true
+  # Note: --account was removed in gws v0.7.0; harmless on older versions, helps label the account
+  GOOGLE_WORKSPACE_CLI_CONFIG_DIR="$GWS_ACCOUNT_DIR/gws" gws auth login --account="$target_email" --services drive,docs
 }
 
 list_google_docs() {
@@ -458,12 +463,6 @@ create_google_doc() {
   echo "$result"
 }
 
-write_to_google_doc() {
-  local doc_id="$1" content="$2" email="${3:-}"
-  set_gws_account "$email"
-  run_gws docs +write --document "$doc_id" --text "$content" > /dev/null 2>&1
-}
-
 # ══════════════════════════════════════════════════════════════════════════
 # COMMANDS
 # ══════════════════════════════════════════════════════════════════════════
@@ -477,6 +476,7 @@ cmd_help() {
   printf "    context-sync.sh --status           ${D}# show Drive connection status${R}\n"
   printf "    context-sync.sh --sync <entity>    ${D}# trigger sync for entity${R}\n"
   printf "    context-sync.sh --auth <email>     ${D}# authenticate Google account${R}\n"
+  printf "    context-sync.sh --check <email>    ${D}# diagnostic: show gws config & auth${R}\n"
   printf "    context-sync.sh <entity>            ${D}# skip to menu if already authed${R}\n"
   printf "    context-sync.sh <entity> --lang-polish ${D}# Polish template for entity${R}\n"
   printf "    context-sync.sh --lang-polish [entity] ${D}# Polish template${R}\n"
@@ -491,14 +491,63 @@ cmd_help() {
   printf "    4. Context Extractor picks them up and distills automatically\n\n"
 }
 
+cmd_check() {
+  local email="${1:-}"
+  [ -z "$email" ] && die "Usage: context-sync.sh --check <email>"
+  email=$(normalize_email "$email")
+
+  printf "${B}${G}╔${LINE}\n"
+  printf "║  Personal AI v${VERSION} — gws Diagnostics\n"
+  printf "╚${LINE}${R}\n\n"
+
+  # gws version
+  local gws_ver=""
+  if command -v gws > /dev/null 2>&1; then
+    gws_ver=$(gws --version 2>/dev/null || echo "unknown")
+    printf "  gws version:    ${G}${gws_ver}${R}\n"
+  else
+    printf "  gws version:    ${Y}not installed${R}\n"
+    return 1
+  fi
+
+  # Config directory
+  set_gws_account "$email"
+  printf "  Config dir:     ${GWS_ACCOUNT_DIR}/gws\n"
+
+  # Client secret
+  if [ -f "$GWS_ACCOUNT_DIR/gws/client_secret.json" ]; then
+    printf "  OAuth client:   ${G}present${R}\n"
+  else
+    printf "  OAuth client:   ${Y}missing${R}\n"
+  fi
+
+  # Credentials
+  if [ -f "$GWS_ACCOUNT_DIR/gws/credentials.enc" ]; then
+    printf "  Credentials:    ${G}present${R}\n"
+  else
+    printf "  Credentials:    ${Y}not authenticated${R}\n"
+  fi
+
+  # Active account
+  local active; active=$(get_active_gws_email)
+  if [ -n "$active" ]; then
+    if [ "$active" = "$email" ]; then
+      printf "  Active account: ${G}${active}${R}\n"
+    else
+      printf "  Active account: ${Y}${active}${R} (expected ${email})\n"
+    fi
+  else
+    printf "  Active account: ${Y}unable to verify${R}\n"
+  fi
+
+  printf "\n"
+}
+
 cmd_auth() {
   local email="${1:-}"
   [ -z "$email" ] && die "Usage: context-sync.sh --auth <email>"
 
-  # Auto-append @gmail.com if no @ present
-  if [[ "$email" != *@* ]]; then
-    email="${email}@gmail.com"
-  fi
+  email=$(normalize_email "$email")
 
   ensure_gws || exit 1
 
@@ -803,29 +852,27 @@ sync_folder() {
 create_context_dump() {
   local entity="$1" email="$2"
   ensure_gws || return 1
+  set_gws_account "$email"
+  local verified; verified=$(get_active_gws_email)
+  printf "  ${D}Account: ${verified:-unknown}${R}\n"
 
   # Capitalize first letter (macOS-compatible)
   local upper_entity; upper_entity=$(echo "$entity" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
 
   # Detect co-founders from config: owner is always AI architect, entity.human is co-founder
-  local owner_name="" cofounder_name="" is_joint=false
+  local owner_name="" cofounder_name=""
   owner_name=$(node -e "const c=require('${CONFIG_PATH}'); process.stdout.write((c.owner||'').replace(/^\w/,c=>c.toUpperCase()))" 2>/dev/null) || true
   cofounder_name=$(node -e "
     const c=require('${CONFIG_PATH}');
     const e=(c.entities||[]).find(x=>x.name==='${entity}');
     if(e && e.human) process.stdout.write(e.human.replace(/^\w/,c=>c.toUpperCase()));
   " 2>/dev/null) || true
-  if [ -n "$cofounder_name" ]; then
-    is_joint=true
-  fi
-
   local doc_title="Personal AI Context Dump - ${upper_entity}"
   local title_line="# Personal AI Context Dump - ${upper_entity}"
   local title_line_pl="# Personal AI Context Dump - ${upper_entity}"
   local howto_items=""
   local howto_items_pl=""
   if [ -n "$cofounder_name" ]; then
-    is_joint=true
     doc_title="Personal AI Context Dump - ${upper_entity} (${cofounder_name} & ${owner_name})"
     title_line="# Personal AI Context Dump - ${upper_entity} (joint workspace by ${cofounder_name} and ${owner_name})"
     title_line_pl="# Personal AI Context Dump - ${upper_entity} (wspólny workspace ${cofounder_name} i ${owner_name})"
@@ -1656,10 +1703,82 @@ cmd_sync() {
   sync_folder "$entity" "$email"
 }
 
+cmd_sync_dump() {
+  local entity="$1" email="$2"
+  printf "\n  ${B}Sync Context Dump${R}\n\n"
+  printf "  ${D}Coming soon: will download and process your Context Dump template${R}\n"
+  printf "  ${D}tabs as individual .md files into memory-vault/${entity}/Raw/${R}\n\n"
+}
+
+cmd_sync_tab() {
+  local entity="$1" email="$2"
+  printf "\n  ${B}Sync Scratchpad Tab${R}\n\n"
+  printf "  ${D}Coming soon. Usage: context-sync.sh ${entity} --sync-tab <tabname>${R}\n\n"
+}
+
+cmd_import_local() {
+  local entity="$1"
+  local raw_dir="$VAULT_PATH/$entity/Raw"
+  mkdir -p "$raw_dir"
+
+  printf "\n  ${B}Import .md file(s) into Memory${R}\n\n"
+  printf "  ${D}Drag a file or folder into this terminal, or type a path.${R}\n"
+  printf "  ${D}Files are copied into memory-vault/${entity}/Raw/${R}\n\n"
+
+  local input_path=""
+  while true; do
+    read -rp "  Path: " input_path
+    # Strip surrounding quotes/whitespace from drag-and-drop
+    input_path=$(echo "$input_path" | sed "s/^['\"]//; s/['\"]$//; s/\\\\ / /g; s/^ *//; s/ *$//")
+    if [ -z "$input_path" ]; then
+      printf "  ${Y}No path entered.${R}\n"
+      continue
+    fi
+    if [ ! -e "$input_path" ]; then
+      printf "  ${Y}Not found:${R} %s\n" "$input_path"
+      continue
+    fi
+    break
+  done
+
+  local count=0
+
+  if [ -f "$input_path" ]; then
+    # Single file
+    local fname; fname=$(basename "$input_path")
+    if [[ "$fname" != *.md ]]; then
+      printf "  ${Y}!${R} Not a .md file: ${fname}\n"
+      printf "  ${D}Only Markdown files are supported.${R}\n\n"
+      return 1
+    fi
+    cp "$input_path" "$raw_dir/$fname"
+    count=1
+    printf "  ${G}✓${R} Imported: ${B}${fname}${R}\n"
+  elif [ -d "$input_path" ]; then
+    # Directory — import all .md files
+    local f
+    while IFS= read -r f; do
+      local fname; fname=$(basename "$f")
+      cp "$f" "$raw_dir/$fname"
+      printf "  ${G}✓${R} %s\n" "$fname"
+      count=$((count + 1))
+    done < <(find "$input_path" -maxdepth 2 -name '*.md' -type f | sort)
+    if [ "$count" -eq 0 ]; then
+      printf "  ${Y}!${R} No .md files found in %s\n\n" "$input_path"
+      return 1
+    fi
+  fi
+
+  printf "\n  ${G}✓${R} ${B}${count}${R} file(s) imported into memory-vault/${entity}/Raw/\n"
+  printf "  ${D}Context Extractor will process them automatically.${R}\n\n"
+  printf "  ${D}To sync to your VPS: git add -A && git commit -m \"import context\" && git push${R}\n\n"
+
+  log_setup "LOCAL_IMPORT" "$entity" 25 "${count} files"
+}
+
 cmd_interactive() {
   local entity_arg="${1:-}"
   require_config
-  ensure_gws || exit 1
 
   # ── Welcome screen — no progress bar ────────────────────────
   printf "\n${B}${G}╔${LINE}\n"
@@ -1708,7 +1827,36 @@ cmd_interactive() {
     fi
   fi
 
-  # ── Check for stored email + existing auth ──────────────────
+  # ── Action menu (shown before auth — import doesn't need Google) ──
+  printf "  What would you like to do?\n\n"
+  printf "    ${C}1.${R} ${B}Import .md file(s) from your Mac${R}\n"
+  printf "       ${D}Drag a file or folder into this terminal, or type a path.${R}\n"
+  printf "       ${D}Copies into your Memory for Context Extractor.${R}\n\n"
+  printf "    ${C}2.${R} ${B}Create Context Dump template${R}\n"
+  printf "       ${D}A Google Doc with tabs — NORTHSTAR, Research, Specs, etc.${R}\n"
+  printf "       ${D}Each tab has instructions. Fill it in, then sync later.${R}\n\n"
+  printf "    ${C}3.${R} ${B}Download an existing Google Doc${R}\n"
+  printf "       ${D}Pick a doc from your Drive — downloads it as .md into${R}\n"
+  printf "       ${D}your Memory. Less efficient than the Context Dump template.${R}\n\n"
+  printf "    ${C}4.${R} ${B}Sync my initial context dump${R}\n"
+  printf "       ${D}Downloads your Context Dump template as .md files and${R}\n"
+  printf "       ${D}loads them into your Memory for Context Extractor.${R}\n\n"
+  printf "    ${C}5.${R} ${B}Sync scratchpad(s)${R}\n"
+  printf "       ${D}Sync only scratchpad content from specific tabs.${R}\n"
+  printf "       ${D}Usage: context-sync.sh ${entity} --sync-tab <tabname>${R}\n\n"
+
+  local action=""
+  while true; do
+    read -rp "  Select [1-5]: " SYNC_CHOICE
+    case "$SYNC_CHOICE" in
+      1) cmd_import_local "$entity"; return ;;
+      2|3|4|5) action="$SYNC_CHOICE"; break ;;
+      *) printf "  ${Y}Please enter a number between 1 and 5.${R}\n" ;;
+    esac
+  done
+
+  # ── Google auth (only for options 2-5) ────────────────────────
+  ensure_gws || return 1
   local email=""
   local connected=false
 
@@ -1716,9 +1864,8 @@ cmd_interactive() {
   email=$(get_gdrive_email "$entity")
 
   if [ -n "$email" ]; then
-    # Activate per-account config directory, then check if auth exists
     set_gws_account "$email"
-    printf "  Connecting"
+    printf "\n  Connecting"
     for i in 1 2 3; do printf "."; sleep 0.1; done
     local active_email; active_email=$(get_active_gws_email)
     if [ "$active_email" = "$email" ]; then
@@ -1730,7 +1877,6 @@ cmd_interactive() {
   fi
 
   if ! $connected; then
-    # ── Step 1: Google account ──────────────────────────────────
     if [ -z "$email" ]; then
       step_banner 1 3 "Google Account" \
         "Which Google account holds your docs for ${entity}?" \
@@ -1742,19 +1888,14 @@ cmd_interactive() {
           printf "  ${Y}Google account is required for Context Sync.${R}\n"
           continue
         fi
-        # Auto-append @gmail.com if no @ present
-        if [[ "$email" != *@* ]]; then
-          email="${email}@gmail.com"
-        fi
+        email=$(normalize_email "$email")
         printf "  ${D}→ ${email}${R}\n\n"
         break
       done
     fi
 
-    # Activate per-account config directory for this email
     set_gws_account "$email"
 
-    # ── Step 2: OAuth authentication ────────────────────────────
     step_banner 2 3 "Authenticate" \
       "A scope selector will open — use arrow keys to select Recommended" \
       "Press Space to select, then Enter to confirm"
@@ -1772,7 +1913,6 @@ cmd_interactive() {
     done
     printf "\n"
 
-    # Clear ALL .enc files and re-auth — gws only supports one active account
     gws_force_login "$email"
     local auth_rc=$?
     if [ $auth_rc -eq 0 ]; then
@@ -1782,9 +1922,13 @@ cmd_interactive() {
       if [ "$verified_email" = "$email" ]; then
         printf " ${G}connected${R} (${email})\n\n"
         connected=true
-      else
+      elif [ -z "$verified_email" ]; then
         printf " ${G}connected${R}\n\n"
         connected=true
+      else
+        printf " ${Y}wrong account${R} (got ${verified_email})\n\n"
+        printf "  ${Y}!${R} Authenticated but gws is using ${B}${verified_email}${R} instead of ${B}${email}${R}\n\n"
+        return 1
       fi
     else
       printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
@@ -1795,30 +1939,16 @@ cmd_interactive() {
   log_setup "GDRIVE_CONNECTED" "$entity" 50 "$email"
   save_sync_state "$entity" "$email" 0
 
-  # ── Step 3: Connected + sync options ────────────────────────
-  step_banner 3 3 "Connected" \
-    "Google Docs are exported as .md into your Memory" \
-    "Context Extractor then distills your knowledge for Agents"
-
   printf "  ${G}✓${R} Google Drive: ${B}${email}${R}\n"
   printf "  ${G}✓${R} Connected\n\n"
 
-  printf "  What would you like to do?\n\n"
-  printf "    ${C}1.${R} ${B}Create Context Dump template${R}\n"
-  printf "       ${D}A Google Doc with tabs — NORTHSTAR, Research, Specs, etc.${R}\n"
-  printf "       ${D}Each tab has instructions. Fill it in, then sync later.${R}\n\n"
-  printf "    ${C}2.${R} ${B}Sync an existing Google Doc${R}\n"
-  printf "       ${D}Pick a doc from your Drive — downloads it as .md into${R}\n"
-  printf "       ${D}your Memory. Context Extractor processes it immediately.${R}\n\n"
-
-  while true; do
-    read -rp "  Select [1/2]: " SYNC_CHOICE
-    case "$SYNC_CHOICE" in
-      1) create_context_dump "$entity" "$email"; break ;;
-      2) sync_single_file "$entity" "$email"; break ;;
-      *) printf "  ${Y}Please enter 1 or 2.${R}\n" ;;
-    esac
-  done
+  # Execute the chosen Google action
+  case "$action" in
+    2) create_context_dump "$entity" "$email" ;;
+    3) sync_single_file "$entity" "$email" ;;
+    4) cmd_sync_dump "$entity" "$email" ;;
+    5) cmd_sync_tab "$entity" "$email" ;;
+  esac
 }
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1831,6 +1961,9 @@ case "${1:-}" in
     ;;
   --auth)
     cmd_auth "${2:-}"
+    ;;
+  --check)
+    cmd_check "${2:-}"
     ;;
   --status)
     cmd_status
