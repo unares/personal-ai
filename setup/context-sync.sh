@@ -5,10 +5,12 @@
 #
 # Usage:
 #   context-sync.sh                    # interactive: pick entity, show menu
+#   context-sync.sh <entity>           # skip to menu if already authenticated
+#   context-sync.sh <entity> --lang-polish  # Polish template for entity
 #   context-sync.sh --status           # show all entities' Drive connection status
 #   context-sync.sh --sync <entity>    # trigger sync for entity
 #   context-sync.sh --auth <email>     # authenticate Google account
-#   context-sync.sh --lang-polish       # interactive mode, Polish template
+#   context-sync.sh --lang-polish [entity]  # Polish template (interactive or direct)
 #   context-sync.sh --help             # show usage
 set -euo pipefail
 
@@ -430,7 +432,9 @@ cmd_help() {
   printf "    context-sync.sh --status           ${D}# show Drive connection status${R}\n"
   printf "    context-sync.sh --sync <entity>    ${D}# trigger sync for entity${R}\n"
   printf "    context-sync.sh --auth <email>     ${D}# authenticate Google account${R}\n"
-  printf "    context-sync.sh --lang-polish       ${D}# interactive mode, Polish template${R}\n"
+  printf "    context-sync.sh <entity>            ${D}# skip to menu if already authed${R}\n"
+  printf "    context-sync.sh <entity> --lang-polish ${D}# Polish template for entity${R}\n"
+  printf "    context-sync.sh --lang-polish [entity] ${D}# Polish template${R}\n"
   printf "    context-sync.sh --help             ${D}# this help${R}\n\n"
   printf "  ${B}Prerequisites:${R}\n"
   printf "    Node.js (for gws CLI) — the script auto-installs gws if missing.\n"
@@ -1571,6 +1575,7 @@ cmd_sync() {
 }
 
 cmd_interactive() {
+  local entity_arg="${1:-}"
   require_config
   ensure_gws || exit 1
 
@@ -1579,104 +1584,129 @@ cmd_interactive() {
   printf "║  Personal AI v${VERSION} — Context Sync\n"
   printf "╚${LINE}${R}\n\n"
 
-  printf "  Context Sync connects your Google account to Personal AI.\n"
-  printf "  Your Google Docs are exported as Markdown and loaded into\n"
-  printf "  your Memory, where agents distill them into knowledge.\n\n"
-
   # ── Entity selection ──────────────────────────────────────────
-  local entities; entities=$(get_entities)
-  local entity_arr=($entities)
   local entity=""
 
-  if [ "${#entity_arr[@]}" -eq 0 ]; then
-    die "No entities found. Run ./install.sh first."
-  elif [ "${#entity_arr[@]}" -eq 1 ]; then
-    entity="${entity_arr[0]}"
+  if [ -n "$entity_arg" ]; then
+    # Entity passed on command line — validate it
+    local found; found=$(node -e "const c=require('${CONFIG_PATH}'); console.log((c.entities||[]).some(e=>e.name==='${entity_arg}')?'yes':'no')" 2>/dev/null)
+    [ "$found" != "yes" ] && die "Entity '${entity_arg}' not found in config.json."
+    entity="$entity_arg"
     printf "  Entity: ${B}${entity}${R}\n\n"
   else
-    printf "  ${B}Select entity:${R}\n"
-    local idx=1
-    for e in "${entity_arr[@]}"; do
-      printf "    ${C}%s.${R} %s\n" "$idx" "$e"
-      idx=$((idx + 1))
-    done
-    printf "\n"
-    while true; do
-      read -rp "  Select [1-${#entity_arr[@]}]: " ECHOICE
-      if [[ "$ECHOICE" =~ ^[0-9]+$ ]] && [ "$ECHOICE" -ge 1 ] && [ "$ECHOICE" -le "${#entity_arr[@]}" ]; then
-        entity="${entity_arr[$((ECHOICE - 1))]}"
-        break
-      fi
-      printf "  ${Y}Please enter a number between 1 and ${#entity_arr[@]}.${R}\n"
-    done
-    printf "\n  Entity: ${B}${entity}${R}\n\n"
-  fi
+    printf "  Context Sync connects your Google account to Personal AI.\n"
+    printf "  Your Google Docs are exported as Markdown and loaded into\n"
+    printf "  your Memory, where agents distill them into knowledge.\n\n"
 
-  # ── Step 1: Google account ──────────────────────────────────
-  step_banner 1 3 "Google Account" \
-    "Which Google account holds your docs for ${entity}?" \
-    "@gmail.com users — just type your username, e.g. john"
+    local entities; entities=$(get_entities)
+    local entity_arr=($entities)
 
-  local email=""
-  while true; do
-    read -rp "  Google account name: " email
-    if [ -z "$email" ]; then
-      printf "  ${Y}Google account is required for Context Sync.${R}\n"
-      continue
-    fi
-    # Auto-append @gmail.com if no @ present
-    if [[ "$email" != *@* ]]; then
-      email="${email}@gmail.com"
-    fi
-    printf "  ${D}→ ${email}${R}\n\n"
-    break
-  done
-
-  # ── Check existing credentials ──────────────────────────────
-  printf "  Connecting"
-
-  local connected=false
-  for i in 1 2 3 4 5 6; do printf "."; sleep 0.15; done
-
-  # Check if gws has credentials for this account
-  if gws auth status --account="$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
-    connected=true
-  fi
-
-  if $connected; then
-    printf " ${G}connected${R}\n\n"
-  else
-    printf " ${Y}not yet authenticated${R}\n\n"
-
-    # ── Step 2: OAuth authentication ────────────────────────────
-    step_banner 2 3 "Authenticate" \
-      "A scope selector will open — use arrow keys to select Recommended" \
-      "Press Space to select, then Enter to confirm"
-
-    printf "  ${B}What will happen:${R}\n"
-    printf "    1. A scope selector opens in this terminal\n"
-    printf "       ${D}Use arrow keys to navigate to ${B}Recommended${D},${R}\n"
-    printf "       ${D}press ${B}Space${D} to select it, then ${B}Enter${D} to confirm${R}\n"
-    printf "    2. Open the URL displayed in your browser\n"
-    printf "       ${D}Sign in with ${B}${email}${D} and approve access${R}\n\n"
-
-    while true; do
-      read -rp "  Ready to launch Google OAuth? [y]: " OAUTH_READY
-      [ -z "$OAUTH_READY" ] || [[ "$OAUTH_READY" == [yY]* ]] && break
-    done
-    printf "\n"
-
-    # Launch gws auth — scope picker is interactive TUI, can't redirect stdout.
-    gws auth login --account="$email" --services drive,docs
-    local auth_rc=$?
-    if [ $auth_rc -eq 0 ]; then
-      printf "\n  Connecting"
-      for i in 1 2 3 4 5 6 7 8; do printf "."; sleep 0.2; done
-      printf " ${G}connected${R}\n\n"
-      connected=true
+    if [ "${#entity_arr[@]}" -eq 0 ]; then
+      die "No entities found. Run ./install.sh first."
+    elif [ "${#entity_arr[@]}" -eq 1 ]; then
+      entity="${entity_arr[0]}"
+      printf "  Entity: ${B}${entity}${R}\n\n"
     else
-      printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
-      return 1
+      printf "  ${B}Select entity:${R}\n"
+      local idx=1
+      for e in "${entity_arr[@]}"; do
+        printf "    ${C}%s.${R} %s\n" "$idx" "$e"
+        idx=$((idx + 1))
+      done
+      printf "\n"
+      while true; do
+        read -rp "  Select [1-${#entity_arr[@]}]: " ECHOICE
+        if [[ "$ECHOICE" =~ ^[0-9]+$ ]] && [ "$ECHOICE" -ge 1 ] && [ "$ECHOICE" -le "${#entity_arr[@]}" ]; then
+          entity="${entity_arr[$((ECHOICE - 1))]}"
+          break
+        fi
+        printf "  ${Y}Please enter a number between 1 and ${#entity_arr[@]}.${R}\n"
+      done
+      printf "\n  Entity: ${B}${entity}${R}\n\n"
+    fi
+  fi
+
+  # ── Check for stored email + existing auth ──────────────────
+  local email=""
+  local connected=false
+
+  # Try to load stored email for this entity
+  email=$(get_gdrive_email "$entity")
+
+  if [ -n "$email" ]; then
+    # Have stored email — check if gws is still authenticated
+    printf "  Connecting"
+    for i in 1 2 3; do printf "."; sleep 0.1; done
+    if gws auth status --account="$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
+      connected=true
+      printf " ${G}connected${R} (${email})\n\n"
+    else
+      printf " ${Y}stored but expired${R}\n\n"
+    fi
+  fi
+
+  if ! $connected; then
+    # ── Step 1: Google account ──────────────────────────────────
+    if [ -z "$email" ]; then
+      step_banner 1 3 "Google Account" \
+        "Which Google account holds your docs for ${entity}?" \
+        "@gmail.com users — just type your username, e.g. john"
+
+      while true; do
+        read -rp "  Google account name: " email
+        if [ -z "$email" ]; then
+          printf "  ${Y}Google account is required for Context Sync.${R}\n"
+          continue
+        fi
+        # Auto-append @gmail.com if no @ present
+        if [[ "$email" != *@* ]]; then
+          email="${email}@gmail.com"
+        fi
+        printf "  ${D}→ ${email}${R}\n\n"
+        break
+      done
+    fi
+
+    # ── Check credentials for this email ──────────────────────
+    printf "  Connecting"
+    for i in 1 2 3 4 5 6; do printf "."; sleep 0.15; done
+
+    if gws auth status --account="$email" 2>/dev/null | grep -qi "authenticated\|success\|active"; then
+      connected=true
+      printf " ${G}connected${R}\n\n"
+    else
+      printf " ${Y}not yet authenticated${R}\n\n"
+
+      # ── Step 2: OAuth authentication ────────────────────────────
+      step_banner 2 3 "Authenticate" \
+        "A scope selector will open — use arrow keys to select Recommended" \
+        "Press Space to select, then Enter to confirm"
+
+      printf "  ${B}What will happen:${R}\n"
+      printf "    1. A scope selector opens in this terminal\n"
+      printf "       ${D}Use arrow keys to navigate to ${B}Recommended${D},${R}\n"
+      printf "       ${D}press ${B}Space${D} to select it, then ${B}Enter${D} to confirm${R}\n"
+      printf "    2. Open the URL displayed in your browser\n"
+      printf "       ${D}Sign in with ${B}${email}${D} and approve access${R}\n\n"
+
+      while true; do
+        read -rp "  Ready to launch Google OAuth? [y]: " OAUTH_READY
+        [ -z "$OAUTH_READY" ] || [[ "$OAUTH_READY" == [yY]* ]] && break
+      done
+      printf "\n"
+
+      # Launch gws auth — scope picker is interactive TUI, can't redirect stdout.
+      gws auth login --account="$email" --services drive,docs
+      local auth_rc=$?
+      if [ $auth_rc -eq 0 ]; then
+        printf "\n  Connecting"
+        for i in 1 2 3 4 5 6 7 8; do printf "."; sleep 0.2; done
+        printf " ${G}connected${R}\n\n"
+        connected=true
+      else
+        printf "\n  ${Y}!${R} Auth failed. Check your Google Cloud project setup.\n\n"
+        return 1
+      fi
     fi
   fi
 
@@ -1728,14 +1758,16 @@ case "${1:-}" in
     ;;
   --lang-polish)
     TEMPLATE_LANG="pl"
-    cmd_interactive
+    cmd_interactive "${2:-}"
     ;;
   "")
     cmd_interactive
     ;;
   *)
-    printf "  ${Y}Unknown option:${R} $1\n"
-    cmd_help
-    exit 1
+    # Treat first arg as entity name, optional --lang-polish as second
+    if [[ "${2:-}" == "--lang-polish" ]]; then
+      TEMPLATE_LANG="pl"
+    fi
+    cmd_interactive "$1"
     ;;
 esac
