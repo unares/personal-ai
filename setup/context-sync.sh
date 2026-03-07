@@ -802,9 +802,8 @@ create_context_dump() {
 
   printf "  ${G}✓${R} Document created\n"
 
-  # Step 2: Rename the default first tab to "Personal AI" and write intro
-  # The first tab already exists — rename it via batchUpdate
-  local first_tab_id; first_tab_id=$(gws docs documents get \
+  # Step 2: Get the default tab ID so we can delete it after creating named tabs
+  local default_tab_id; default_tab_id=$(gws docs documents get \
     --params "{\"documentId\": \"${doc_id}\", \"includeTabsContent\": true}" 2>/dev/null | node -e "
     const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
     const tabs=d.tabs||[];
@@ -812,14 +811,12 @@ create_context_dump() {
     else console.log('');
   " 2>/dev/null) || true
 
-  if [ -n "$first_tab_id" ]; then
-    # Rename default "Tab 1" to "Personal AI"
-    gws docs documents batchUpdate \
-      --params "{\"documentId\": \"${doc_id}\"}" \
-      --json "{\"requests\": [{\"updateTabProperties\": {\"tabProperties\": {\"tabId\": \"${first_tab_id}\", \"title\": \"Personal AI\"}, \"fields\": \"title\"}}]}" > /dev/null 2>&1 || true
-  fi
-
-  local intro_text="# Personal AI Context Dump - ${upper_entity}
+  # Step 3: Create all tabs (including Personal AI) and write content to each
+  local tab_names=("Personal AI" "NORTHSTAR" "About ${upper_entity}" "Research" "Customers (Users)" "Specifications" "Transcripts" "Prompts" "Other")
+  # Tab descriptions — using node to build the array avoids bash newline issues
+  local tab_descs=()
+  local STARS; STARS=$(printf '*%.0s' $(seq 1 100))
+  tab_descs+=("# Personal AI Context Dump - ${upper_entity}
 
 ## What is this?
 
@@ -878,30 +875,8 @@ After your first sync, only the Scratchpad content in each tab (including any ne
 5. Specifications - Product specs, technical requirements, feature definitions
 6. Transcripts - Video calls, WhatsApp chats, conversation logs
 7. Prompts - Your favourite prompts, prompting style, prompts to improve
-8. Other - Anything that does not fit the other tabs"
+8. Other - Anything that does not fit the other tabs")
 
-  printf "  Writing intro to Personal AI tab"
-  for i in 1 2 3; do printf "."; sleep 0.15; done
-  local intro_json; intro_json=$(node -e "
-    const t=process.argv[1];
-    process.stdout.write(JSON.stringify(t).slice(1,-1));
-  " "$intro_text" 2>/dev/null) || true
-  if [ -n "$first_tab_id" ]; then
-    gws docs documents batchUpdate \
-      --params "{\"documentId\": \"${doc_id}\"}" \
-      --json "{\"requests\": [{\"insertText\": {\"text\": \"${intro_json}\", \"location\": {\"tabId\": \"${first_tab_id}\", \"index\": 1}}}]}" > /dev/null 2>&1 || \
-    write_to_google_doc "$doc_id" "$intro_text" "$email"
-    printf " ${G}done${R}\n"
-  else
-    write_to_google_doc "$doc_id" "$intro_text" "$email"
-    printf " ${G}done${R}\n"
-  fi
-
-  # Step 3: Create tabs and write content to each
-  local tab_names=("NORTHSTAR" "About ${upper_entity}" "Research" "Customers (Users)" "Specifications" "Transcripts" "Prompts" "Other")
-  # Tab descriptions — using node to build the array avoids bash newline issues
-  local tab_descs=()
-  local STARS; STARS=$(printf '*%.0s' $(seq 1 100))
   tab_descs+=("${STARS}
 Scratchpad: Your Notes on NORTHSTAR for ${upper_entity}
 
@@ -1136,7 +1111,9 @@ ${STARS}
 
   # ── Polish language override ──────────────────────────────────────────
   if [ "$TEMPLATE_LANG" = "pl" ]; then
-    intro_text="# Personal AI Context Dump - ${upper_entity}
+    tab_names=("Personal AI" "NORTHSTAR" "O ${upper_entity}" "Badania" "Klienci (Użytkownicy)" "Specyfikacje" "Transkrypcje" "Prompty" "Inne")
+    tab_descs=()
+    tab_descs+=("# Personal AI Context Dump - ${upper_entity}
 
 ## Co to jest?
 
@@ -1195,10 +1172,8 @@ Po pierwszej synchronizacji, tylko zawartość Brudnopisu w każdej karcie (wł�
 5. Specyfikacje - Specyfikacje produktu, wymagania techniczne, definicje funkcji
 6. Transkrypcje - Rozmowy wideo, czaty WhatsApp, zapisy rozmów
 7. Prompty - Twoje ulubione prompty, styl promptowania, prompty do poprawy
-8. Inne - Wszystko, co nie pasuje do innych kart"
+8. Inne - Wszystko, co nie pasuje do innych kart")
 
-    tab_names=("NORTHSTAR" "O ${upper_entity}" "Badania" "Klienci (Użytkownicy)" "Specyfikacje" "Transkrypcje" "Prompty" "Inne")
-    tab_descs=()
     tab_descs+=("${STARS}
 Brudnopis: Twoje notatki o NORTHSTAR dla ${upper_entity}
 
@@ -1502,6 +1477,13 @@ ${STARS}
       tab_fail=$((tab_fail + 1))
     fi
   done
+
+  # Delete the default "Tab 1" now that all named tabs exist
+  if [ -n "$default_tab_id" ]; then
+    gws docs documents batchUpdate \
+      --params "{\"documentId\": \"${doc_id}\"}" \
+      --json "{\"requests\": [{\"deleteDocumentTab\": {\"tabId\": \"${default_tab_id}\"}}]}" > /dev/null 2>&1 || true
+  fi
 
   printf "\n"
   if [ $tab_ok -gt 0 ]; then
