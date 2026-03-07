@@ -248,20 +248,31 @@ activate_profile() {
     cat "$PROFILES_DIR/_standard/STANDARD.md" >> "$assembled"
   fi
 
-  # Copy settings.json to ~/.claude/ and inject HUMAN_NAME
+  # Copy settings.json to ~/.claude/ and inject identity env vars
   if [ -f "$dir/settings.json" ]; then
     mkdir -p "$HOME/.claude"
+    # Detect bare Mac defaults (same logic as claude-code-launch)
+    local _entity _role
+    if [ -f "/.dockerenv" ]; then
+      _entity="${ENTITY:-unknown}"
+      _role="${ROLE:-unknown}"
+    else
+      _entity="${ENTITY:-superentity}"
+      _role="${ROLE:-superuser}"
+    fi
     if command -v node > /dev/null 2>&1; then
       node -e "
         const s = JSON.parse(require('fs').readFileSync('$dir/settings.json','utf8'));
         s.env = s.env || {};
         s.env.HUMAN_NAME = '$HUMAN_NAME';
+        s.env.ENTITY = '$_entity';
+        if (!s.env.ROLE) s.env.ROLE = '$_role';
         require('fs').writeFileSync('$HOME/.claude/settings.json', JSON.stringify(s, null, 2) + '\n');
       " 2>/dev/null || cp "$dir/settings.json" "$HOME/.claude/settings.json"
     else
       cp "$dir/settings.json" "$HOME/.claude/settings.json"
     fi
-    printf "  ${G}+${R} Settings loaded (profile: ${name}, human: ${HUMAN_NAME})\n"
+    printf "  ${G}+${R} Settings loaded (profile: ${name}, human: ${HUMAN_NAME}, entity: ${_entity})\n"
   fi
 
   # Display the assembled CLAUDE.md

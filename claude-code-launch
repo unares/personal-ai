@@ -201,6 +201,20 @@ if [ -n "$PROFILES_DIR" ] && command -v node > /dev/null 2>&1; then
           fi
         fi
 
+        # Copy profile settings.json and inject identity env vars
+        if [ -f "$PROFILE_DIR/settings.json" ] && command -v node > /dev/null 2>&1; then
+          mkdir -p "$HOME/.claude"
+          node -e "
+            const s = JSON.parse(require('fs').readFileSync('$PROFILE_DIR/settings.json','utf8'));
+            s.env = s.env || {};
+            s.env.HUMAN_NAME = '${PERSONAL_AI_HUMAN}';
+            s.env.ENTITY = '${PERSONAL_AI_ENTITY}';
+            if (!s.env.ROLE) s.env.ROLE = '${PERSONAL_AI_ROLE}';
+            require('fs').writeFileSync('$HOME/.claude/settings.json', JSON.stringify(s, null, 2) + '\n');
+          " 2>/dev/null || cp "$PROFILE_DIR/settings.json" "$HOME/.claude/settings.json"
+          printf "  ${G}✓${R} Settings loaded (human: ${PERSONAL_AI_HUMAN}, entity: ${PERSONAL_AI_ENTITY})\n"
+        fi
+
         printf "  ${G}✓${R} Profile: ${B}${PROFILE_NAME}${R}\n\n"
         export PROFILE_NAME
       else
