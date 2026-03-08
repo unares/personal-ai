@@ -17,37 +17,37 @@ function assert(condition, msg) {
 
 function setup() {
   if (fs.existsSync(VAULT)) fs.rmSync(VAULT, { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Raw'), { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Distilled', 'shared-story'), { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Distilled', 'personal-story'), { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Distilled', 'specification'), { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Logs'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Raw'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Distilled', 'shared-story'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Distilled', 'personal-story'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Distilled', 'specification'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Logs'), { recursive: true });
   fs.writeFileSync(path.join(VAULT, 'NORTHSTAR.md'),
     '# NORTHSTAR\n- Must always prioritize user autonomy\n');
 
   // Shared story entries
   for (let i = 1; i <= 4; i++) {
     fs.writeFileSync(
-      path.join(VAULT, 'onething', 'Distilled', 'shared-story', `entry-${i}.md`),
-      `---\ncategory: shared-story\nentity: onething\ntrust_score: 0.7\nsource_hash: hash${i}\nsource_file: raw${i}.md\n---\n\n# Entry ${i}\n\nWe decided the team brand launch customer feedback strategy together.`
+      path.join(VAULT, 'ai-workspace', 'Distilled', 'shared-story', `entry-${i}.md`),
+      `---\ncategory: shared-story\nentity: ai-workspace\ntrust_score: 0.7\nsource_hash: hash${i}\nsource_file: raw${i}.md\n---\n\n# Entry ${i}\n\nWe decided the team brand launch customer feedback strategy together.`
     );
   }
 
   // Personal story entry (blog-eligible: high density, low hype)
   fs.writeFileSync(
-    path.join(VAULT, 'onething', 'Distilled', 'personal-story', 'my-journey.md'),
-    `---\ncategory: personal-story\nentity: onething\ntrust_score: 0.75\nsource_hash: pshash1\nsource_file: journal.md\n---\n\n# My Journey\n\nI felt excited and proud about my journey. I struggled but learned deeply.`
+    path.join(VAULT, 'ai-workspace', 'Distilled', 'personal-story', 'my-journey.md'),
+    `---\ncategory: personal-story\nentity: ai-workspace\ntrust_score: 0.75\nsource_hash: pshash1\nsource_file: journal.md\n---\n\n# My Journey\n\nI felt excited and proud about my journey. I struggled but learned deeply.`
   );
 
   // Spec entry
   fs.writeFileSync(
-    path.join(VAULT, 'onething', 'Distilled', 'specification', 'api-spec.md'),
-    `---\ncategory: specification\nentity: onething\ntrust_score: 0.8\nsource_hash: spechash\nsource_file: spec.md\n---\n\n# API Spec\n\nThe endpoint must implement schema validation. Test cases shall cover all edge cases.`
+    path.join(VAULT, 'ai-workspace', 'Distilled', 'specification', 'api-spec.md'),
+    `---\ncategory: specification\nentity: ai-workspace\ntrust_score: 0.8\nsource_hash: spechash\nsource_file: spec.md\n---\n\n# API Spec\n\nThe endpoint must implement schema validation. Test cases shall cover all edge cases.`
   );
 
   // Raw file for distill testing
   fs.writeFileSync(
-    path.join(VAULT, 'onething', 'Raw', 'test-distill.md'),
+    path.join(VAULT, 'ai-workspace', 'Raw', 'test-distill.md'),
     'We decided to launch our new brand strategy together. The team is excited.'
   );
 }
@@ -108,7 +108,7 @@ async function testCache() {
 // --- Test: Credibility stub ---
 async function testCredibility() {
   console.log('\n--- Credibility Stub ---');
-  const r = await fetch('/credibility?entity=onething&claim=test+claim');
+  const r = await fetch('/credibility?entity=ai-workspace&claim=test+claim');
   assert(r.status === 200, 'Credibility returns 200');
   assert(r.body.credibility.score === null, 'Score is null (stub)');
   assert(r.body.credibility.reason.includes('EXA_API_KEY'), 'Reason mentions missing key');
@@ -141,17 +141,17 @@ async function testAccessEscalation() {
   console.log('\n--- Access Escalation ---');
   const { getEffectiveDepth, recordSliceUsage } = require('./access');
 
-  const depth1 = getEffectiveDepth('new-caller', 'onething');
+  const depth1 = getEffectiveDepth('new-caller', 'ai-workspace');
   assert(depth1 === 5, `New caller depth is 5 (got ${depth1})`);
 
   // Simulate 11 slice calls
   for (let i = 0; i < 11; i++) {
-    recordSliceUsage('heavy-user', 'onething', 2);
+    recordSliceUsage('heavy-user', 'ai-workspace', 2);
   }
-  const depth2 = getEffectiveDepth('heavy-user', 'onething');
+  const depth2 = getEffectiveDepth('heavy-user', 'ai-workspace');
   assert(depth2 >= 6, `After 11 calls, depth >= 6 (got ${depth2})`);
 
-  const r = await fetch('/access/status?entity=onething&caller=heavy-user');
+  const r = await fetch('/access/status?entity=ai-workspace&caller=heavy-user');
   assert(r.status === 200, 'Access status returns 200');
   assert(r.body.evidence_count >= 11, `Evidence count >= 11 (got ${r.body.evidence_count})`);
 }
@@ -173,7 +173,7 @@ async function testStoryBlog() {
   };
   assert(!isBlogEligible(ineligible), 'Low-density high-hype spec is not eligible');
 
-  const r = await fetch('/story/candidates?entity=onething');
+  const r = await fetch('/story/candidates?entity=ai-workspace');
   assert(r.status === 200, 'Story candidates returns 200');
   assert(Array.isArray(r.body.candidates), 'Candidates is array');
 }
@@ -183,11 +183,11 @@ async function testIngest() {
   console.log('\n--- Ingest ---');
   const r = await fetch('/ingest', {
     method: 'POST',
-    body: { entity: 'onething', title: 'Test Note', content: '# Test\n\nSome content here.' }
+    body: { entity: 'ai-workspace', title: 'Test Note', content: '# Test\n\nSome content here.' }
   });
   assert(r.status === 200, 'Ingest returns 200');
   assert(r.body.ok === true, 'Ingest ok is true');
-  assert(r.body.queued_path.includes('onething/Raw/'), 'Queued path is in Raw');
+  assert(r.body.queued_path.includes('ai-workspace/Raw/'), 'Queued path is in Raw');
 
   // Verify file exists
   const fullPath = path.join(VAULT, r.body.queued_path);
@@ -201,7 +201,7 @@ async function testIngest() {
 
   // Missing content
   const r3 = await fetch('/ingest', {
-    method: 'POST', body: { entity: 'onething' }
+    method: 'POST', body: { entity: 'ai-workspace' }
   });
   assert(r3.status === 400, 'Missing content returns 400');
 
@@ -217,13 +217,13 @@ async function testDistill() {
   console.log('\n--- Distill ---');
   const r = await fetch('/distill', {
     method: 'POST',
-    body: { entity: 'onething', file: 'test-distill.md' }
+    body: { entity: 'ai-workspace', file: 'test-distill.md' }
   });
   assert(r.status === 200, 'Distill returns 200');
   assert(r.body.result.status === 'stubbed', 'Pipeline status is stubbed');
   assert(r.body.result.lm_note.includes('LLM'), 'LLM stub note present');
 
-  const r2 = await fetch('/distill/status?entity=onething');
+  const r2 = await fetch('/distill/status?entity=ai-workspace');
   assert(r2.status === 200, 'Distill status returns 200');
   assert(r2.body.queue.length >= 1, 'Queue has at least 1 entry');
 }
@@ -231,7 +231,7 @@ async function testDistill() {
 // --- Test: Graph snapshot ---
 async function testGraphSnapshot() {
   console.log('\n--- Graph Snapshot ---');
-  const r = await fetch('/graph-snapshot?entity=onething');
+  const r = await fetch('/graph-snapshot?entity=ai-workspace');
   assert(r.status === 200, 'Graph snapshot returns 200');
   assert(Array.isArray(r.body.nodes), 'Nodes is array');
   assert(Array.isArray(r.body.edges), 'Edges is array');
@@ -250,7 +250,7 @@ async function testGraphSnapshot() {
 async function testHybridSearch() {
   console.log('\n--- Hybrid Search Stub ---');
   const { searchHybrid } = require('./db-search');
-  const result = searchHybrid({ query: 'brand', entity: 'onething', limit: 5 });
+  const result = searchHybrid({ query: 'brand', entity: 'ai-workspace', limit: 5 });
   assert(result.hybrid === false, 'Hybrid flag is false (no vec extension)');
   assert(result.note.includes('FTS5') || result.note.includes('not'),
     'Note mentions FTS5 fallback');
@@ -262,18 +262,18 @@ async function testNotifications() {
   console.log('\n--- Notifications ---');
   const { addNotification, getPendingNotifications, clearNotifications } = require('./post-process');
 
-  addNotification('onething', { type: 'test', message: 'hello' });
-  const pending = getPendingNotifications('onething');
+  addNotification('ai-workspace', { type: 'test', message: 'hello' });
+  const pending = getPendingNotifications('ai-workspace');
   assert(pending.length >= 1, 'Pending notification exists');
   assert(pending[0].type === 'test', 'Notification type matches');
   assert(pending[0].timestamp !== undefined, 'Notification has timestamp');
 
   // Slice should drain notifications
-  const r = await fetch('/slice?entity=onething&for=clark-michal');
+  const r = await fetch('/slice?entity=ai-workspace&for=clark-michal');
   // Notifications may have been drained by now via prior calls
   // Check that the mechanism works
-  clearNotifications('onething');
-  const cleared = getPendingNotifications('onething');
+  clearNotifications('ai-workspace');
+  const cleared = getPendingNotifications('ai-workspace');
   assert(cleared.length === 0, 'Notifications cleared');
 }
 
@@ -283,12 +283,12 @@ async function testSliceCacheAndDepth() {
   const cache = require('./cache');
   cache.clearAll();
 
-  const r1 = await fetch('/slice?entity=onething&for=clark-michal');
+  const r1 = await fetch('/slice?entity=ai-workspace&for=clark-michal');
   assert(r1.status === 200, 'First slice returns 200');
   assert(r1.body.scope.depth !== undefined, 'Scope includes depth');
 
   // Second call should be cached (same params)
-  const r2 = await fetch('/slice?entity=onething&for=clark-michal');
+  const r2 = await fetch('/slice?entity=ai-workspace&for=clark-michal');
   assert(r2.status === 200, 'Cached slice returns 200');
   assert(JSON.stringify(r2.body.results) === JSON.stringify(r1.body.results),
     'Cached response matches original');
@@ -301,22 +301,22 @@ async function testPhase3Regression() {
   const health = await fetch('/health');
   assert(health.status === 200, 'Health still works');
 
-  const conflicts = await fetch('/conflicts?entity=onething');
+  const conflicts = await fetch('/conflicts?entity=ai-workspace');
   assert(conflicts.status === 200, 'Conflicts still works');
 
-  const predictions = await fetch('/predictions?entity=onething');
+  const predictions = await fetch('/predictions?entity=ai-workspace');
   assert(predictions.status === 200, 'Predictions still works');
 
-  const usage = await fetch('/usage?entity=onething');
+  const usage = await fetch('/usage?entity=ai-workspace');
   assert(usage.status === 200, 'Usage still works');
 
-  const query = await fetch('/query?entity=onething');
+  const query = await fetch('/query?entity=ai-workspace');
   assert(query.status === 200, 'Query still works');
 
-  const calibration = await fetch('/calibration?entity=onething');
+  const calibration = await fetch('/calibration?entity=ai-workspace');
   assert(calibration.status === 200, 'Calibration still works');
 
-  const categories = await fetch('/categories/detected?entity=onething');
+  const categories = await fetch('/categories/detected?entity=ai-workspace');
   assert(categories.status === 200, 'Categories detected still works');
 }
 
@@ -354,7 +354,7 @@ async function main() {
   initDistillSchema();
   initStorySchema();
   initAccessSchema();
-  buildIndex(VAULT, ['onething']);
+  buildIndex(VAULT, ['ai-workspace']);
 
   const app = createApi(config, VAULT);
   server = app.listen(PORT);

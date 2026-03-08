@@ -1,0 +1,13 @@
+{
+  "name": "non-technical",
+  "label": "Non-Technical",
+  "description": "Scoped access for co-founders. Entity auto-selected. Sandbox R/W only.",
+  "icon": "N",
+  "capabilities": {
+    "vault": "sandbox-rw",
+    "push": false,
+    "docker": false,
+    "web": true,
+    "decision_log": false
+  }
+}

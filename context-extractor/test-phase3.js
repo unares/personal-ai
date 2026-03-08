@@ -17,14 +17,14 @@ function assert(condition, msg) {
 
 function setup() {
   if (fs.existsSync(VAULT)) fs.rmSync(VAULT, { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Raw'), { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Distilled', 'shared-story'), { recursive: true });
-  fs.mkdirSync(path.join(VAULT, 'onething', 'Logs'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Raw'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Distilled', 'shared-story'), { recursive: true });
+  fs.mkdirSync(path.join(VAULT, 'ai-workspace', 'Logs'), { recursive: true });
   fs.writeFileSync(path.join(VAULT, 'NORTHSTAR.md'), '# NORTHSTAR\n- Must always prioritize user autonomy\n');
 
   // Write a distilled file so buildIndex has something
-  fs.writeFileSync(path.join(VAULT, 'onething', 'Distilled', 'shared-story', 'test-entry.md'),
-    `---\ncategory: shared-story\nentity: onething\ntrust_score: 0.7\nsource_hash: abc123\nsource_file: raw.md\n---\n\n# Test Entry\n\nWe decided to pivot our brand direction. The team launched a new strategy together.`
+  fs.writeFileSync(path.join(VAULT, 'ai-workspace', 'Distilled', 'shared-story', 'test-entry.md'),
+    `---\ncategory: shared-story\nentity: ai-workspace\ntrust_score: 0.7\nsource_hash: abc123\nsource_file: raw.md\n---\n\n# Test Entry\n\nWe decided to pivot our brand direction. The team launched a new strategy together.`
   );
 }
 
@@ -58,7 +58,7 @@ async function testHealthEndpoint() {
 
 async function testSliceBasic() {
   console.log('\n--- Slice Basic ---');
-  const r = await fetch('/slice?entity=onething&for=clark-michal');
+  const r = await fetch('/slice?entity=ai-workspace&for=clark-michal');
   assert(r.status === 200, 'Slice returns 200');
   assert(Array.isArray(r.body.results), 'Results is array');
   assert(r.body.scope.caller === 'clark', 'Caller role is clark');
@@ -67,7 +67,7 @@ async function testSliceBasic() {
 async function testSliceWithJob() {
   console.log('\n--- Slice with JTBD ---');
   const job = JSON.stringify({ outcome: 'launch brand strategy', constraints: [] });
-  const r = await fetch(`/slice?entity=onething&for=clark-michal&job=${encodeURIComponent(job)}`);
+  const r = await fetch(`/slice?entity=ai-workspace&for=clark-michal&job=${encodeURIComponent(job)}`);
   assert(r.status === 200, 'JTBD slice returns 200');
   assert(r.body.job !== undefined, 'Job declaration present in response');
   assert(r.body.job.outcome === 'launch brand strategy', 'Job outcome matches');
@@ -76,13 +76,13 @@ async function testSliceWithJob() {
 async function testSliceWithConstraints() {
   console.log('\n--- Slice with JTBD Constraints ---');
   const job = JSON.stringify({ outcome: 'brand', constraints: ['pivot away'] });
-  const r = await fetch(`/slice?entity=onething&for=clark-michal&job=${encodeURIComponent(job)}`);
+  const r = await fetch(`/slice?entity=ai-workspace&for=clark-michal&job=${encodeURIComponent(job)}`);
   assert(r.status === 200, 'Constrained JTBD slice returns 200');
 }
 
 async function testHitlFlags() {
   console.log('\n--- Micro-HITL Flags ---');
-  const r = await fetch('/slice?entity=onething&for=clark-michal');
+  const r = await fetch('/slice?entity=ai-workspace&for=clark-michal');
   // Our test entry has "pivot" and "direction" words
   if (r.body.hitl_flags) {
     assert(r.body.hitl_flags.length > 0, 'HITL flags detected for direction-change content');
@@ -94,15 +94,15 @@ async function testHitlFlags() {
 
 async function testCalibrationEndpoint() {
   console.log('\n--- Calibration Endpoint ---');
-  const r = await fetch('/calibration?entity=onething');
+  const r = await fetch('/calibration?entity=ai-workspace');
   assert(r.status === 200, 'Calibration returns 200');
-  assert(r.body.entity === 'onething', 'Entity matches');
+  assert(r.body.entity === 'ai-workspace', 'Entity matches');
   assert(Array.isArray(r.body.types), 'Types is array');
 }
 
 async function testCategoriesDetected() {
   console.log('\n--- Categories Detected Endpoint ---');
-  const r = await fetch('/categories/detected?entity=onething');
+  const r = await fetch('/categories/detected?entity=ai-workspace');
   assert(r.status === 200, 'Categories detected returns 200');
   assert(Array.isArray(r.body.detected), 'Detected is array');
 }
@@ -172,10 +172,10 @@ async function testCalibrationDb() {
   console.log('\n--- Calibration DB ---');
   const { logCalibration, getCalibrationProfile } = require('./db');
 
-  logCalibration({ entity: 'onething', human: 'michal', predictionType: 'time_estimate', delta: 2.5 });
-  logCalibration({ entity: 'onething', human: 'michal', predictionType: 'time_estimate', delta: 1.5 });
+  logCalibration({ entity: 'ai-workspace', human: 'michal', predictionType: 'time_estimate', delta: 2.5 });
+  logCalibration({ entity: 'ai-workspace', human: 'michal', predictionType: 'time_estimate', delta: 1.5 });
 
-  const profile = getCalibrationProfile('onething', 'michal');
+  const profile = getCalibrationProfile('ai-workspace', 'michal');
   assert(profile.length > 0, 'Calibration profile has entries');
   assert(profile[0].count === 2, `Count is 2 (got ${profile[0].count})`);
   assert(profile[0].avg_delta === 2, `Avg delta is 2 (got ${profile[0].avg_delta})`);
@@ -188,7 +188,7 @@ async function testUsagePurge() {
   // Insert an old entry by direct SQL
   getDb().prepare(`
     INSERT INTO usage_log (endpoint, caller, entity, requested_at)
-    VALUES ('/test', 'test', 'onething', datetime('now', '-60 days'))
+    VALUES ('/test', 'test', 'ai-workspace', datetime('now', '-60 days'))
   `).run();
 
   const before = getDb().prepare('SELECT COUNT(*) as c FROM usage_log WHERE endpoint = ?').get('/test');
@@ -205,7 +205,7 @@ async function testPostProcessorFunctions() {
 
   // Should run without error
   try {
-    updateTrustDecay(['onething']);
+    updateTrustDecay(['ai-workspace']);
     cleanupUsageLog(30);
     assert(true, 'Post-processor functions run without error');
   } catch (err) {
@@ -216,16 +216,16 @@ async function testPostProcessorFunctions() {
 async function testExistingEndpoints() {
   console.log('\n--- Existing Phase 1+2 Endpoints ---');
 
-  const conflicts = await fetch('/conflicts?entity=onething');
+  const conflicts = await fetch('/conflicts?entity=ai-workspace');
   assert(conflicts.status === 200, 'Conflicts endpoint works');
 
-  const predictions = await fetch('/predictions?entity=onething');
+  const predictions = await fetch('/predictions?entity=ai-workspace');
   assert(predictions.status === 200, 'Predictions endpoint works');
 
-  const usage = await fetch('/usage?entity=onething');
+  const usage = await fetch('/usage?entity=ai-workspace');
   assert(usage.status === 200, 'Usage endpoint works');
 
-  const query = await fetch('/query?entity=onething');
+  const query = await fetch('/query?entity=ai-workspace');
   assert(query.status === 200, 'Query endpoint works');
 }
 
@@ -265,7 +265,7 @@ async function main() {
   initDistillSchema();
   initStorySchema();
   initAccessSchema();
-  buildIndex(VAULT, ['onething']);
+  buildIndex(VAULT, ['ai-workspace']);
 
   const app = createApi(config, VAULT);
   server = app.listen(PORT);

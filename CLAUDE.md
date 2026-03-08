@@ -1,35 +1,39 @@
-# Personal AI — System Constitution
+# Personal AI Workspace
 
-> Do One Thing. Earn Full Autonomy.
+A containerized multi-agent AI workspace where humans and companion AIs collaborate on entity outcomes, earning full autonomy through demonstrated reliability.
 
-## Purpose
+## Entity Context
 
-This is the root constitution for Personal AI. It defines the system's mission, terminology, agent hierarchy, and operating principles. Every agent in the system reads this or inherits from it.
+Default entity: ai-workspace
+Glossary: @memory-vault/ai-workspace/AI_WORKSPACE_GLOSSARY.md
+Vision: @memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
 
-## Mission
+## Stack
 
-**Do One Thing.** Focus beats breadth. Every agent, every session, every action serves a single clear objective derived from the entity's NORTHSTAR.md.
-
-**Earn Full Autonomy.** Agents start restricted and earn expanded scope through demonstrated reliability, correct decisions, and human trust. Autonomy is never assumed — it is earned.
+- Shell scripts (bash), Docker, Node.js
+- Claude Code CLI with profiles (ai-architect, co-founder)
+- Memory vault per entity (`memory-vault/{entity}/`)
+- Context Extractor (watches Raw/ → Memories/ → Distilled/)
+- NanoClaw (container orchestrator inside agent containers)
 
 ## Terminology
 
-- **Entity**: Your portfolio or venture. Never called "company" or "project". Each entity has its own vault, agents, and northstar.
-- **Vault**: The memory-vault directory. Structured knowledge store per entity.
-- **Northstar**: The {ENTITY}_NORTHSTAR.md file. Human-owned long-term vision. Agents read but never modify.
-- **Context Extractor**: The service that watches Raw/ and produces Distilled/ content.
-- **NanoClaw**: The container orchestrator that runs inside agent containers, enabling WhatsApp communication and nested agent spawning.
+See glossary above. Key rules:
+- "Entity" not "company" or "project"
+- "Companion AI" not "bot"
+- Never abbreviate Personal AI Workspace
 
 ## Agent Roles
 
-| Agent | Role | Vault Access | Can Spawn |
-|-------|------|-------------|-----------|
-| Clark | Clarity Architect — philosophical brain | Distilled/ (read-only) | No |
-| AIOO | AI Operating Officer — operational brain | Full vault (read-write) | Yes (App Builders) |
-| App Builder | Focused builder — one app at a time | Distilled/ (read-only) | No |
-| Context Extractor | Archivist — classifies and distills | Full vault (read-write) | No |
+| Agent | Role | Vault Access |
+|-------|------|-------------|
+| Clark | Clarity Architect — philosophical brain | Distilled/ + Memories/ (read-only) |
+| AIOO | AI Operating Officer — operational brain | Full vault (read-write) |
 
-## Operating Principles
+Agent identity: `containers/{agent}/CLAUDE.md` (injected as `~/.claude/CLAUDE.md` in container).
+Project context: this file (mounted read-only at `/workspace/CLAUDE.md`).
+
+## Operating Rules
 
 - Functions < 30 lines. Files < 300 lines.
 - Never invent requirements — work from NORTHSTAR.md and explicit instructions only.
@@ -39,37 +43,19 @@ This is the root constitution for Personal AI. It defines the system's mission, 
 - Run /compact when approaching 70% context usage.
 - Use subagents for research-heavy tasks to protect main context.
 
-## Context Sources
+## Where Files Live
 
-- NORTHSTAR.md — entity long-term vision (read-only, do not edit)
-- /vault/Distilled/ — structured context from Context Extractor
-- /vault/Logs/ — activity logs and Chronicle events
+- `project/` = code + config (CLAUDE.md, .claude/, containers/, setup/, docker-compose.yml)
+- `memory-vault/` = all knowledge (NORTHSTARs, GLOSSARYs, Distilled/, Raw/, Logs/)
+- Knowledge .md docs live in vault. @-import them from this file.
 
----
+## Architecture Reference
 
-## Mission Alignment
-This IS the system constitution. Every .md file and every agent traces back to this.
+@memory-vault/ARCHITECTURE.md
 
-## Scope
-System-wide operating principles, terminology, and agent definitions. Does NOT define individual agent behavior (see agent-specific CLAUDE.md files).
+## Anti-Patterns
 
-## Interfaces
-- **Read by**: All agents, all humans
-- **Written by**: Human (system architect)
-- **Depends on**: Nothing. This is the root.
-
-## Outcomes
-- Consistent terminology across all agents and documents
-- Clear agent hierarchy with defined responsibilities
-- Operating principles that prevent drift and bloat
-
-## Gamification Hooks
-- [ ] Terminology compliance: % of documents using correct terms → 100% = system coherence
-- [ ] Agent role clarity: do agents stay in their lane → fewer out-of-scope actions = higher trust
-- [ ] Constitution freshness: days since last review → living document signal
-
-## Document History
-| Date | Change | Author |
-|------|--------|--------|
-| 2026-03-04 | v0.3: App Builder specific CLAUDE.md | System |
-| 2026-03-04 | v0.4: Elevated to system constitution. Added terminology, agent roles, gamification. Removed App Builder specifics (moved to app-builder/CLAUDE.md). | System |
+- Don't document features that don't exist yet in operational files
+- Don't duplicate definitions across files
+- Don't abbreviate entity or system names
+- If it's not built, aspirational content goes in vault Raw/, not CLAUDE.md

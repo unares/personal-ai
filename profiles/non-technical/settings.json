@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "non-technical",
+    "ROLE_LABEL": "Non-Technical"
+  },
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(echo*)",
+      "Bash(date*)",
+      "Bash(pwd*)",
+      "Bash(wc*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Bash(rm*)",
+      "Bash(sudo*)",
+      "Bash(docker*)",
+      "Bash(git push*)",
+      "Bash(git commit*)",
+      "Bash(git reset*)"
+    ]
+  }
+}

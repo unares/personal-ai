@@ -261,25 +261,45 @@ step_banner 4 4 "Creating Vault" \
   "Logs/      = all agent activity for this entity"
 
 OWNER=$(node -e "const c=require('${CONFIG_PATH}'); console.log(c.owner)")
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/${OWNER}/{Clark,Submissions,HITLs,Coding}"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/${OWNER}/{Sessions,Submissions,HITLs}"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/AIOO"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Clark"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Other"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Processing"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Memories"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Clark"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/AIOO"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/${OWNER}"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/shared"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/personal-story"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/specification"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/shared-story"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Archive"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Templates/Claude"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Bin"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Logs"
 log_setup "ENTITY_CREATED" "$PROJ_NAME" 0 "$AIOO_NAME"
 printf "  ${G}✓${R} ${PROJ_NAME}/ vault created\n"
 
 if [ ! -f "$VAULT_PATH/$PROJ_NAME/$NS_FILE" ]; then
-  printf "# $(upper "$PROJ_NAME") NORTHSTAR\n\nDo One Thing. Earn Full Autonomy.\n\nEdit this file to define your long-term vision for ${PROJ_NAME}.\n" > "$VAULT_PATH/$PROJ_NAME/$NS_FILE"
+  TEMPLATE="$SCRIPT_DIR/templates/NORTHSTAR_TEMPLATE.md"
+  if [ -f "$TEMPLATE" ]; then
+    sed -e "s/{{ENTITY_UPPER}}/$(upper "$PROJ_NAME")/g" \
+        -e "s/{{entity}}/$PROJ_NAME/g" \
+        -e "s/{{human}}/$OWNER/g" \
+        "$TEMPLATE" > "$VAULT_PATH/$PROJ_NAME/$NS_FILE"
+  else
+    printf "# $(upper "$PROJ_NAME") NORTHSTAR\n\nDo One Thing. Earn Full Autonomy.\n\nEdit this file to define your long-term vision for ${PROJ_NAME}.\n" > "$VAULT_PATH/$PROJ_NAME/$NS_FILE"
+  fi
   printf "  ${G}✓${R} ${NS_FILE} seeded\n"
+fi
+
+GL_FILE="$(upper "$PROJ_NAME")_GLOSSARY.md"
+if [ ! -f "$VAULT_PATH/$PROJ_NAME/$GL_FILE" ]; then
+  GL_TEMPLATE="$SCRIPT_DIR/templates/GLOSSARY_TEMPLATE.md"
+  if [ -f "$GL_TEMPLATE" ]; then
+    sed -e "s/{{ENTITY_UPPER}}/$(upper "$PROJ_NAME")/g" \
+        -e "s/{{entity}}/$PROJ_NAME/g" \
+        "$GL_TEMPLATE" > "$VAULT_PATH/$PROJ_NAME/$GL_FILE"
+  else
+    printf "# $(upper "$PROJ_NAME") — Glossary\n\n> Human-owned terminology for the ${PROJ_NAME} entity.\n" > "$VAULT_PATH/$PROJ_NAME/$GL_FILE"
+  fi
+  printf "  ${G}✓${R} ${GL_FILE} seeded\n"
 fi
 
 check_context "$PROJ_NAME"
@@ -298,5 +318,8 @@ printf "  Entity:   ${B}${PROJ_NAME}${R}\n"
 printf "  AIOO:     ${B}${AIOO_NAME}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}/${PROJ_NAME}${R}\n\n"
 printf "  Edit northstar: memory-vault/${PROJ_NAME}/${NS_FILE}\n"
-printf "  Spawn builder:  ${B}./app-builder/app-builder.sh ${PROJ_NAME} <app-name>${R}\n"
+printf "  Edit glossary:  memory-vault/${PROJ_NAME}/${GL_FILE}\n"
 printf "  Add a human:    ${B}./setup/add-human.sh${R}\n\n"
+printf "  ${D}Shared vault docs (memory-vault/):${R}\n"
+printf "  ${D}  ARCHITECTURE.md, CHRONICLE.md, MEMORY_VAULT.md,${R}\n"
+printf "  ${D}  AGENT_WELCOME.md, MD_FILE_CONSTITUTION.md${R}\n\n"
