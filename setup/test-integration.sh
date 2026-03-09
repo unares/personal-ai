@@ -111,7 +111,7 @@ fi
 # ── Image Builds ──────────────────────────────────────────────────────────
 section "Agent Images"
 
-for IMG in personal-ai-aioo personal-ai-clark personal-ai-app-builder; do
+for IMG in personal-ai-aioo personal-ai-clark; do
   if docker image inspect "$IMG" > /dev/null 2>&1; then
     ok "image $IMG exists"
   else
@@ -128,7 +128,7 @@ for SKILL in query-vault vault-search distill-now chronicle-log; do
   [ -f "$REPO_DIR/nanoclaw-config/skills/$SKILL/SKILL.md" ] && ok "skill: $SKILL" || fail "skill: $SKILL missing"
 done
 
-for SKILL in hybrid-router spawn-app-builder; do
+for SKILL in hybrid-router; do
   [ -f "$REPO_DIR/nanoclaw-config/aioo/skills/$SKILL/SKILL.md" ] && ok "aioo skill: $SKILL" || fail "aioo skill: $SKILL missing"
 done
 

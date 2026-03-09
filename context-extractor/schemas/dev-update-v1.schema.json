@@ -24,7 +24,7 @@
     },
     "agent_role": {
       "type": "string",
-      "enum": ["clark", "aioo", "app-builder", "host-dev"],
+      "enum": ["clark", "aioo", "host-dev"],
       "description": "Role of the Claude Code instance that generated this update"
     },
     "agent_label": {
@@ -41,7 +41,7 @@
     },
     "app": {
       "type": ["string", "null"],
-      "description": "App name for app-builder role (null for non-builder roles)"
+      "description": "App name if applicable (null for non-app roles)"
     },
     "branch": {
       "type": "string",

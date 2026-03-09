@@ -179,6 +179,11 @@ _activate_profile() {
     " 2>/dev/null || cp "$dir/settings.json" "$HOME/.claude/settings.json"
   fi
 
+  # Inject profile CLAUDE.md as global identity
+  if [ -f "$dir/CLAUDE.md" ]; then
+    cp "$dir/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+  fi
+
   SELECTED_PROFILE="$name"
   SELECTED_PROFILE_DIR="$dir"
   export PROFILE_NAME="$name"

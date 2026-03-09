@@ -203,7 +203,7 @@ while true; do
   log_setup "ENTITY_CREATED" "$PROJ_NAME" 0 "$AIOO_NAME"
   printf "  ${G}✓${R} ${B}${PROJ_NAME}${R} entity registered — ${B}${AIOO_NAME}${R} assigned.\n"
   printf "  ${D}AIOO is the AI Operating Officer of ${PROJ_NAME}. It drives\n"
-  printf "  execution, maintains the northstar, and spawns App Builders.${R}\n\n"
+  printf "  execution, maintains the northstar, and coordinates work.${R}\n\n"
 
   SEP=""; [ -n "$ENTITIES_JSON" ] && SEP=","
   ENTITIES_JSON="${ENTITIES_JSON}${SEP}
@@ -298,7 +298,6 @@ docker compose --profile seed up -d --build 2>&1 | grep -E "✔|Built|Started|Er
 printf "\n  Building agent images (first time only, ~3 min each)...\n"
 docker build -t personal-ai-aioo "$REPO_DIR/aioo/" 2>&1 | tail -1 || true
 docker build -t personal-ai-clark "$REPO_DIR/clark/" 2>&1 | tail -1 || true
-docker build -t personal-ai-app-builder "$REPO_DIR/app-builder/" 2>&1 | tail -1 || true
 printf "  ${G}✓${R} Agent images built\n"
 
 # Optional: Google Drive Context Sync
@@ -342,7 +341,6 @@ printf "  Entities: ${B}${ENTITY_LIST}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}${R}\n\n"
 printf "  Start AIOO:     ${B}./aioo/aioo.sh <entity>${R}\n"
 printf "  Start Clark:    ${B}./clark/clark.sh${R}\n"
-printf "  Spawn builder:  ${B}./app-builder/app-builder.sh <entity> <app-name>${R}\n"
 printf "  Drop notes:     memory-vault/{entity}/Raw/\n"
 printf "  Add entity:     ${B}./setup/add-entity.sh${R}\n"
 printf "  Add human:      ${B}./setup/add-human.sh${R}\n"

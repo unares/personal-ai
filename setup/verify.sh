@@ -77,7 +77,7 @@ fi
 # ── Scripts ────────────────────────────────────────────────────────────────
 section "Scripts"
 
-for SCRIPT in setup/install.sh setup/verify.sh setup/add-entity.sh setup/add-human.sh clark/clark.sh aioo/aioo.sh app-builder/app-builder.sh; do
+for SCRIPT in setup/install.sh setup/verify.sh setup/add-entity.sh setup/add-human.sh clark/clark.sh aioo/aioo.sh; do
   if [ -f "$REPO_DIR/$SCRIPT" ]; then
     [ -x "$REPO_DIR/$SCRIPT" ] && ok "${SCRIPT} (executable)" || warn "${SCRIPT} exists but not executable — run: chmod +x ${SCRIPT}"
   else
@@ -85,7 +85,7 @@ for SCRIPT in setup/install.sh setup/verify.sh setup/add-entity.sh setup/add-hum
   fi
 done
 
-for DIR in clark aioo app-builder context-extractor; do
+for DIR in clark aioo context-extractor; do
   [ -d "$REPO_DIR/$DIR" ] && ok "${DIR}/ exists" || fail "${DIR}/ missing"
 done
 
@@ -136,7 +136,7 @@ else
   fi
 
   # Docker images
-  for IMG in personal-ai-clark personal-ai-aioo personal-ai-app-builder; do
+  for IMG in personal-ai-clark personal-ai-aioo; do
     docker image inspect "$IMG" > /dev/null 2>&1 && ok "image ${IMG}" || printf "  ${D}  image ${IMG} not built yet${R}\n"
   done
 
@@ -209,7 +209,7 @@ for CFG in nanoclaw-config/aioo/CLAUDE.md nanoclaw-config/clark/CLAUDE.md; do
   [ -f "$REPO_DIR/$CFG" ] && ok "$CFG" || warn "$CFG missing"
 done
 
-for SKILL_DIR in nanoclaw-config/skills/query-vault nanoclaw-config/skills/vault-search nanoclaw-config/skills/distill-now nanoclaw-config/skills/chronicle-log nanoclaw-config/aioo/skills/hybrid-router nanoclaw-config/aioo/skills/spawn-app-builder; do
+for SKILL_DIR in nanoclaw-config/skills/query-vault nanoclaw-config/skills/vault-search nanoclaw-config/skills/distill-now nanoclaw-config/skills/chronicle-log nanoclaw-config/aioo/skills/hybrid-router; do
   [ -f "$REPO_DIR/$SKILL_DIR/SKILL.md" ] && ok "$SKILL_DIR/SKILL.md" || warn "$SKILL_DIR/SKILL.md missing"
 done
 

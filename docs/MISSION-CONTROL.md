@@ -11,7 +11,7 @@ Mission Control is a web dashboard (port 3000) providing visibility into the Per
 ### Container Status
 - Running containers with name, image, uptime, resource usage
 - Start/stop controls for AIOO and Clark
-- App Builder spawn history
+- Container spawn history
 
 ### Vault Health
 - Per-entity: Raw/ queue depth, Distilled/ coverage, staleness index
@@ -42,7 +42,7 @@ Mission Control is a web dashboard (port 3000) providing visibility into the Per
 
 ## Technical Notes
 
-- Built as an AIOO App Builder task: `/spawn-app-builder mission-control`
+- Built as a standalone service
 - Static frontend + API calls to Context Extractor
 - Reads Chronicle events, vault metadata, Docker API
 - No authentication initially (localhost only)
@@ -54,7 +54,7 @@ Mission Control is a web dashboard (port 3000) providing visibility into the Per
 Visibility enables trust. Humans need to see what agents are doing to grant more autonomy. Mission Control makes the system's behavior transparent and auditable without requiring WhatsApp interaction.
 
 ## Scope
-Defines the Mission Control dashboard features and purpose. Does NOT define implementation details (that is the App Builder's job when spawned).
+Defines the Mission Control dashboard features and purpose. Does NOT define implementation details.
 
 ## Interfaces
 - **Read by**: Humans (using the dashboard), AIOO (spawning the builder)

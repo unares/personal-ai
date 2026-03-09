@@ -2,6 +2,7 @@
 paths:
   - "**/Dockerfile*"
   - "**/docker-compose*"
+  - "**/entrypoint*"
   - "containers/**"
 ---
 

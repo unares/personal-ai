@@ -48,7 +48,7 @@
       "Do One Thing. Drive execution.",
       "Read NORTHSTAR.md first — always.",
       "Log decisions to /vault/Logs/aioo.log",
-      "Spawn App Builders for building, not yourself.",
+      "Coordinate work, delegate via subagents.",
       "Run /compact at 70% context.",
       "auto-git: Commit early, commit often. Each commit = a save point. +10 karma.",
       "auto-git: Push after every few commits. Unpushed work is unbackedup work. +5 karma.",

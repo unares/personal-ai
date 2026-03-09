@@ -29,7 +29,7 @@ You add one entity at a time. For each entity you specify:
 - **Solo or co-founder** — if co-founder, you enter their name, which creates a scoped `clark-{cofounder}` for them
 
 For each entity, this registers:
-- An **AIOO** (`aioo-{entity}`) — your AI Operating Officer. Full read/write access to that entity's vault. Maintains the project northstar and spawns App Builders.
+- An **AIOO** (`aioo-{entity}`) — your AI Operating Officer. Full read/write access to that entity's vault. Maintains the entity northstar and coordinates work.
 - A **co-founder Clark** (if applicable) — read-only access to that entity's `Distilled/Clark/` only.
 
 ### Step 3 — Vault & Config Created
@@ -80,19 +80,7 @@ echo "# Q1 goal" > memory-vault/onething/Raw/michal/Submissions/2026-03-02.md
 ```bash
 nano memory-vault/onething/ONETHING_NORTHSTAR.md
 ```
-This is the locked constitution for the entity. Every App Builder spawned for onething will read it.
-
-### Spawn an App Builder
-```bash
-./app-builder/app-builder.sh onething plusone
-```
-Creates a Docker container (`app-onething-plusone`) with:
-- Read-only mount of `onething/Distilled/` — sees Clark + AIOO summaries, nothing else
-- `CLAUDE.md` pre-loaded with the entity Northstar
-- Log output to `onething/Logs/`
-
-Attach to it: `docker exec -it app-onething-plusone claude`
-Stop it: `docker stop app-onething-plusone && docker rm app-onething-plusone`
+This is the locked constitution for the entity. All agents scoped to the entity will read it.
 
 ### Check Context Extractor logs
 ```bash
@@ -122,10 +110,9 @@ docker compose --profile seed logs -f context-extractor
 | `clark-{owner}` | All entities → `Distilled/Clark/` | read-only |
 | `clark-{cofounder}` | Their entity → `Distilled/Clark/` | read-only |
 | `aioo-{entity}` | Their entity → full vault | read-write |
-| `app-{entity}-{name}` | Their entity → `Distilled/` | read-only |
 | Context Extractor | All entities | read-write |
 
-**Rule**: Clarks never see raw notes. They only see what Context Extractor has distilled for them. AIOOs see everything in their entity vault. App Builders see only distilled context — never raw.
+**Rule**: Clarks never see raw notes. They only see what Context Extractor has distilled for them. AIOOs see everything in their entity vault.
 
 ---
 
@@ -145,7 +132,6 @@ Everything in the repo is generic infrastructure — safe to push publicly.
 ```
 clark/clark.sh              — spawn your Clark
 aioo/aioo.sh <entity>       — spawn an entity AIOO
-app-builder/app-builder.sh  — spawn an App Builder
 setup/install.sh             — first-time setup
 setup/verify.sh              — system health check
 setup/add-entity.sh          — add a new entity

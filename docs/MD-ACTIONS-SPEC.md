@@ -11,7 +11,7 @@ MD-Actions defines how .md files in the vault declare actionable metadata via YA
 ```yaml
 ---
 status: draft | review | approved | archived
-owner: aioo | clark | app-builder | human
+owner: aioo | clark | human
 created: 2026-03-04T10:00:00Z
 updated: 2026-03-04T12:00:00Z
 actions:
