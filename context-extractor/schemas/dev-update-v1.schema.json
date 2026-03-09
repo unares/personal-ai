@@ -20,7 +20,7 @@
       "type": "string",
       "pattern": "^[a-z-]+-[a-z]+-\\d{8}-[0-9a-f]{6}$",
       "description": "Unique session identifier: {role}-{entity}-{YYYYMMDD}-{hex6}. Used for traceability back to chronicle.jsonl and session logs.",
-      "examples": ["aioo-onething-20260306-a3f1c2", "clark-inisio-20260306-b2e4d1"]
+      "examples": ["aioo-ai-workspace-20260306-a3f1c2", "clark-inisio-20260306-b2e4d1"]
     },
     "agent_role": {
       "type": "string",
@@ -33,7 +33,7 @@
     },
     "entity": {
       "type": "string",
-      "description": "Target entity name from config.json (e.g. 'onething', 'inisio', 'procenteo')"
+      "description": "Target entity name from config.json (e.g. 'ai-workspace', 'inisio', 'procenteo')"
     },
     "human": {
       "type": "string",

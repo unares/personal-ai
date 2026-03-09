@@ -1,8 +1,0 @@
-{
-  "name": "experimental",
-  "label": "Experimental",
-  "description": "Sandbox with northstar context. Test configs, export what works.",
-  "icon": "!",
-  "skills": [],
-  "notes": "Loads NORTHSTAR.md and entity northstars. Use to prototype Claude Code configurations."
-}

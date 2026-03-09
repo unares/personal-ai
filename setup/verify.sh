@@ -197,10 +197,10 @@ else
   printf "  ${D}  Skipped — node or config.json not available${R}\n"
 fi
 
-# ── pai-launch ──────────────────────────────────────────────────────────
+# ── claude-code-launch ──────────────────────────────────────────────────
 section "Launcher"
 
-[ -f "$REPO_DIR/pai-launch" ] && [ -x "$REPO_DIR/pai-launch" ] && ok "pai-launch (executable)" || warn "pai-launch missing or not executable"
+[ -f "$REPO_DIR/claude-code-launch" ] && [ -x "$REPO_DIR/claude-code-launch" ] && ok "claude-code-launch (executable)" || warn "claude-code-launch missing or not executable"
 
 # ── NanoClaw Config ──────────────────────────────────────────────────────
 section "NanoClaw Config"

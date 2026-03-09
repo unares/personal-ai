@@ -15,8 +15,8 @@ LINE=$(printf '═%.0s' $(seq 1 $W))
 
 step_banner() {
   local step=$1 total=$2 title="$3"
-  local filled=$((step >= total ? 16 : step * 16 / total))
-  local empty=$((16 - filled))
+  local filled; filled=$((step >= total ? 16 : step * 16 / total))
+  local empty; empty=$((16 - filled))
   local bar="" i
   for i in $(seq 1 $filled); do bar="${bar}█"; done
   for i in $(seq 1 $empty); do bar="${bar}░"; done
@@ -33,6 +33,26 @@ step_banner() {
 
 upper() { echo "$1" | tr '[:lower:]' '[:upper:]'; }
 lower() { echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'; }
+
+check_context() {
+  local entity="$1"
+  local raw_dir="$VAULT_PATH/$entity/Raw"
+  local md_count; md_count=$(find "$raw_dir" -name "*.md" -type f 2>/dev/null | wc -l)
+  if [ "$md_count" -eq 0 ]; then
+    printf "\n  ${Y}!${R} ${B}${entity}${R} vault is empty — no .md files in Raw/\n"
+    printf "  ${D}  Drop .md notes into memory-vault/${entity}/Raw/ to feed Context Extractor.${R}\n"
+    printf "  ${D}  Or run ./setup/context-sync.sh to pull from Google Drive.${R}\n\n"
+  fi
+}
+
+log_setup() {
+  local event="$1" entity="${2:-}" pts="${3:-0}" detail="${4:-}"
+  local log_dir="$VAULT_PATH/Logs"
+  mkdir -p "$log_dir"
+  local ts; ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+  local entry="{\"ts\":\"$ts\",\"event\":\"$event\",\"entity\":\"$entity\",\"pts\":$pts,\"detail\":\"$detail\"}"
+  echo "$entry" >> "$log_dir/setup.jsonl" 2>/dev/null || true
+}
 
 confirm() {
   while true; do
@@ -231,6 +251,7 @@ if (huEntry) {
 fs.writeFileSync(process.env.CONFIG_PATH, JSON.stringify(c, null, 2) + '\n');
 NODEEOF
 
+log_setup "CONFIG_UPDATED" "$PROJ_NAME" 0 "entity added"
 printf "  ${G}✓${R} config.json updated\n"
 
 # ── Step 4: Create vault ──────────────────────────────────────────────────
@@ -240,25 +261,48 @@ step_banner 4 4 "Creating Vault" \
   "Logs/      = all agent activity for this entity"
 
 OWNER=$(node -e "const c=require('${CONFIG_PATH}'); console.log(c.owner)")
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/${OWNER}/{Clark,Submissions,HITLs,Coding}"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/${OWNER}/{Sessions,Submissions,HITLs}"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/AIOO"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Clark"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Raw/Other"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Processing"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Memories"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Clark"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/AIOO"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/${OWNER}"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/shared"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/personal-story"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/specification"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/shared-story"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Archive"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Templates/Claude"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Bin"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Logs"
+log_setup "ENTITY_CREATED" "$PROJ_NAME" 0 "$AIOO_NAME"
 printf "  ${G}✓${R} ${PROJ_NAME}/ vault created\n"
 
 if [ ! -f "$VAULT_PATH/$PROJ_NAME/$NS_FILE" ]; then
-  printf "# $(upper "$PROJ_NAME") NORTHSTAR\n\nDo One Thing. Earn Full Autonomy.\n\nEdit this file to define your long-term vision for ${PROJ_NAME}.\n" > "$VAULT_PATH/$PROJ_NAME/$NS_FILE"
+  TEMPLATE="$SCRIPT_DIR/templates/NORTHSTAR_TEMPLATE.md"
+  if [ -f "$TEMPLATE" ]; then
+    sed -e "s/{{ENTITY_UPPER}}/$(upper "$PROJ_NAME")/g" \
+        -e "s/{{entity}}/$PROJ_NAME/g" \
+        -e "s/{{human}}/$OWNER/g" \
+        "$TEMPLATE" > "$VAULT_PATH/$PROJ_NAME/$NS_FILE"
+  else
+    printf "# $(upper "$PROJ_NAME") NORTHSTAR\n\nDo One Thing. Earn Full Autonomy.\n\nEdit this file to define your long-term vision for ${PROJ_NAME}.\n" > "$VAULT_PATH/$PROJ_NAME/$NS_FILE"
+  fi
   printf "  ${G}✓${R} ${NS_FILE} seeded\n"
 fi
+
+GL_FILE="$(upper "$PROJ_NAME")_GLOSSARY.md"
+if [ ! -f "$VAULT_PATH/$PROJ_NAME/$GL_FILE" ]; then
+  GL_TEMPLATE="$SCRIPT_DIR/templates/GLOSSARY_TEMPLATE.md"
+  if [ -f "$GL_TEMPLATE" ]; then
+    sed -e "s/{{ENTITY_UPPER}}/$(upper "$PROJ_NAME")/g" \
+        -e "s/{{entity}}/$PROJ_NAME/g" \
+        "$GL_TEMPLATE" > "$VAULT_PATH/$PROJ_NAME/$GL_FILE"
+  else
+    printf "# $(upper "$PROJ_NAME") — Glossary\n\n> Human-owned terminology for the ${PROJ_NAME} entity.\n" > "$VAULT_PATH/$PROJ_NAME/$GL_FILE"
+  fi
+  printf "  ${G}✓${R} ${GL_FILE} seeded\n"
+fi
+
+check_context "$PROJ_NAME"
 
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "context-extractor"; then
   printf "\n  Restarting Context Extractor...\n"
@@ -274,5 +318,8 @@ printf "  Entity:   ${B}${PROJ_NAME}${R}\n"
 printf "  AIOO:     ${B}${AIOO_NAME}${R}\n"
 printf "  Vault:    ${B}${VAULT_PATH}/${PROJ_NAME}${R}\n\n"
 printf "  Edit northstar: memory-vault/${PROJ_NAME}/${NS_FILE}\n"
-printf "  Spawn builder:  ${B}./app-builder/app-builder.sh ${PROJ_NAME} <app-name>${R}\n"
+printf "  Edit glossary:  memory-vault/${PROJ_NAME}/${GL_FILE}\n"
 printf "  Add a human:    ${B}./setup/add-human.sh${R}\n\n"
+printf "  ${D}Shared vault docs (memory-vault/):${R}\n"
+printf "  ${D}  ARCHITECTURE.md, CHRONICLE.md, MEMORY_VAULT.md,${R}\n"
+printf "  ${D}  AGENT_WELCOME.md, MD_FILE_CONSTITUTION.md${R}\n\n"

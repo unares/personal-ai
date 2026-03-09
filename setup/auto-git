@@ -1,0 +1,415 @@
+#!/bin/sh
+# auto-git — Automatic GitHub connection with Git Karma gamification
+# Baked into all Claude Code containers at /usr/local/bin/auto-git
+#
+# Usage:
+#   auto-git --status-line      Status line output (branch, modified, karma)
+#   auto-git --session-start    Session context report for Claude
+#   auto-git --checkpoint       Post-response reminder if action needed
+#   auto-git --score <action>   Record a karma event
+#   auto-git --flush-karma      Output karma summary for dev-update
+#   auto-git --help             Show help
+#
+# Environment:
+#   ENTITY     — target entity (required)
+#   ROLE       — agent role (required)
+#
+# Karma state: /tmp/.auto-git-karma-{ENTITY}-{ROLE}
+
+set -e
+
+KARMA_FILE="/tmp/.auto-git-karma-${ENTITY:-unknown}-${ROLE:-unknown}"
+LAST_CHANGE_FILE="/tmp/.auto-git-lastchange-${ENTITY:-unknown}-${ROLE:-unknown}"
+
+# --- Helpers ---
+
+in_git_repo() {
+  git rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
+current_branch() {
+  git rev-parse --abbrev-ref HEAD 2>/dev/null || echo ""
+}
+
+is_feature_branch() {
+  local branch
+  branch=$(current_branch)
+  [ -n "$branch" ] && [ "$branch" != "main" ] && [ "$branch" != "master" ]
+}
+
+commits_ahead() {
+  local branch
+  branch=$(current_branch)
+  local base
+  # Try main first, then master
+  if git rev-parse --verify origin/main >/dev/null 2>&1; then
+    base="origin/main"
+  elif git rev-parse --verify origin/master >/dev/null 2>&1; then
+    base="origin/master"
+  elif git rev-parse --verify main >/dev/null 2>&1; then
+    base="main"
+  elif git rev-parse --verify master >/dev/null 2>&1; then
+    base="master"
+  else
+    echo "0"
+    return
+  fi
+  git rev-list --count "${base}..HEAD" 2>/dev/null || echo "0"
+}
+
+commits_behind() {
+  local branch
+  branch=$(current_branch)
+  local base
+  if git rev-parse --verify origin/main >/dev/null 2>&1; then
+    base="origin/main"
+  elif git rev-parse --verify origin/master >/dev/null 2>&1; then
+    base="origin/master"
+  elif git rev-parse --verify main >/dev/null 2>&1; then
+    base="main"
+  elif git rev-parse --verify master >/dev/null 2>&1; then
+    base="master"
+  else
+    echo "0"
+    return
+  fi
+  git rev-list --count "HEAD..${base}" 2>/dev/null || echo "0"
+}
+
+modified_count() {
+  git status --porcelain 2>/dev/null | wc -l | tr -d ' '
+}
+
+untracked_count() {
+  git status --porcelain 2>/dev/null | grep -c '^??' || echo "0"
+}
+
+unpushed_count() {
+  git log --oneline '@{push}..' 2>/dev/null | wc -l | tr -d ' '
+}
+
+last_commit_age() {
+  local ts
+  ts=$(git log -1 --format=%ct 2>/dev/null)
+  if [ -z "$ts" ]; then
+    echo "never"
+    return
+  fi
+  local now
+  now=$(date +%s)
+  local diff=$(( now - ts ))
+  if [ $diff -lt 60 ]; then
+    echo "${diff}s ago"
+  elif [ $diff -lt 3600 ]; then
+    echo "$(( diff / 60 )) min ago"
+  elif [ $diff -lt 86400 ]; then
+    echo "$(( diff / 3600 )) hours ago"
+  else
+    echo "$(( diff / 86400 )) days ago"
+  fi
+}
+
+last_commit_message() {
+  git log -1 --format='%s' 2>/dev/null || echo ""
+}
+
+total_karma() {
+  if [ ! -f "$KARMA_FILE" ]; then
+    echo "0"
+    return
+  fi
+  local total=0
+  while IFS='|' read -r points _ _ || [ -n "$points" ]; do
+    total=$(( total + points ))
+  done < "$KARMA_FILE"
+  echo "$total"
+}
+
+trust_level() {
+  local karma="$1"
+  if [ "$karma" -lt 25 ]; then
+    echo "Observer"
+  elif [ "$karma" -lt 100 ]; then
+    echo "Contributor"
+  elif [ "$karma" -lt 250 ]; then
+    echo "Operator"
+  else
+    echo "Autonomous"
+  fi
+}
+
+# --- Modes ---
+
+status_line() {
+  if ! in_git_repo; then
+    echo "⚠ No git repo · ⭐ 0 karma · Connect to start earning"
+    return
+  fi
+
+  local branch
+  branch=$(current_branch)
+  local modified
+  modified=$(modified_count)
+  local unpushed
+  unpushed=$(unpushed_count)
+  local karma
+  karma=$(total_karma)
+
+  local parts="🌿 ${branch}"
+  [ "$modified" -gt 0 ] && parts="${parts} · ${modified} modified"
+  [ "$unpushed" -gt 0 ] && parts="${parts} · ⬆ ${unpushed} unpushed"
+  parts="${parts} · ⭐ ${karma} karma"
+
+  echo "$parts"
+}
+
+session_start() {
+  echo "AUTO-GIT SESSION REPORT:"
+
+  if ! in_git_repo; then
+    echo "  ⚠ No git repository detected. Git Karma: 0 points."
+    echo "  Connect to a GitHub repo to start earning karma."
+    echo "  Run: git init && git remote add origin <url>"
+    return
+  fi
+
+  local branch
+  branch=$(current_branch)
+  local ahead
+  ahead=$(commits_ahead)
+  local behind
+  behind=$(commits_behind)
+  local modified
+  modified=$(modified_count)
+  local untracked
+  untracked=$(untracked_count)
+  local age
+  age=$(last_commit_age)
+  local msg
+  msg=$(last_commit_message)
+  local unpushed
+  unpushed=$(unpushed_count)
+  local karma
+  karma=$(total_karma)
+
+  local branch_note=""
+  if is_feature_branch; then
+    branch_note=" (feature branch ✓)"
+  else
+    branch_note=" (⚠ you are on ${branch} — consider a feature branch)"
+  fi
+
+  echo "  Branch: ${branch}${branch_note}"
+  echo "  Base: main (${ahead} commits ahead, ${behind} behind)"
+  echo "  Working tree: ${modified} modified, ${untracked} untracked"
+  echo "  Last commit: ${age} \"${msg}\""
+  echo "  Unpushed commits: ${unpushed}"
+  echo "  Git Karma this session: ${karma}"
+  echo "  Tip: Commit at natural breakpoints to earn karma."
+
+  # Auto-score the connected event
+  score_event 5 "connected" "session start — repo detected"
+}
+
+checkpoint() {
+  if ! in_git_repo; then
+    return
+  fi
+
+  local modified
+  modified=$(modified_count)
+
+  # Nothing to report
+  if [ "$modified" -eq 0 ]; then
+    return
+  fi
+
+  local age
+  age=$(last_commit_age)
+  local karma_bonus=""
+
+  # Calculate potential karma
+  local potential=10
+  if is_feature_branch; then
+    potential=$(( potential + 5 ))
+  fi
+  if [ "$modified" -lt 5 ]; then
+    potential=$(( potential + 5 ))
+  fi
+
+  echo "auto-git: ${modified} files changed since last commit (${age}). +${potential} karma if you commit now with a semantic prefix."
+}
+
+score_event() {
+  local points="$1"
+  local action="$2"
+  local details="$3"
+  local timestamp
+  timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+  echo "${points}|${action}|${details}|${timestamp}" >> "$KARMA_FILE"
+}
+
+score() {
+  local action="$1"
+  shift
+  local details="$*"
+
+  case "$action" in
+    connected)
+      score_event 5 "connected" "${details:-repo detected}"
+      echo "auto-git: +5 karma (connected to repo)"
+      ;;
+    commit)
+      local points=10
+      local bonuses=""
+
+      # Check semantic prefix
+      local has_semantic=false
+      case "$details" in
+        feat:*|fix:*|chore:*|docs:*|refactor:*|test:*|style:*|perf:*|ci:*)
+          has_semantic=true
+          ;;
+      esac
+
+      if [ "$has_semantic" = false ]; then
+        points=3
+        bonuses=" (no semantic prefix — use feat:/fix:/chore:/docs: for +10)"
+      fi
+
+      score_event $points "commit" "$details"
+
+      # Feature branch bonus
+      if is_feature_branch; then
+        score_event 5 "feature-branch" "commit on $(current_branch)"
+        bonuses="${bonuses} +5 feature branch"
+      fi
+
+      # Focused commit bonus (check files in last commit)
+      local file_count
+      file_count=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | wc -l | tr -d ' ')
+      if [ "$file_count" -lt 5 ] 2>/dev/null; then
+        score_event 5 "focused-commit" "${file_count} files changed"
+        bonuses="${bonuses} +5 focused commit"
+      fi
+
+      # Cadence bonus (commit within 30 min of last change)
+      local last_ts
+      last_ts=$(git log -1 --skip=1 --format=%ct 2>/dev/null || echo "0")
+      local now
+      now=$(date +%s)
+      if [ "$last_ts" -gt 0 ] && [ $(( now - last_ts )) -lt 1800 ]; then
+        score_event 3 "cadence" "within 30 min"
+        bonuses="${bonuses} +3 cadence"
+      fi
+
+      echo "auto-git: +${points} karma (commit)${bonuses}"
+      ;;
+    push)
+      score_event 5 "push" "${details:-pushed to remote}"
+      echo "auto-git: +5 karma (push to remote)"
+      ;;
+    pr-create)
+      score_event 15 "pr-create" "${details:-PR created}"
+      echo "auto-git: +15 karma (PR created)"
+      ;;
+    pr-merge)
+      score_event 20 "pr-merge" "${details:-PR merged}"
+      echo "auto-git: +20 karma (PR merged)"
+      ;;
+    tag)
+      score_event 25 "tag" "${details:-tag/release created}"
+      echo "auto-git: +25 karma (tag/release created)"
+      ;;
+    *)
+      echo "auto-git: unknown action '${action}'. Valid: connected, commit, push, pr-create, pr-merge, tag" >&2
+      return 1
+      ;;
+  esac
+}
+
+flush_karma() {
+  if [ ! -f "$KARMA_FILE" ]; then
+    return
+  fi
+
+  local total=0
+  local lines=""
+
+  while IFS='|' read -r points action details timestamp || [ -n "$points" ]; do
+    total=$(( total + points ))
+    lines="${lines}
+- +${points} ${action}: ${details}"
+  done < "$KARMA_FILE"
+
+  local level
+  level=$(trust_level "$total")
+
+  printf "## Git Karma\n\nPoints this session: %d\n%s\n\nTrust level: %s (%d/250 toward Autonomous)\n" \
+    "$total" "$lines" "$level" "$total"
+
+  # Clean up after flushing
+  rm -f "$KARMA_FILE"
+}
+
+show_help() {
+  cat <<'HELP'
+auto-git — Automatic GitHub connection with Git Karma gamification
+
+Usage:
+  auto-git --status-line      One-line status for Claude Code status bar
+  auto-git --session-start    Full context report at session start
+  auto-git --checkpoint       Reminder if uncommitted changes exist
+  auto-git --score <action>   Record a karma event
+  auto-git --flush-karma      Output karma summary (for dev-update)
+  auto-git --help             Show this help
+
+Score actions:
+  connected     +5   Session with git repo connected
+  commit        +10  Commit with semantic prefix (+5 feature branch, +5 focused, +3 cadence)
+  push          +5   Push to remote
+  pr-create     +15  Pull request created
+  pr-merge      +20  Pull request merged
+  tag           +25  Tag/release created
+
+Trust levels:
+  Observer      0-24    No repo or no commits
+  Contributor   25-99   Regular commits, some pushes
+  Operator      100-249 Semantic commits, PRs, feature branches
+  Autonomous    250+    Full workflow: branch → commit → PR → merge → tag
+
+Environment: ENTITY, ROLE (required for karma file keying)
+HELP
+}
+
+# --- Main ---
+
+case "${1:-}" in
+  --status-line)
+    status_line
+    ;;
+  --session-start)
+    session_start
+    ;;
+  --checkpoint)
+    checkpoint
+    ;;
+  --score)
+    shift
+    score "$@"
+    ;;
+  --flush-karma)
+    flush_karma
+    ;;
+  --help|-h)
+    show_help
+    ;;
+  "")
+    echo "auto-git: no mode specified. Use --help for usage." >&2
+    exit 1
+    ;;
+  *)
+    echo "auto-git: unknown mode '${1}'. Use --help for usage." >&2
+    exit 1
+    ;;
+esac

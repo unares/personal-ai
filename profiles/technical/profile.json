@@ -1,0 +1,13 @@
+{
+  "name": "technical",
+  "label": "Technical",
+  "description": "Full autonomy. All tools. For AI architects building the workspace.",
+  "icon": "T",
+  "capabilities": {
+    "vault": "rw",
+    "push": true,
+    "docker": true,
+    "web": true,
+    "decision_log": true
+  }
+}

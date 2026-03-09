@@ -7,7 +7,7 @@
 ```yaml
 spec_type: dev-update-pipeline
 version: "1.0"
-entity: onething
+entity: ai-workspace
 scope: all Personal AI features
 schema: memory-vault/schemas/dev-update-v1.schema.json
 ```
@@ -75,7 +75,7 @@ The `session_id` field enables full traceability:
 
 Query example: to find all work from a specific session:
 ```bash
-grep "aioo-onething-20260306-a3f1c2" /vault/onething/Logs/context-extractor.log
+grep "aioo-ai-workspace-20260306-a3f1c2" /vault/ai-workspace/Logs/context-extractor.log
 ```
 
 ## Role-Specific Guidelines
@@ -107,10 +107,10 @@ grep "aioo-onething-20260306-a3f1c2" /vault/onething/Logs/context-extractor.log
 ---
 type: dev-update
 version: "1.0"
-session_id: aioo-onething-20260306-a3f1c2
+session_id: aioo-ai-workspace-20260306-a3f1c2
 agent_role: aioo
 agent_label: "AI Operating Officer"
-entity: onething
+entity: ai-workspace
 human: michal
 branch: "fix/operational-hardening"
 timestamp: "2026-03-06T10:30:00Z"
@@ -134,7 +134,7 @@ distilled files on disk have full content.
 ## Current State
 
 Context Extractor v0.4 processes the 239-line session log correctly:
-- onething: 11 personal-story, 11 shared-story, 10 specification sections
+- ai-workspace: 11 personal-story, 11 shared-story, 10 specification sections
 - inisio: 3 personal-story + 1 specification (detected "andras" mentions)
 - procenteo: 4 personal-story + 2 specification (detected "mateusz" mentions)
 

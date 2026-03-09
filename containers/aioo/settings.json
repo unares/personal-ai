@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "aioo",
+    "ROLE_LABEL": "AI Operating Officer"
+  },
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Edit(**)",
+      "Write(**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(sudo*)",
+      "Bash(curl*|*bash*)",
+      "Bash(wget*|*bash*)",
+      "Bash(docker run*--privileged*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/usr/local/bin/auto-git --status-line"
+  },
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "/usr/local/bin/auto-git --session-start"
+      }]
+    }],
+    "Stop": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "/usr/local/bin/auto-git --checkpoint"
+      }]
+    }]
+  },
+  "spinnerTipsEnabled": true,
+  "spinnerTipsOverride": {
+    "excludeDefault": true,
+    "tips": [
+      "Do One Thing. Drive execution.",
+      "Read NORTHSTAR.md first — always.",
+      "Log decisions to /vault/Logs/aioo.log",
+      "Spawn App Builders for building, not yourself.",
+      "Run /compact at 70% context.",
+      "auto-git: Commit early, commit often. Each commit = a save point. +10 karma.",
+      "auto-git: Push after every few commits. Unpushed work is unbackedup work. +5 karma.",
+      "auto-git: Feature branches keep main clean. Never commit to main directly. +5 karma.",
+      "auto-git: Semantic prefixes (feat:, fix:, chore:) = structured history. +10 karma."
+    ]
+  }
+}

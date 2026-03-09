@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "clark",
+    "ROLE_LABEL": "Clarity Architect"
+  },
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(echo*)",
+      "Bash(pwd*)",
+      "Bash(dev-update*)",
+      "Bash(auto-git*)",
+      "WebFetch(*)",
+      "WebSearch(*)"
+    ],
+    "deny": [
+      "Edit(**)",
+      "Write(**)",
+      "Bash(rm*)",
+      "Bash(git*)",
+      "Bash(npm*)",
+      "Bash(node*)",
+      "Bash(sudo*)",
+      "Bash(curl*)",
+      "Bash(wget*)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "/usr/local/bin/auto-git --status-line"
+  },
+  "spinnerTipsEnabled": true,
+  "spinnerTipsOverride": {
+    "excludeDefault": true,
+    "tips": [
+      "Clarity before action. What is the One Thing?",
+      "Read Distilled/ context before advising.",
+      "You are the Philosophical Brain, not the executor.",
+      "Surface patterns across entities.",
+      "Run /compact when approaching 70% context.",
+      "auto-git: The dev branch shows working patterns. Awareness is clarity."
+    ]
+  }
+}
