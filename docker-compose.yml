@@ -1,5 +1,6 @@
 # Personal AI v0.4 — Compose Services
-# Always-on services: Context Extractor, LiteLLM Proxy
+# Always-on services: Chronicle
+# Isolated (not started, vault access removed): Context Extractor, LiteLLM Proxy
 # Agent containers spawned via launcher scripts:
 #   ./clark/clark.sh                       — spawn your Clark
 #   ./aioo/aioo.sh <entity>                — spawn an entity AIOO
@@ -12,22 +13,41 @@
 services:
 
   # ── Context Extractor ──────────────────────────────────────────────────────
-  # Watches all entity Raw/ dirs and distills notes for Clark and AIOO.
-  # CX_MODE=simple (default) uses minimal pipeline; CX_MODE=advanced for full.
+  # ISOLATED: not in seed profile, no vault mount. Code kept for redesign.
+  # To inspect: docker compose --profile inspect up context-extractor
   context-extractor:
-    profiles: [seed]
+    profiles: [inspect]
     build:
       context: ./context-extractor
     container_name: context-extractor
     networks:
       - personal-ai-net
     volumes:
-      - memory-vault:/vault
       - ./config.json:/app/config.json:ro
     environment:
-      - VAULT_PATH=/vault
       - CONFIG_PATH=/app/config.json
       - CX_MODE=simple
+    restart: "no"
+
+  # ── Chronicle ─────────────────────────────────────────────────────────────
+  # Always-on vault watcher + QMD hybrid search index.
+  # Watches memory-vault for .md changes (chokidar → JSONL audit events).
+  # Serves MCP HTTP on :8181 for agent search (qmd_search, qmd_vsearch, qmd_query).
+  chronicle:
+    profiles: [seed]
+    build:
+      context: ./chronicle
+    container_name: chronicle
+    networks:
+      - personal-ai-net
+    volumes:
+      - memory-vault:/vault
+      - memory-vault-index:/data
+      - ./config.json:/app/config.json:ro
+    environment:
+      - XDG_CACHE_HOME=/data
+      - VAULT_PATH=/vault
+      - CONFIG_PATH=/app/config.json
     restart: unless-stopped
 
   # ── LiteLLM Proxy ─────────────────────────────────────────────────────────
@@ -61,3 +81,5 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/memory-vault
+  memory-vault-index:
+    # QMD index (SQLite FTS5 + sqlite-vec) + GGUF model cache

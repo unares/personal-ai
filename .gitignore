@@ -8,6 +8,9 @@ config.json
 node_modules/
 npm-debug.log
 
+# Chronicle
+chronicle-data/
+
 # OS
 .DS_Store
 *.swp

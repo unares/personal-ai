@@ -16,7 +16,6 @@ const { selfHeal } = require('./self-heal');
 const { createSimpleApi } = require('./api-simple');
 const { initSimpleDb, indexFileSimple } = require('./db-simple');
 const { startBinAuditSchedule } = require('./bin-purge');
-const chronicle = require('./chronicle');
 
 const VAULT = process.env.VAULT_PATH || '/vault';
 const PORT = process.env.CL_PORT || 27125;
@@ -227,11 +226,6 @@ function processFile(filePath, primaryEntity) {
 
   const content = fs.readFileSync(filePath, 'utf8');
   if (!content.trim()) return;
-
-  const jobId = chronicle.generateJobId('context-extractor', primaryEntity);
-  chronicle.fileCreated(VAULT, primaryEntity, filePath, {
-    jobId, agent: 'context-extractor', source: 'raw-watcher'
-  });
 
   const relPath = path.relative(path.join(VAULT, primaryEntity, 'Raw'), filePath);
   const { content: healed } = selfHeal(content);

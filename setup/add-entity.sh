@@ -326,6 +326,15 @@ if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "context-extractor"; th
   printf "  ${G}✓${R} Context Extractor restarted\n"
 fi
 
+# Register QMD collection for new entity (if Chronicle is running)
+if docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^chronicle$'; then
+  printf "\n  Registering QMD collection for ${B}${PROJ_NAME}${R}...\n"
+  docker exec chronicle qmd collection add "/vault/${PROJ_NAME}" \
+    --name "${PROJ_NAME}" --mask "**/*.md" 2>/dev/null || true
+  docker exec chronicle qmd embed 2>/dev/null || true
+  printf "  ${G}✓${R} QMD collection registered\n"
+fi
+
 printf "\n${B}${G}╔${LINE}\n"
 printf "║  Done. ${PROJ_NAME} is live.\n"
 printf "╚${LINE}${R}\n\n"
