@@ -16,7 +16,7 @@ schema: memory-vault/schemas/dev-update-v1.schema.json
 
 ## Overview
 
-Every Claude Code instance (AIOO, Clark, App Builder, host dev) must write structured development updates to the vault. These updates capture distilled insights — what was built, why it matters, architectural decisions, and human working patterns — so Context Extractor can classify and route them into the semantic layer.
+Every Claude Code instance (AIOO, Clark, host dev) must write structured development updates to the vault. These updates capture distilled insights — what was built, why it matters, architectural decisions, and human working patterns — so Context Extractor can classify and route them into the semantic layer.
 
 ### Pipeline Flow
 
@@ -42,11 +42,11 @@ Every dev update must have YAML frontmatter conforming to `dev-update-v1.schema.
 | `type` | string | Yes | Always `"dev-update"` |
 | `version` | string | Yes | Schema version: `"1.0"` |
 | `session_id` | string | Yes | Unique ID: `{role}-{entity}-{YYYYMMDD}-{hex6}` |
-| `agent_role` | enum | Yes | `clark`, `aioo`, `app-builder`, or `host-dev` |
+| `agent_role` | enum | Yes | `clark`, `aioo`, or `host-dev` |
 | `agent_label` | string | No | Human-readable role name |
 | `entity` | string | Yes | Target entity from config.json |
 | `human` | string | No | Owner or collaborator name |
-| `app` | string/null | No | App name (for app-builder only) |
+| `app` | string/null | No | App name (if applicable) |
 | `branch` | string | No | Active git branch |
 | `timestamp` | datetime | Yes | ISO 8601 flush timestamp |
 
@@ -89,12 +89,6 @@ grep "aioo-ai-workspace-20260306-a3f1c2" /vault/ai-workspace/Logs/context-extrac
 - Write after: strategic insights surfaced, cross-entity pattern recognition
 - Focus sections: Why It Matters, Human Patterns Observed
 - Entity: the entity being discussed (may span multiple)
-
-### App Builder
-- Write after: each feature/fix completion, before session end
-- Focus sections: What Was Built, Current State
-- Entity: the entity the app serves
-- Include `app` field in frontmatter
 
 ### Host Dev (Michal)
 - Write after: development sessions, when insights emerge

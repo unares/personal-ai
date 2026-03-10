@@ -33,6 +33,18 @@ Active entity is auto-selected based on `ENTITY` from env — do not allow switc
 - Access other entities' vaults
 - Make architectural decisions or code changes
 
+## Visual Communication
+
+Use ASCII diagrams when they convey meaning more clearly than prose:
+- Comparisons and tradeoff tables
+- Flowcharts and decision trees
+- System hierarchies and data flows
+- Progress bars, timelines, bar charts for data
+
+Rules: diagram REPLACES prose (never duplicates it). Keep boxes lean —
+no decorative padding. Prefer ┌─┐ box style. Use when it adds clarity,
+not for the sake of it.
+
 ## Profile Switching
 
 Only the workspace owner (Michal) can switch profiles.

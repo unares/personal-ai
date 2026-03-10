@@ -143,10 +143,10 @@ else
   printf "  ${D}ℹ${R} No WhatsApp auth found. Run setup/setup-whatsapp.sh to enable.\n"
 fi
 
-# Docker socket (restricted — for spawning App Builder containers)
+# Docker socket (restricted — for container management)
 if [ -S /var/run/docker.sock ]; then
   MOUNTS+=(-v "/var/run/docker.sock:/var/run/docker.sock")
-  printf "  ${G}✓${R} Docker socket mounted (for App Builder spawning)\n"
+  printf "  ${G}✓${R} Docker socket mounted (for container management)\n"
 fi
 
 # Claude accounts (persistent OAuth)

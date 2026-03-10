@@ -30,7 +30,6 @@ NanoClaw's `recoverPendingMessages` handles messages received while the containe
 | LiteLLM Proxy | `unless-stopped` | Always-on service |
 | AIOO | none (manual via aioo.sh) | Started per-entity as needed |
 | Clark | none (manual via clark.sh) | Started per-person as needed |
-| App Builder | none (ephemeral) | Spawned per-task, disposable |
 
 ## Recovery Checklist
 
@@ -39,8 +38,6 @@ If the system goes down:
 1. `docker compose --profile seed up -d` — restarts Context Extractor + LiteLLM
 2. `./aioo/aioo.sh <entity>` — restarts AIOO (WhatsApp reconnects automatically)
 3. `./clark/clark.sh <person>` — restarts Clark (WhatsApp reconnects automatically)
-4. App Builders are ephemeral — re-spawn as needed
-
 ---
 
 ## Mission Alignment

@@ -273,6 +273,7 @@ mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Archive"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Templates/Claude"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Bin"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Logs"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Claude/Research"
 log_setup "ENTITY_CREATED" "$PROJ_NAME" 0 "$AIOO_NAME"
 printf "  ${G}✓${R} ${PROJ_NAME}/ vault created\n"
 
@@ -300,6 +301,20 @@ if [ ! -f "$VAULT_PATH/$PROJ_NAME/$GL_FILE" ]; then
     printf "# $(upper "$PROJ_NAME") — Glossary\n\n> Human-owned terminology for the ${PROJ_NAME} entity.\n" > "$VAULT_PATH/$PROJ_NAME/$GL_FILE"
   fi
   printf "  ${G}✓${R} ${GL_FILE} seeded\n"
+fi
+
+ARCH_FILE="ARCHITECTURE.md"
+if [ ! -f "$VAULT_PATH/$PROJ_NAME/$ARCH_FILE" ]; then
+  ARCH_TEMPLATE="$SCRIPT_DIR/templates/ARCHITECTURE_TEMPLATE.md"
+  if [ -f "$ARCH_TEMPLATE" ]; then
+    sed -e "s/{{ENTITY_UPPER}}/$(upper "$PROJ_NAME")/g" \
+        -e "s/{{entity}}/$PROJ_NAME/g" \
+        -e "s/{{human}}/$OWNER/g" \
+        "$ARCH_TEMPLATE" > "$VAULT_PATH/$PROJ_NAME/$ARCH_FILE"
+  else
+    printf "# $(upper "$PROJ_NAME") — Architecture\n\n## System Context\n\nDeployment: Single VPS (Phase 1)\nEntity: ${PROJ_NAME}\n" > "$VAULT_PATH/$PROJ_NAME/$ARCH_FILE"
+  fi
+  printf "  ${G}✓${R} ${ARCH_FILE} seeded\n"
 fi
 
 check_context "$PROJ_NAME"

@@ -11,17 +11,10 @@ Vision: @memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
 ## Stack
 
 - Shell scripts (bash), Docker, Node.js
-- Claude Code CLI with profiles (ai-architect, co-founder)
+- Claude Code CLI with profiles (technical, non-technical)
 - Memory vault per entity (`memory-vault/{entity}/`)
 - Context Extractor (watches Raw/ → Memories/ → Distilled/)
 - NanoClaw (container orchestrator inside agent containers)
-
-## Terminology
-
-See glossary above. Key rules:
-- "Entity" not "company" or "project"
-- "Companion AI" not "bot"
-- Never abbreviate Personal AI Workspace
 
 ## Agent Roles
 
@@ -32,16 +25,6 @@ See glossary above. Key rules:
 
 Agent identity: `containers/{agent}/CLAUDE.md` (injected as `~/.claude/CLAUDE.md` in container).
 Project context: this file (mounted read-only at `/workspace/CLAUDE.md`).
-
-## Operating Rules
-
-- Functions < 30 lines. Files < 300 lines.
-- Never invent requirements — work from NORTHSTAR.md and explicit instructions only.
-- Commit often with clear, descriptive messages.
-- Always work on a branch, never commit directly to main.
-- Never force push. Ask before any git push if unsure.
-- Run /compact when approaching 70% context usage.
-- Use subagents for research-heavy tasks to protect main context.
 
 ## Where Files Live
 

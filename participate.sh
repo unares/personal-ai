@@ -174,8 +174,14 @@ _activate_profile() {
       s.env.HUMAN_NAME = '$HUMAN_NAME';
       s.env.ENTITY = '$ENTITY';
       if (!s.env.ROLE) s.env.ROLE = '$ROLE';
+      if (!s.env.ENABLE_LSP_TOOL) s.env.ENABLE_LSP_TOOL = '1';
       fs.writeFileSync('$HOME/.claude/settings.json', JSON.stringify(s, null, 2) + '\n');
     " 2>/dev/null || cp "$dir/settings.json" "$HOME/.claude/settings.json"
+  fi
+
+  # Inject profile CLAUDE.md as global identity
+  if [ -f "$dir/CLAUDE.md" ]; then
+    cp "$dir/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
   fi
 
   SELECTED_PROFILE="$name"

@@ -40,6 +40,18 @@ Active entity: check `ENTITY` from env. Default: `ai-workspace`.
 - `Logs/` = append-only activity log
 - `Templates/Claude/` = CLAUDE.md stack for this entity
 
+## Visual Communication
+
+Use ASCII diagrams when they convey meaning more clearly than prose:
+- Comparisons and tradeoff tables
+- Flowcharts and decision trees
+- System hierarchies and data flows
+- Progress bars, timelines, bar charts for data
+
+Rules: diagram REPLACES prose (never duplicates it). Keep boxes lean —
+no decorative padding. Prefer ┌─┐ box style. Use when it adds clarity,
+not for the sake of it.
+
 ## Profile Switching
 
 To switch profiles: exit and relaunch with `./claude.sh`

@@ -8,7 +8,6 @@
 |-----------|--------|-----------|---------------|---------|-----|
 | AIOO | entity vault (rw) | NanoClaw | YES (restricted) | personal-ai-net | Hybrid (Gemini+Claude) |
 | Clark | Distilled/ (ro) | NanoClaw | NO | personal-ai-net | Claude |
-| App Builder | Distilled/ (ro) | app code (rw) | NO | personal-ai-net | Claude |
 | Context Extractor | full vault (rw) | /app | NO | personal-ai-net | None |
 | LiteLLM Proxy | none | none | NO | personal-ai-net | Proxy only |
 
@@ -34,14 +33,6 @@
 -v "$WHATSAPP_AUTH:/opt/nanoclaw/data/whatsapp"
 ```
 No Docker socket. No write access to vault.
-
-### App Builder
-```
--v "$VAULT_PATH/$ENTITY/Distilled:/vault/Distilled:ro"      # Context, read-only
--v "$NS_PATH:/workspace/NORTHSTAR.md:ro"                     # Vision, read-only
--v "$CLAUDE_MD:/workspace/CLAUDE.md:ro"                      # Instructions, read-only
-```
-No Docker socket. No full vault access. No NanoClaw.
 
 ## Security Rules
 
