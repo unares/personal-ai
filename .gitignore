@@ -1,5 +1,13 @@
 # Runtime generated — never commit these
-memory-vault/
+memory-vault/**
+
+# Track ai-workspace design artifacts in git
+!memory-vault/ARCHITECTURE.md
+!memory-vault/ai-workspace/
+!memory-vault/ai-workspace/Specifications/
+!memory-vault/ai-workspace/Specifications/**
+!memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
+!memory-vault/ai-workspace/AI_WORKSPACE_GLOSSARY.md
 instances/
 config.json
 .env
