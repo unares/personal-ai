@@ -17,6 +17,11 @@ Report pass/fail per criterion with specific evidence (file paths, line numbers)
 6. For each must-not-do constraint: verify no violations
 7. For each evaluation test: verify the expected result is achievable
 8. Check file/function size constraints (functions < 30 lines, files < 300 lines)
+9. **Run `git check-ignore -v {file}` on all new or modified config files** —
+   flag any that are gitignored so the human knows what won't be committed
+10. **Verify tests run locally** — check that the test runner executes without
+    errors (look for hardcoded container paths, missing env vars, broken requires).
+    If tests can't run locally, flag it as a FAIL even if code looks correct.
 
 ## Output Format
 
@@ -45,6 +50,14 @@ EVALUATION TESTS
 SIZE COMPLIANCE
   [PASS/FAIL] functions: {largest function, line count}
   [PASS/FAIL] files: {largest file, line count}
+
+GITIGNORE CHECK
+  [PASS/WARN] {file} — tracked / gitignored (pattern: {pattern})
+  Note any gitignored config files that contain important schema changes.
+
+LOCAL TEST RUNABILITY
+  [PASS] tests run locally without errors
+  [FAIL] {specific issue} — fix: {what needs to change}
 
 VERDICT: {READY | NEEDS WORK}
 {If NEEDS WORK: prioritized list of issues to fix}
