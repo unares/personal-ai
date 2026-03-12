@@ -174,16 +174,35 @@ The final design deliverable: a layered build order derived from specs.
 
 ## Handoff to Build
 
-When design + specs + build order are agreed, hand off to `/architecture-build`.
+When design + specs + build order are agreed, run the spec review gate before handoff.
+
+### Pre-Handoff Review (spec-reviewer agent)
+
+Before handing off, launch the **spec-reviewer** agent against all specs in the build order.
+Read agent prompt from: `.claude/skills/architecture-design/agents/spec-reviewer.md`
+
+```
+Agent task: "Review all specs in memory-vault/{entity}/Specifications/ that are
+            in the agreed build order. Full set mode."
+Model: opus (high-effort review — always use Opus for spec-reviewer)
+```
+
+Interpret the verdict:
+- **All READY** → proceed to handoff
+- **Any NEEDS WORK** → fix issues in this session, re-run review on fixed specs
+- **Any BLOCKED** → resolve blockers before handoff. Do not hand off BLOCKED specs.
+
+### Handoff
 
 Deliverables that must exist before handoff:
 - ARCHITECTURE.md (updated with agreed design)
 - Specifications/*.md (one per component, 5 primitives each)
 - Decision files for components with significant choices
 - Agreed build order
+- Spec review: all specs READY
 
-Tell the human: "Design is complete. Use `/architecture-build` in a new session
-to start building. It will pick up from the specs and build order."
+Tell the human: "Design is complete. All specs passed review. Use `/architecture-build`
+in a new session to start building. It will pick up from the specs and build order."
 
 ## Hard Stops
 
