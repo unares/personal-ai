@@ -29,6 +29,9 @@ Forward-looking lens: AI Era patterns first, legacy patterns only when justified
 - Draw in ASCII first, describe after (diagram REPLACES prose)
 - Surface the AI Era alternative before defaulting to a legacy pattern
 - Offer 2-3 options with tradeoff table before recommending
+- **Persist decisions**: every architectural decision gets its own .md file
+  (`Specifications/{component}-decisions.md`) with options considered, tradeoffs,
+  rationale, and ASCII diagrams. Decisions are first-class artifacts, not chat history.
 - Get explicit agreement before updating ARCHITECTURE.md
 - All tool/framework references stated as examples (e.g.), never as the only option
   Exception: Docker is a definite architectural choice
@@ -113,9 +116,52 @@ This skill owns ARCHITECTURE.md for the resolved context.
 - If the file has a System Context section: respect deployment constraints
   and compatibility needs described there
 
+## Specification Engineering
+
+After architecture is agreed, each component gets spec-engineered using the
+5 Primitives framework (see `Specifications/jtbd-specification-engineering.md`):
+
+1. Self-contained problem statement
+2. Acceptance criteria (3 sentences, independently verifiable)
+3. Constraint architecture (must-do, must-not-do, preferences, escalation triggers)
+4. Decomposition (independently executable subtasks, <2h each)
+5. Evaluation design (measurable tests with known-good outputs)
+
+Each component spec lives in `memory-vault/{entity}/Specifications/{component}.md`.
+Components with significant design decisions also get `{component}-decisions.md`.
+
+The spec phase is methodical and sequential:
+- One component at a time
+- Get agreement on each decision before proceeding to the next
+- Cross-reference specs when components interact
+- JTBD frames every spec — if the job isn't clear, the spec isn't ready
+
+## Build Order Derivation
+
+The final design deliverable: a layered build order derived from specs.
+
+- Group components by dependency (what must exist before what)
+- Each layer is testable independently before moving to the next
+- Present the full build order + spec file index to the human
+- Get explicit agreement on build order before any code is written
+
+## Handoff to Build
+
+When design + specs + build order are agreed, hand off to `/architecture-build`.
+
+Deliverables that must exist before handoff:
+- ARCHITECTURE.md (updated with agreed design)
+- Specifications/*.md (one per component, 5 primitives each)
+- Decision files for components with significant choices
+- Agreed build order
+
+Tell the human: "Design is complete. Use `/architecture-build` in a new session
+to start building. It will pick up from the specs and build order."
+
 ## Hard Stops
 
 - No code until architecture is agreed
+- No building without agreed build order (architecture-build enforces this)
 - No jargon without definition on first use
 - No proceeding if ARCHITECTURE.md location is ambiguous — confirm with user
 - No assumptions about which ARCHITECTURE.md to use
