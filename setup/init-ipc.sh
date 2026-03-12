@@ -29,4 +29,21 @@ for entity in procenteo inisio; do
   echo "  Created: config/ai-gateway-${entity}/"
 done
 
+echo "[init-ipc] Creating AIOO config files..."
+
+for entity in procenteo inisio; do
+  config_file="$PROJECT_ROOT/config/aioo-${entity}.json"
+  if [ ! -f "$config_file" ]; then
+    cat > "$config_file" <<'CONF'
+{
+  "pollIntervalMs": 1000,
+  "healthIntervalMs": 15000
+}
+CONF
+    echo "  Created: config/aioo-${entity}.json"
+  else
+    echo "  Exists:  config/aioo-${entity}.json"
+  fi
+done
+
 echo "[init-ipc] Done."

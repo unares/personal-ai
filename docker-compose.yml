@@ -106,6 +106,7 @@ services:
       - ./memory-vault/procenteo:/vault
       - ./ipc/aioo-procenteo:/ipc
       - ./lib/ipc:/app/lib/ipc:ro
+      - ./config/aioo-procenteo.json:/config/aioo.json:ro
     environment:
       - ENTITY=procenteo
       - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
@@ -130,6 +131,7 @@ services:
       - ./memory-vault/inisio:/vault
       - ./ipc/aioo-inisio:/ipc
       - ./lib/ipc:/app/lib/ipc:ro
+      - ./config/aioo-inisio.json:/config/aioo.json:ro
     environment:
       - ENTITY=inisio
       - AI_GATEWAY_URL=http://ai-gateway-inisio:4000

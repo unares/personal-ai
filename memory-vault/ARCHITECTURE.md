@@ -19,9 +19,13 @@ Two companion AI roles: AIOO (operational brain) and Clark (clarity architect).
 NanoClaw-PAW is the host process that connects them to humans and infrastructure.
 
 ### AIOO (per app-factory entity)
-- Node.js daemon (state, routing, task graph) + Gemini 3.1 Pro brain (judgment)
-- Spawns Agent SDK agents via NanoClaw-PAW into App Dev Stage containers
-- Vault access: Full read-write for its entity
+- ✅ Built (daemon skeleton). Node.js daemon with 8 modules: Event Loop, IPC Handler,
+  Task Graph Manager, Health Monitor (active) + Brain Client, HITL Manager,
+  Stage Controller, Cost Tracker (stubs — Layer 3).
+- Brain (Gemini 3.1 Pro via ai-gateway) not yet connected.
+- Spawns Agent SDK agents via NanoClaw-PAW into App Dev Stage containers.
+- Vault access: Full read-write for its entity. Tasks stored in `vault/Tasks/`.
+- Config: `config/aioo-{entity}.json` (poll interval, health interval).
 - Identity: `containers/aioo/CLAUDE.md`
 - Spec: `memory-vault/ai-workspace/Specifications/aioo.md`
 
