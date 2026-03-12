@@ -146,8 +146,9 @@ NOT in Compose (host-level):
 │                                                            │
 └────────────────────────────────────────────────────────────┘
 
-Clark: no compose network. NanoClaw-PAW creates with --network none
-       or a dedicated clark-net with no routes to entity networks.
+Clark: not in Compose. NanoClaw-PAW creates with --network clark-net
+       (internet access for credential proxy, no routes to entity networks).
+       See clark-decisions.md decision D1.
 ```
 
 | Network | Members | Purpose |
@@ -274,22 +275,26 @@ docker compose --profile procenteo-app-demo down       # old stage down
 | Component | How It Runs | Docker Access | IPC Access |
 |-----------|-------------|---------------|------------|
 | NanoClaw-PAW | Node.js process (systemd or manual) | Yes (host Docker CLI) | Yes (reads/writes `./ipc/`) |
-| Clark | `docker run --rm` by NanoClaw-PAW | N/A (is a container) | No (vault mount only) |
+| Clark | `docker run --rm --network clark-net` by NanoClaw-PAW | N/A (is a container) | No (vault mount + credential proxy only) |
 | Host Watchdog | Cron job (every 60s) | Yes (`docker inspect`) | No |
 
 Clark container spawned by NanoClaw-PAW:
 ```
 docker run --rm \
-  --network none \
+  --network clark-net \
   -v ./memory-vault/{entity}/Distilled:/vault/Distilled:ro \
   -e ANTHROPIC_BASE_URL=http://host.docker.internal:3001 \
   -e ANTHROPIC_API_KEY=placeholder-not-real \
   clark:latest
 ```
 
-- `--network none`: air-gap enforced at Docker level
+- `--network clark-net`: infrastructure air-gap (internet only, no entity nets)
 - Distilled/ read-only: only refined knowledge
 - Credential proxy: placeholder key, real key injected by host proxy
+
+Note: `clark-net` is created by NanoClaw-PAW at startup (`docker network create clark-net`).
+It provides internet access for the credential proxy but has no connection to
+procenteo-net or inisio-net. See `clark-decisions.md` decision D1.
 
 #### Security Validation Checklist
 

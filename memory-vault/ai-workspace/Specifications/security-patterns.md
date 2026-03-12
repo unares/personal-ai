@@ -90,9 +90,11 @@ communication.
 
 | From | To | Allowed? |
 |------|----|----------|
-| Clark | AIOO | No (air-gap) |
-| Clark | ai-gateway | No |
-| Clark | Chronicle | Maybe (for vault search) |
+| Clark | AIOO | No (different networks, no route) |
+| Clark | ai-gateway | No (different networks, no route) |
+| Clark | Chronicle | No (different networks, no route) |
+| Clark | Credential proxy | Yes (via host.docker.internal on clark-net) |
+| Clark | Internet | Yes (for credential proxy → Anthropic API) |
 | AIOO | ai-gateway | Yes |
 | AIOO | Chronicle | Yes |
 | AIOO | Stage container | Yes |
