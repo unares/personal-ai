@@ -37,13 +37,22 @@ Read agent prompt from: `.claude/skills/architecture-build/agents/spec-analyst.m
 ```
 Agent task: "Read {spec path} and any referenced dependency specs.
             Produce a build brief for {component name}."
+Model: opus (high-effort analysis — always use Opus 4.6 for spec-analyst)
 ```
 
 The agent returns a focused build brief: acceptance criteria, constraints,
 interfaces, evaluation tests. This protects the main context from full spec
 reading overhead.
 
-Review the build brief with the human. Resolve any gaps before coding.
+**Multi-module layers**: When building multiple tightly-coupled modules together,
+instruct the spec-analyst to produce a Cross-Module Dependency Map first, then
+per-module briefs. Review the dependency map before reviewing individual briefs —
+it sets the build order and surfaces wiring patterns that prevent false blockers.
+
+Review the build brief with the human:
+- **Ready to Build** → proceed
+- **Ready with Pre-Build Decisions** → present proposed defaults, get human agreement, then proceed
+- **Needs Resolution** → stop, hand to `/architecture-design`
 
 ### 2. Build
 
@@ -66,7 +75,9 @@ Read agent prompt from: `.claude/skills/architecture-build/agents/build-validato
 
 ```
 Agent task: "Validate {component} implementation against {spec path}.
-            Check acceptance criteria, constraints, and evaluation design."
+            Check acceptance criteria, constraints, evaluation design,
+            gitignore status of config files, and local test runability."
+Model: opus (high-effort validation — always use Opus 4.6 for build-validator)
 ```
 
 The agent returns a compliance report: pass/fail per criterion with evidence.
