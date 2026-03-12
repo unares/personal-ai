@@ -43,9 +43,20 @@ NanoClaw-PAW is the host process that connects them to humans and infrastructure
 - Spec: `memory-vault/ai-workspace/Specifications/clark.md`
 
 ### NanoClaw-PAW (host process)
-- Targeted fork of NanoClaw adding persistent container routing
-- Four handlers: Messaging, Agent spawn, Clark lifecycle, Stage transitions
-- Credential proxy: API keys never enter containers
+- ✅ Built (Layer 4 complete). Git subtree from upstream NanoClaw at
+  `services/nanoclaw-paw/`. PAW extensions in `src/paw/` (7 modules):
+  persistent-registry (Docker Compose container tracking),
+  ipc-poller (workspace Typed Envelope IPC, 1s poll),
+  stage-handler (compose profile transitions, health checks, vault logging),
+  agent-spawn-handler (docker exec Claude CLI in stage containers),
+  clark-handler (ephemeral containers on clark-net, 30min idle timeout),
+  config (routing JSON, entity discovery), index (init/shutdown wiring).
+- 3 touchpoints in upstream src/index.ts (import, initPaw, shutdownPaw).
+- Credential proxy: API keys never enter containers (upstream pattern, port 3001).
+- Routing config: `nanoclaw-config/routing.json` (channel → Clark/AIOO mapping).
+- run.sh: restart-on-exit wrapper (Decision P6).
+- Deferred: messaging handler (human-reply IPC stub — wired when channels configured).
+- Tests: 14 PAW + 201 upstream = 215/215 pass.
 - Spec: `memory-vault/ai-workspace/Specifications/nanoclaw-paw.md`
 
 ## Human Profiles
@@ -125,9 +136,9 @@ Layer 0: IPC Shared Library                    ✅ Built
 Layer 1: Docker Compose + Chronicle + ai-gateway  ✅ Built
 Layer 2: AIOO Daemon Skeleton                  ✅ Built
 Layer 3: AIOO Brain + HITL + Stage + Cost      ✅ Built
-Layer 4: NanoClaw-PAW                          ⬜ Next
-Layer 5: Clark                                 ⬜ Blocked by Layer 4
-Layer 6: Stage Lifecycle + App Dev Stages      ⬜ Blocked by Layer 4
+Layer 4: NanoClaw-PAW                          ✅ Built
+Layer 5: Clark                                 ⬜ Next
+Layer 6: Stage Lifecycle + App Dev Stages      ⬜
 Layer 7: Host Watchdog                         ⬜
 ```
 
