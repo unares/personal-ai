@@ -243,13 +243,13 @@ fi
 
 # ── Account selection ──────────────────────────────────────────────────────
 
-if [ -f "$ACCOUNTS_DIR/select-account.sh" ]; then
-  ACCOUNTS_STORE="${ACCOUNTS_STORE:-$HOME/.config/personal-ai/claude-accounts}"
-  export ACCOUNTS_STORE
-  source "$ACCOUNTS_DIR/select-account.sh"
-  select_account "$HOME/.claude"
-  printf "\n"
-fi
+  # if [ -f "$ACCOUNTS_DIR/select-account.sh" ]; then
+  #   ACCOUNTS_STORE="${ACCOUNTS_STORE:-$HOME/.config/personal-ai/claude-accounts}"
+  #   export ACCOUNTS_STORE
+  #   source "$ACCOUNTS_DIR/select-account.sh"
+  #   select_account "$HOME/.claude"
+  #   printf "\n"
+  # fi
 
 # ── Context sync staleness warning ─────────────────────────────────────────
 
