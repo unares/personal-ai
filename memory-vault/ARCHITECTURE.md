@@ -152,6 +152,16 @@ Health checks on all services.
   Config: `config/ai-gateway-{entity}/config.yaml`. Per-entity API keys.
   Cost tracking per entity (ephemeral — persistent DB planned).
   Spec: `memory-vault/ai-workspace/Specifications/ai-gateway.md`
+- **Host Watchdog**: ✅ Built. Pure-bash cron script (`setup/watchdog/watchdog.sh`).
+  Monitors AIOO containers + NanoClaw-PAW every 60s via cron.
+  3 consecutive failures (3 min) triggers notification.
+  Primary: IPC typed envelope to `ipc/watchdog/to-paw/` (PAW routes to messaging).
+  Fallback: direct Telegram API via `~/.watchdog/emergency-api-key`.
+  15-min per-component cooldown. State in `/tmp/watchdog-state.json`.
+  Clark excluded (ephemeral, PAW-managed). Never attempts recovery.
+  PAW detection via PID file (`/tmp/nanoclaw-paw.pid`, written by `run.sh`).
+  Spec: `memory-vault/ai-workspace/Specifications/host-watchdog.md`
+  Tests: 15/15 pass.
 - **Context Extractor**: ⏸ Deferred. Future vault intelligence layer.
   Design after AIOO is built.
 
@@ -167,7 +177,7 @@ Layer 3: AIOO Brain + HITL + Stage + Cost      ✅ Built
 Layer 4: NanoClaw-PAW                          ✅ Built
 Layer 5: Clark                                 ✅ Built
 Layer 6: Stage Lifecycle + App Dev Stages      ✅ Built
-Layer 7: Host Watchdog                         ⬜
+Layer 7: Host Watchdog                         ✅ Built
 ```
 
 **Critical dependency**: Clark has NO independent lifecycle. NanoClaw-PAW spawns

@@ -14,6 +14,10 @@ config.json
 /ipc/
 .env
 
+# Runtime logs
+/logs/
+setup/logs/
+
 # App workspaces (per-entity, per-stage — tracked in own repos)
 app-workspaces/
 

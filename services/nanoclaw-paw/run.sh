@@ -11,13 +11,25 @@ cd "$SCRIPT_DIR"
 # Export workspace root for PAW config
 export PAW_WORKSPACE_ROOT="${SCRIPT_DIR}/../.."
 
+PID_FILE="/tmp/nanoclaw-paw.pid"
+
 echo "[nanoclaw-paw] Starting from ${SCRIPT_DIR}"
 echo "[nanoclaw-paw] Workspace root: ${PAW_WORKSPACE_ROOT}"
 
+cleanup() {
+  rm -f "$PID_FILE"
+}
+trap cleanup EXIT
+
 while true; do
   echo "[nanoclaw-paw] $(date -Iseconds) — starting process"
-  node dist/index.js || true
+  node dist/index.js &
+  NODE_PID=$!
+  echo "$NODE_PID" > "$PID_FILE"
+  echo "[nanoclaw-paw] PID ${NODE_PID} written to ${PID_FILE}"
+  wait $NODE_PID || true
   EXIT_CODE=$?
+  rm -f "$PID_FILE"
   echo "[nanoclaw-paw] $(date -Iseconds) — process exited with code ${EXIT_CODE}"
 
   # Don't restart on clean shutdown (SIGTERM/SIGINT via trap)

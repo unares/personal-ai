@@ -32,6 +32,16 @@ Report pass/fail per criterion with specific evidence (file paths, line numbers)
     If yes, flag as WARN with: what changed, what layer originally built it, and whether
     any other consumers exist. Cross-layer changes are silent architecture changes and
     must be visible, not buried in a diff.
+13. **Cross-platform bash compatibility** — for any bash scripts in the implementation:
+    - Check `date` usage: macOS `-v-NM` relative syntax needs a Linux `-d` fallback
+    - Check `stat` usage: macOS `-f "%Lp"` needs a Linux `-c "%a"` fallback
+    - Verify fallback pattern uses `2>/dev/null ||` chaining (not if/else platform detection)
+    - Flag any platform-specific command without a fallback as FAIL
+14. **Runtime artifact gitignore** — for any new directories written at runtime
+    (log files, state files, PID files within the project root):
+    - Run `git check-ignore -v {path}` on the directory
+    - Flag any runtime artifact directory not gitignored as FAIL (not WARN)
+    - Standard: `/logs/`, `/tmp/` within project should be gitignored
 
 ## Output Format
 

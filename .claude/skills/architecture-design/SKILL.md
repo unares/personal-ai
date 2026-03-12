@@ -166,6 +166,27 @@ output is a design error.
 The Data Residency table prevents the most common build-time gap: "the spec says
 what the component does but not where its output lives."
 
+**Runtime artifact locations** (required for any host-process or script component):
+Any component that writes state, logs, or PID files must specify these in the spec —
+not leave them for the builder to decide:
+- State files: where they live, what format, lost-on-reboot acceptable?
+- Log files: path within project (`logs/`), rotation policy if any
+- PID files: path (convention: `/tmp/{component}.pid`)
+- Gitignore implications: any file in the project root written at runtime
+  must be explicitly listed in the spec as "gitignored" or "tracked"
+
+Example spec language: "State stored at `/tmp/watchdog-state.json` (ephemeral, lost on reboot — intentional). Logs at `logs/watchdog.log` (gitignored). PID at `/tmp/nanoclaw-paw.pid` (gitignored)."
+
+Leaving these decisions to the builder creates PBDs that should have been design decisions.
+
+**Platform-specific commands** (required for any bash script spec):
+If the spec calls for a bash script, state the target platform(s) explicitly and
+flag any commands that differ between macOS and Linux:
+- `date` relative time: macOS `-v-NM` vs Linux `-d "N minutes ago"`
+- `stat` permissions: macOS `-f "%Lp"` vs Linux `-c "%a"`
+The spec should either restrict platform or require dual-path fallbacks. Leaving
+this unspecified produces PBDs and test failures during build.
+
 **Multi-value access patterns**: when a spec grants different access levels per
 role (e.g. one human gets all entities, others get one), the spec must define how
 the underlying data model handles the wider-access case. "String or array" is a

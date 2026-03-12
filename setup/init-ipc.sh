@@ -17,7 +17,7 @@ for entity in procenteo inisio; do
 done
 
 # Watchdog channels
-for channel in pings pongs; do
+for channel in pings pongs to-paw; do
   mkdir -p "$PROJECT_ROOT/ipc/watchdog/${channel}/processed"
   echo "  Created: ipc/watchdog/${channel}/"
 done

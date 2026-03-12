@@ -74,7 +74,21 @@ Do NOT suggest implementation approaches — just report what must be true when 
     - `stub` — implement a placeholder, requires external condition to complete (name it)
     - `deferred` — out of scope for this layer, tracked in build log
 
-11. Identify gaps and ambiguities. For each one:
+11. **Runtime artifact audit**: for any component that creates runtime directories,
+    state files, or logs:
+    - Identify every path written at runtime (log files, state files, temp files, PID files)
+    - Flag each as a pre-build decision: "Is `{path}` gitignored? Should it be?"
+    - Standard pattern: runtime dirs (`/logs/`, `/tmp/`) must be gitignored if inside the project root
+    - This is proactive — catching gitignore gaps in the build brief avoids validator FAIL
+
+12. **Cross-platform bash compatibility**: when the spec calls for a bash script,
+    scan for platform-divergent commands and flag them:
+    - `date`: macOS uses `-v-16M` (relative), Linux uses `-d "16 minutes ago"` — must handle both
+    - `stat`: macOS uses `-f "%Lp"`, Linux uses `-c "%a"` — must handle both
+    - `uuidgen`: available on macOS, may need fallback on Linux (`cat /proc/sys/kernel/random/uuid`)
+    - For each: propose a dual-path fallback in the brief so the builder handles it once
+
+13. Identify gaps and ambiguities. For each one:
     - Classify: **design gap** (needs architecture-design) vs **pre-build decision** (needs human agreement, builder can proceed after)
     - Propose a default resolution with rationale (don't just list the problem)
 
