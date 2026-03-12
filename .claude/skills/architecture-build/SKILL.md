@@ -24,6 +24,17 @@ Related skill: `/architecture-design` (produces the specs this skill builds from
    - Current build state (what exists, what's pending)
    - Recommended next build step
    - "Ready to build {next component}?"
+7. Run the **github-status** agent (status-check mode):
+
+```
+Agent task: "Run in status-check mode. Show current git state, branch health,
+            version proposal from NORTHSTAR, and proposed actions."
+Agent prompt: .claude/skills/github-discipline/agents/github-status.md
+Model: sonnet
+```
+
+Present the agent's output before asking "Ready to build?" — the human may
+need to approve branch/version actions before work starts.
 
 ## Build Process
 
@@ -134,6 +145,16 @@ When all components in the build order are built and validated:
    - Deviations from spec (with rationale)
    - ARCHITECTURE.md changes made
 4. Recommend what to verify manually (integration points, security checks)
+5. Run the **github-status** agent (handoff mode):
+
+```
+Agent task: "Run in handoff mode. Generate PR description and changelog draft
+            from commits since main. Propose merge, tag, and next branch actions."
+Agent prompt: .claude/skills/github-discipline/agents/github-status.md
+Model: sonnet
+```
+
+Present the agent's output. Await approval before executing any git actions.
 
 ## Anti-Patterns During Build
 
