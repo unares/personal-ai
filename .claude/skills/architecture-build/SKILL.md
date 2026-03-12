@@ -15,9 +15,10 @@ Related skill: `/architecture-design` (produces the specs this skill builds from
 1. Detect entity context (from ENTITY env var or working directory)
 2. Read ARCHITECTURE.md for structural overview
 3. Scan `memory-vault/{entity}/Specifications/` for available specs
-4. Check for an existing build order (from the architecture-design session)
-   - If build order exists in conversation context or spec files: use it
-   - If not: derive one from spec dependencies and present for agreement
+4. Read the **Build Order** section in ARCHITECTURE.md — this is the authoritative
+   build sequence. Follow it exactly. Do not derive or propose an alternative order.
+   - If no Build Order section exists: derive one from spec dependencies and present
+     for agreement before proceeding
 5. Assess current build state: what's been built, what's next
 6. Present to the user:
    - Specs found (list with one-line descriptions)

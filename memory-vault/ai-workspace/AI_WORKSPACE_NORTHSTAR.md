@@ -34,9 +34,9 @@ Why now: Claude Opus 4.6 changed everything. Software is solved. The progress ma
 
 ## Current Focus
 
-This week: Build Phase begins. Layer 0 (IPC library + Docker Compose) and Layer 1 (Chronicle update + ai-gateway). Context Extractor deferred.
+This week: Layer 4 build — NanoClaw-PAW (messaging gateway, credential proxy, persistent container routing). Layers 0–3 complete. Context Extractor deferred for now.
 
-This month (March 2026): launch procenteo and inisio MVPs for customer testing. Path: infrastructure → AIOO → app containers → launch.
+This month (March 2026): launch procenteo and inisio MVPs for customer testing. Path: NanoClaw-PAW → Clark → Stage Lifecycle → app containers → Context Extractor → launch.
 
 ## Team
 

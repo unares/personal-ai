@@ -116,6 +116,26 @@ Health checks on all services.
 - **Context Extractor**: ⏸ Deferred. Future vault intelligence layer.
   Design after AIOO is built.
 
+## Build Order
+
+Layered by dependency. Each layer is testable before the next begins.
+
+```
+Layer 0: IPC Shared Library                    ✅ Built
+Layer 1: Docker Compose + Chronicle + ai-gateway  ✅ Built
+Layer 2: AIOO Daemon Skeleton                  ✅ Built
+Layer 3: AIOO Brain + HITL + Stage + Cost      ✅ Built
+Layer 4: NanoClaw-PAW                          ⬜ Next
+Layer 5: Clark                                 ⬜ Blocked by Layer 4
+Layer 6: Stage Lifecycle + App Dev Stages      ⬜ Blocked by Layer 4
+Layer 7: Host Watchdog                         ⬜
+```
+
+**Critical dependency**: Clark has NO independent lifecycle. NanoClaw-PAW spawns
+Clark containers on message, manages their idle timeout, provides credential
+proxy, and configures vault mounts. Clark cannot be built or tested without
+NanoClaw-PAW. NanoClaw-PAW MUST be built before Clark.
+
 ## Scale Phases
 
 Phase 1 → 2: DB write contention, SPOF pain, or ops time > hosting savings.
