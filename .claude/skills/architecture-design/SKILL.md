@@ -149,6 +149,23 @@ memory-vault/{e}/Distilled  /vault/{e}/Distilled  ro
 If access varies by role/human, show the full matrix. Underspecified mounts become
 build-time decisions that should have been design decisions.
 
+**Data residency** (required for any component that produces or consumes data):
+Every spec must include a Data Residency table that answers: where does input come
+from, where does output go, and what file types are allowed in each location?
+```
+| Data Type      | Host Path            | Container Path | Mode | File Types |
+|----------------|----------------------|----------------|------|------------|
+| Entity context | memory-vault/{e}     | /vault         | ro   | .md only   |
+| App code       | app-workspaces/{e}/  | /workspace     | rw   | any        |
+```
+Vault constraint: `memory-vault/` is `.md files only` — knowledge, not code.
+If a component produces non-.md output (code, binaries, configs), the spec must
+define a separate host directory for that output. Mounting vault as r/w for code
+output is a design error.
+
+The Data Residency table prevents the most common build-time gap: "the spec says
+what the component does but not where its output lives."
+
 **Multi-value access patterns**: when a spec grants different access levels per
 role (e.g. one human gets all entities, others get one), the spec must define how
 the underlying data model handles the wider-access case. "String or array" is a

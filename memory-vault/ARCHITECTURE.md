@@ -109,6 +109,27 @@ Per-entity namespaces: `ipc/aioo-{entity}/{to-paw,from-paw}/`.
 Atomic writes (.tmp → .json), 1s polling, processed/ audit trail.
 Spec: `memory-vault/ai-workspace/Specifications/ipc-protocol.md`
 
+## App Workspaces
+
+Agent-produced code lives outside the vault in `app-workspaces/`:
+
+```
+app-workspaces/
+├── procenteo/
+│   ├── procenteo-app-demo/       ← PoC code
+│   ├── procenteo-app-testing/    ← MVP code
+│   ├── procenteo-app-launch/     ← Product code
+│   └── procenteo-app-scaling/    ← Distribution code
+└── inisio/
+    ├── inisio-app-demo/
+    └── ...
+```
+
+Mounted as `/workspace` (r/w) in stage containers. Vault mounted as `/vault` (r/o).
+Separation principle: vault = knowledge (.md only), workspace = code (any file type).
+Each workspace has a clear path to its own git repo when the app matures.
+Gitignored in the workspace repo — tracked in app-specific repos.
+
 ## Docker Compose Topology
 
 Per-entity networks (procenteo-net, inisio-net). Profile-based activation.
@@ -145,7 +166,7 @@ Layer 2: AIOO Daemon Skeleton                  ✅ Built
 Layer 3: AIOO Brain + HITL + Stage + Cost      ✅ Built
 Layer 4: NanoClaw-PAW                          ✅ Built
 Layer 5: Clark                                 ✅ Built
-Layer 6: Stage Lifecycle + App Dev Stages      ⬜
+Layer 6: Stage Lifecycle + App Dev Stages      ✅ Built
 Layer 7: Host Watchdog                         ⬜
 ```
 

@@ -136,6 +136,28 @@ One hallucination at step 1 compounds through the pipeline.
 
 ---
 
+## Workspace Constraints
+
+### Vault is Knowledge Only
+`memory-vault/` contains `.md files only` — NORTHSTARs, specs, glossaries, distilled
+knowledge, logs, research. Never code, configs, binaries, or agent output artifacts.
+Chronicle indexes it, Context Extractor processes it, Clark reads Distilled/. Mixing
+non-.md content pollutes search, confuses knowledge pipelines, and entangles concerns.
+
+### Code Output Separation
+Agent-produced code lives in `app-workspaces/{entity}/{app}-app-{stage}/`, mounted
+as `/workspace` in stage containers. This separation ensures:
+- Vault stays clean for its knowledge-base purpose
+- App code has a clear path to its own git repo
+- Chronicle never indexes application source code
+- Stage transitions don't risk overwriting knowledge files
+
+When specifying mounts for any component that produces output, always define both
+the knowledge source (vault, read-only) and the output destination (workspace or
+equivalent, read-write) as separate mounts.
+
+---
+
 ## Anti-Patterns
 
 From practitioner regret research. The skill actively warns when these patterns emerge.

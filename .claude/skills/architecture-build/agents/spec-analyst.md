@@ -57,6 +57,16 @@ Do NOT suggest implementation approaches — just report what must be true when 
    match. Cross-spec mismatches are common and invisible without this check.
    Flag any mismatch as a pre-build decision with both values shown.
 
+9a. **Data flow audit**: for every mount in the spec, verify that the read/write intent
+    matches the directory's purpose. Specifically:
+    - `memory-vault/` mounts should be `:ro` — vault is knowledge (.md only), not a
+      code workspace. If the spec says r/w for vault and the component produces non-.md
+      output (code, binaries, configs), flag as a design gap: "output needs its own mount."
+    - If the component produces output, verify the spec defines WHERE that output goes.
+      A spec that says what a component does but not where its output lives is incomplete.
+    - Check the Data Residency table if one exists. If it doesn't exist for a component
+      that produces data, flag as a gap.
+
 10. **Stub scope check**: if the Decomposition table (or handler module list) includes
     items that require external setup before they can be fully implemented (e.g. channel
     credentials, third-party services, infrastructure not yet built), classify each as:

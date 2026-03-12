@@ -76,6 +76,17 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
     for components already built in prior layers without marking them: NEEDS WORK.
 11. Evaluation vs. spec: check that evaluation tests reference paths, schemas, and commands
     consistent with the spec's own constraints. Stale test references: NEEDS WORK.
+11a. **Undefined reference scan**: extract all named concepts, paths, and terms used in
+     the spec. For each one, verify it is either: (a) defined in this spec, (b) defined
+     in a referenced spec, (c) in the entity GLOSSARY, or (d) a standard term.
+     A term that appears once, undefined, with no path or schema (e.g. "app workspace"
+     without specifying what directory it maps to) is an implicit design decision.
+     Flag as: NEEDS WORK — "undefined reference: '{term}' used at line N without
+     definition. Becomes a build-time decision if not resolved."
+11b. **Data residency check**: if this component produces or consumes data and runs as
+     a container, verify a Data Residency table exists. If missing: NEEDS WORK.
+     If present, verify vault mounts are read-only and non-.md output has its own
+     mount path. Vault mounted as r/w for a component that produces code: BLOCKER.
 
 ### Phase 4: Cross-Spec Consistency (full set mode — run once across all specs)
 
