@@ -35,6 +35,10 @@ Forward-looking lens: AI Era patterns first, legacy patterns only when justified
 - Get explicit agreement before updating ARCHITECTURE.md
 - All tool/framework references stated as examples (e.g.), never as the only option
   Exception: Docker is a definite architectural choice
+- **Cross-spec consistency**: when two components reference the same path, port, or
+  env var (e.g. a handler mounts a path that another component's spec defines),
+  verify both specs agree before finalizing either. Cross-spec mismatches are common
+  and invisible without this check — flag them as pre-build decisions with both values shown.
 
 ## Forward-Looking Lens
 
@@ -124,7 +128,10 @@ After architecture is agreed, each component gets spec-engineered using the
 1. Self-contained problem statement
 2. Acceptance criteria (3 sentences, independently verifiable)
 3. Constraint architecture (must-do, must-not-do, preferences, escalation triggers)
+   Fork-based components: use **upstream touchpoint count** as the fork health preference
+   (target: ≤ 5 upstream files modified). Avoid `<N lines diff` — it's unverifiable at design time.
 4. Decomposition (independently executable subtasks, <2h each)
+   Include a `Scope` column for each subtask: `full | stub (name the required condition) | deferred`
 5. Evaluation design (measurable tests with known-good outputs)
 
 Each component spec lives in `memory-vault/{entity}/Specifications/{component}.md`.

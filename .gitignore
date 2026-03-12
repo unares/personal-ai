@@ -10,6 +10,8 @@ memory-vault/**
 !memory-vault/ai-workspace/AI_WORKSPACE_GLOSSARY.md
 instances/
 config.json
+/config/
+/ipc/
 .env
 
 # Node

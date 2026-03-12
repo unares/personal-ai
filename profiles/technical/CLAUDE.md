@@ -34,6 +34,9 @@ Active entity: check `ENTITY` from env. Default: `ai-workspace`.
 ## Vault Rules
 
 - `NORTHSTAR` and `GLOSSARY` files are human-owned — read, never modify
+- When discussing NORTHSTAR edits: remind it's human-owned, provide the absolute
+  path as `code {absolute_path}` on its own line with no leading symbols or
+  characters so it can be copied directly
 - `Raw/` = drop zone for incoming notes
 - `Memories/` = Context Extractor output
 - `Distilled/` = refined knowledge (read for context)

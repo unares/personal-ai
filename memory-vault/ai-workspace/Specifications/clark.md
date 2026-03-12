@@ -26,8 +26,10 @@ uncontaminated by AIOO's operational state or decisions.
 1. A human can message Clark on their dedicated channel and receive
    thoughtful responses within the context of their entity's distilled
    knowledge, without Clark having access to AIOO's current state.
-2. Clark's container has zero network access to any AIOO container —
-   verified by network isolation test from inside the container.
+2. Clark's container has zero network access to any AIOO container,
+   ai-gateway, Chronicle, or entity network — verified by network
+   isolation test from inside the container (`ping aioo-procenteo` fails).
+   Clark connects only to the credential proxy via `clark-net`.
 3. Clark can read Distilled/ vault content (read-only) to ground
    conversations in the entity's refined knowledge.
 
@@ -37,6 +39,8 @@ uncontaminated by AIOO's operational state or decisions.
 - Use vanilla NanoClaw (upstream, unmodified) for container lifecycle
 - Separate messaging channel per human (clark-michal, clark-mateusz, clark-andras)
 - Mount Distilled/ read-only (per human's entity access)
+- Run on `clark-net` Docker network (internet access for credential proxy,
+  no routes to entity networks). See `clark-decisions.md` decision D1.
 
 **Must not do:**
 - Access AIOO containers (network, filesystem, or IPC)
@@ -68,7 +72,7 @@ uncontaminated by AIOO's operational state or decisions.
 | Test | Expected Result |
 |------|-----------------|
 | Message on clark-michal channel | Clark spawns, responds with context from Distilled/ |
-| `docker exec clark-michal ping aioo-procenteo` | Connection refused / no route |
+| `docker exec clark-michal ping aioo-procenteo` | Connection refused / no route (clark-net has no route to entity nets) |
 | `docker exec clark-michal ls /vault/` | Only Distilled/ visible |
 | Clark asks about AIOO state | Clark responds "I don't have access to that" |
 | 30-min idle | Clark container auto-removed |
@@ -83,6 +87,7 @@ uncontaminated by AIOO's operational state or decisions.
 
 ## References
 
+- Design decisions: `./clark-decisions.md`
 - NanoClaw research: `../Research/nanoclaw-architecture-analysis.md`
 - NanoClaw-PAW spec: `./nanoclaw-paw.md` (shared fork)
 - Architecture: `memory-vault/ARCHITECTURE.md`

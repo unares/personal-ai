@@ -15,15 +15,20 @@ Related skill: `/architecture-design` (produces the specs this skill builds from
 1. Detect entity context (from ENTITY env var or working directory)
 2. Read ARCHITECTURE.md for structural overview
 3. Scan `memory-vault/{entity}/Specifications/` for available specs
-4. Check for an existing build order (from the architecture-design session)
-   - If build order exists in conversation context or spec files: use it
-   - If not: derive one from spec dependencies and present for agreement
+4. Read the **Build Order** section in ARCHITECTURE.md — this is the authoritative
+   build sequence. Follow it exactly. Do not derive or propose an alternative order.
+   - If no Build Order section exists: derive one from spec dependencies and present
+     for agreement before proceeding
 5. Assess current build state: what's been built, what's next
 6. Present to the user:
    - Specs found (list with one-line descriptions)
    - Current build state (what exists, what's pending)
    - Recommended next build step
    - "Ready to build {next component}?"
+
+> Git status is surfaced automatically by the global Git Session Awareness rule
+> (status-check mode triggers on session start with existing branch commits).
+> No explicit call needed here — it will run before you ask "Ready to build?".
 
 ## Build Process
 
@@ -37,13 +42,22 @@ Read agent prompt from: `.claude/skills/architecture-build/agents/spec-analyst.m
 ```
 Agent task: "Read {spec path} and any referenced dependency specs.
             Produce a build brief for {component name}."
+Model: opus (high-effort analysis — always use Opus 4.6 for spec-analyst)
 ```
 
 The agent returns a focused build brief: acceptance criteria, constraints,
 interfaces, evaluation tests. This protects the main context from full spec
 reading overhead.
 
-Review the build brief with the human. Resolve any gaps before coding.
+**Multi-module layers**: When building multiple tightly-coupled modules together,
+instruct the spec-analyst to produce a Cross-Module Dependency Map first, then
+per-module briefs. Review the dependency map before reviewing individual briefs —
+it sets the build order and surfaces wiring patterns that prevent false blockers.
+
+Review the build brief with the human:
+- **Ready to Build** → proceed
+- **Ready with Pre-Build Decisions** → present proposed defaults, get human agreement, then proceed
+- **Needs Resolution** → stop, hand to `/architecture-design`
 
 ### 2. Build
 
@@ -58,6 +72,13 @@ Build discipline:
 - One component at a time. Complete it before starting the next.
 - If a design issue surfaces during build, flag it — don't silently deviate.
   Major design issues may require handing back to `/architecture-design`.
+- **Module singleton pattern**: when building module-level caches or registries,
+  add a `_clearXxx()` / `force` flag test helper immediately. This prevents test
+  cross-contamination without changing production behaviour. Do this before writing tests.
+- **Stub decisions**: if a handler or module is deliberately stubbed (e.g. pending
+  external channel setup), log it as a build decision in `Logs/` with the explicit
+  condition for full implementation. A code comment is not enough — it must be
+  traceable so the next build session picks it up.
 
 ### 3. Validate (build-validator agent)
 
@@ -66,7 +87,9 @@ Read agent prompt from: `.claude/skills/architecture-build/agents/build-validato
 
 ```
 Agent task: "Validate {component} implementation against {spec path}.
-            Check acceptance criteria, constraints, and evaluation design."
+            Check acceptance criteria, constraints, evaluation design,
+            gitignore status of config files, and local test runability."
+Model: opus (high-effort validation — always use Opus 4.6 for build-validator)
 ```
 
 The agent returns a compliance report: pass/fail per criterion with evidence.
@@ -123,6 +146,11 @@ When all components in the build order are built and validated:
    - Deviations from spec (with rationale)
    - ARCHITECTURE.md changes made
 4. Recommend what to verify manually (integration points, security checks)
+
+> Build complete = git handoff trigger. The global Git Session Awareness rule
+> will surface PR description, changelog draft, merge/tag/next-branch proposals
+> automatically. Signal completion ("build complete", "all validated", "ready to PR")
+> and it fires. Await approval before any git actions execute.
 
 ## Anti-Patterns During Build
 

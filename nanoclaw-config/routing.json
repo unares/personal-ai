@@ -1,0 +1,29 @@
+{
+  "routes": {
+    "clark-michal": {
+      "target": "clark",
+      "entity": "ai-workspace",
+      "human": "michal"
+    },
+    "clark-mateusz": {
+      "target": "clark",
+      "entity": "procenteo",
+      "human": "mateusz"
+    },
+    "clark-andras": {
+      "target": "clark",
+      "entity": "inisio",
+      "human": "andras"
+    },
+    "aioo-procenteo": {
+      "target": "aioo",
+      "entity": "procenteo",
+      "human": "michal"
+    },
+    "aioo-inisio": {
+      "target": "aioo",
+      "entity": "inisio",
+      "human": "michal"
+    }
+  }
+}
