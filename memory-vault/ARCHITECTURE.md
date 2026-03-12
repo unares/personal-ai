@@ -80,10 +80,6 @@ CLAUDE.md (thin, @-imports vault)
   Indexes all .md files via QMD (FTS5 + sqlite-vec + GGUF reranker).
   Serves MCP HTTP on :8181 (Docker network only).
   Per-entity collections. Named volume: memory-vault-index.
-- **NanoClaw-PAW**: Host process. Messaging gateway + execution layer.
-  Routes WhatsApp/Telegram/Discord → AIOO (IPC) or Clark (ephemeral spawn).
-  Handles stage transitions (Docker Compose profile switches).
-  Spec: `memory-vault/ai-workspace/Specifications/nanoclaw-paw.md`
 - **ai-gateway**: Per-entity LLM proxy (LiteLLM). Routes to Gemini (AIOO brain)
   and Claude (Agent SDK workers). Cost tracking per entity.
   Spec: `memory-vault/ai-workspace/Specifications/ai-gateway.md`
@@ -92,27 +88,17 @@ CLAUDE.md (thin, @-imports vault)
 
 ## Scale Phases
 
-### Phase 1: Single VPS (current)
+Phase 1 → 2: DB write contention, SPOF pain, or ops time > hosting savings.
+Phase 2 → 3: Multi-team, GPU needs, or app containers moving to own VPS.
+Full detail: `.claude/skills/architecture-design/reference.md` (Scale Transitions)
 
-All containers on one Docker host via Docker Compose.
-0-10 agents, $5-50/mo.
-Trigger to Phase 2: DB write contention, single point of failure,
-or ops time exceeding hosting cost savings.
+## Design Philosophy
 
-### Phase 2: Service Separation
-
-Database to managed or separate VPS. Workers separated.
-10-50 agents, $100-500/mo.
-Trigger to Phase 3: multi-team, GPU scheduling, or app
-containers moving to own VPS.
-
-### Phase 3: Multi-Node
-
-App containers become standalone deployments on own VPS.
-Orchestration: evaluate options based on actual requirements at the time.
+JTBD frames every outcome — from entity vision to individual agent tasks.
+Specification Engineering (5 Primitives) translates JTBD into agent-executable specs.
+Reference: `memory-vault/ai-workspace/Specifications/jtbd-specification-engineering.md`
 
 ## Architectural Patterns
 
-11 patterns in 3 tiers, 5 anti-patterns.
+11 patterns in 3 tiers, 5 anti-patterns. Aspiration scores: Simplicity, Security, Privacy, Reliability.
 Full reference: `.claude/skills/architecture-design/reference.md`
-Aspiration scores: Simplicity, Security, Privacy, Reliability.
