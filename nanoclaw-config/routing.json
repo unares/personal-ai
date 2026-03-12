@@ -2,7 +2,7 @@
   "routes": {
     "clark-michal": {
       "target": "clark",
-      "entity": "ai-workspace",
+      "entity": ["ai-workspace", "procenteo", "inisio"],
       "human": "michal"
     },
     "clark-mateusz": {

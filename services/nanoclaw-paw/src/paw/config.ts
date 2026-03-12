@@ -33,8 +33,13 @@ export const CLARK_NETWORK = 'clark-net';
 
 export interface PawRoutingEntry {
   target: 'clark' | 'aioo';
-  entity: string;
+  entity: string | string[];
   human: string;
+}
+
+/** Normalize entity to array (supports single string or array in routing config). */
+export function normalizeEntities(entry: PawRoutingEntry): string[] {
+  return Array.isArray(entry.entity) ? entry.entity : [entry.entity];
 }
 
 export interface PawRoutingConfig {

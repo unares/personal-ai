@@ -3,7 +3,7 @@
  *
  * Manages ephemeral Clark containers:
  * - Spawns on message via docker run --rm --network clark-net
- * - Mounts Distilled/ read-only (air-gapped from AIOO/entity networks)
+ * - Mounts Distilled/ read-only per entity (air-gapped from AIOO/entity networks)
  * - 30min idle timeout → auto-removed
  * - Credential proxy via clark-net → host:3001
  */
@@ -12,12 +12,15 @@ import fs from 'fs';
 import path from 'path';
 
 import { logger } from '../logger.js';
-import { CLARK_IDLE_TIMEOUT, CLARK_NETWORK } from './config.js';
+import { CLARK_IDLE_TIMEOUT, CLARK_NETWORK, normalizeEntities } from './config.js';
+import type { PawRoutingEntry } from './config.js';
+
+const CLARK_IMAGE = 'clark:latest';
 
 interface ClarkInstance {
   containerName: string;
   human: string;
-  entity: string;
+  entities: string[];
   lastActivity: number;
 }
 
@@ -62,15 +65,15 @@ function isContainerAlive(name: string): boolean {
 function buildClarkArgs(
   containerName: string,
   human: string,
-  entity: string,
+  entities: string[],
   workspaceRoot: string,
 ): string[] {
-  const distilledDir = path.join(workspaceRoot, 'memory-vault', entity, 'Distilled');
-  const clarkIdentity = path.join(workspaceRoot, 'containers', 'clark', 'CLAUDE.md');
-
-  if (!fs.existsSync(distilledDir)) {
-    fs.mkdirSync(distilledDir, { recursive: true });
-  }
+  const clarkIdentity = path.join(
+    workspaceRoot, 'containers', 'clark', 'CLAUDE.md',
+  );
+  const clarkSettings = path.join(
+    workspaceRoot, 'containers', 'clark', 'settings.json',
+  );
 
   const args = [
     'run', '-d', '--rm',
@@ -78,18 +81,33 @@ function buildClarkArgs(
     '--network', CLARK_NETWORK,
   ];
 
+  // Mount Clark identity files
   if (fs.existsSync(clarkIdentity)) {
-    args.push('-v', `${clarkIdentity}:/home/node/.claude/CLAUDE.md:ro`);
+    args.push('-v', `${clarkIdentity}:/home/clark/.claude/CLAUDE.md:ro`);
+  }
+  if (fs.existsSync(clarkSettings)) {
+    args.push('-v', `${clarkSettings}:/home/clark/.claude/settings.json:ro`);
   }
 
+  // Mount Distilled/ per entity (PBD-2: multi-entity support)
+  for (const entity of entities) {
+    const distilledDir = path.join(
+      workspaceRoot, 'memory-vault', entity, 'Distilled',
+    );
+    if (!fs.existsSync(distilledDir)) {
+      fs.mkdirSync(distilledDir, { recursive: true });
+    }
+    args.push('-v', `${distilledDir}:/vault/${entity}/Distilled:ro`);
+  }
+
+  // Environment
   args.push(
-    '-v', `${distilledDir}:/vault/Distilled:ro`,
     '-e', `HUMAN_NAME=${human}`,
-    '-e', `ENTITY=${entity}`,
+    '-e', `ENTITY=${entities.join(',')}`,
     '-e', 'CLARK_MODE=true',
     '-e', 'ANTHROPIC_BASE_URL=http://host.docker.internal:3001',
     '-e', 'ANTHROPIC_API_KEY=placeholder',
-    'nanoclaw-agent:latest',
+    CLARK_IMAGE,
   );
 
   return args;
@@ -98,13 +116,13 @@ function buildClarkArgs(
 function spawnClarkContainer(
   containerName: string,
   human: string,
-  entity: string,
+  entities: string[],
   workspaceRoot: string,
 ): void {
-  const args = buildClarkArgs(containerName, human, entity, workspaceRoot);
+  const args = buildClarkArgs(containerName, human, entities, workspaceRoot);
   try {
     execSync(`docker ${args.join(' ')}`, { timeout: 30000, encoding: 'utf-8' });
-    logger.info({ containerName, human, entity }, 'Clark container spawned');
+    logger.info({ containerName, human, entities }, 'Clark container spawned');
   } catch (err) {
     logger.error({ containerName, human, err }, 'Failed to spawn Clark');
     activeInstances.delete(`clark-${human}`);
@@ -113,11 +131,12 @@ function spawnClarkContainer(
 
 export function getOrSpawnClark(
   human: string,
-  entity: string,
+  route: PawRoutingEntry,
   workspaceRoot: string,
 ): string {
   const key = `clark-${human}`;
   const existing = activeInstances.get(key);
+  const entities = normalizeEntities(route);
 
   if (existing && isContainerAlive(existing.containerName)) {
     existing.lastActivity = Date.now();
@@ -125,9 +144,9 @@ export function getOrSpawnClark(
   }
 
   const containerName = `clark-${human}-${Date.now()}`;
-  spawnClarkContainer(containerName, human, entity, workspaceRoot);
+  spawnClarkContainer(containerName, human, entities, workspaceRoot);
   activeInstances.set(key, {
-    containerName, human, entity, lastActivity: Date.now(),
+    containerName, human, entities, lastActivity: Date.now(),
   });
   return containerName;
 }
@@ -160,4 +179,9 @@ export function stopAllClark(): void {
 
 export function getActiveClarkInstances(): ClarkInstance[] {
   return [...activeInstances.values()];
+}
+
+/** Test helper: clear active instances registry. */
+export function _clearInstances(): void {
+  activeInstances.clear();
 }

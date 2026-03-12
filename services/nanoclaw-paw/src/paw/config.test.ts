@@ -3,7 +3,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { discoverEntities, loadRoutingConfig } from './config.js';
+import { discoverEntities, loadRoutingConfig, normalizeEntities } from './config.js';
+import type { PawRoutingEntry } from './config.js';
 
 describe('config', () => {
   it('discovers entities from ipc directories', () => {
@@ -49,5 +50,25 @@ describe('config', () => {
   it('returns empty config when file missing', () => {
     const config = loadRoutingConfig('/nonexistent', true);
     expect(config.routes).toEqual({});
+  });
+
+  describe('normalizeEntities', () => {
+    it('wraps single entity string in array', () => {
+      const route: PawRoutingEntry = {
+        target: 'clark', entity: 'procenteo', human: 'mateusz',
+      };
+      expect(normalizeEntities(route)).toEqual(['procenteo']);
+    });
+
+    it('passes through entity array unchanged', () => {
+      const route: PawRoutingEntry = {
+        target: 'clark',
+        entity: ['ai-workspace', 'procenteo', 'inisio'],
+        human: 'michal',
+      };
+      expect(normalizeEntities(route)).toEqual([
+        'ai-workspace', 'procenteo', 'inisio',
+      ]);
+    });
   });
 });

@@ -36,11 +36,18 @@ NanoClaw-PAW is the host process that connects them to humans and infrastructure
 - Tests: 56/56 pass (8 test files, local execution via `IPC_LIB_PATH` auto-detection).
 
 ### Clark (per human, lightweight)
-- Ephemeral container spawned by NanoClaw-PAW on message, dies after 30min idle
-- Vault access: Distilled/ + Memories/ (read-only, air-gapped, --network none)
-- Role: Help human think clearly — asks questions, doesn't prescribe
+- ✅ Built (Layer 5 complete). Lean container image (`clark:latest`):
+  node:20-alpine + Claude Code CLI. No embedded NanoClaw.
+  Spawned by NanoClaw-PAW clark-handler on message, dies after 30min idle.
+- Vault access: Distilled/ only (read-only, air-gapped, clark-net network).
+  Multi-entity mounts for ai-architect profile (all entities).
+  Co-founder profile gets single entity Distilled/ only.
+- No Chronicle, no ai-gateway, no AIOO network access.
+- Credential proxy via clark-net → host:3001.
 - Identity: `containers/clark/CLAUDE.md`
+- Settings: `containers/clark/settings.json` (no MCP servers, read-only permissions)
 - Spec: `memory-vault/ai-workspace/Specifications/clark.md`
+- Tests: 14 Clark handler + 215 upstream = 229/229 pass.
 
 ### NanoClaw-PAW (host process)
 - ✅ Built (Layer 4 complete). Git subtree from upstream NanoClaw at
@@ -107,7 +114,7 @@ Spec: `memory-vault/ai-workspace/Specifications/ipc-protocol.md`
 Per-entity networks (procenteo-net, inisio-net). Profile-based activation.
 No profile = Chronicle only. `--profile {entity}` adds AIOO + ai-gateway.
 `--profile {app}-app-{stage}` adds individual stage containers.
-Clark is NOT in compose — spawned by NanoClaw-PAW with `--network none`.
+Clark is NOT in compose — spawned by NanoClaw-PAW with `--network clark-net`.
 Security: no docker.sock, no host ports, entity network isolation, vault r/o for Chronicle.
 Health checks on all services.
 
@@ -137,7 +144,7 @@ Layer 1: Docker Compose + Chronicle + ai-gateway  ✅ Built
 Layer 2: AIOO Daemon Skeleton                  ✅ Built
 Layer 3: AIOO Brain + HITL + Stage + Cost      ✅ Built
 Layer 4: NanoClaw-PAW                          ✅ Built
-Layer 5: Clark                                 ⬜ Next
+Layer 5: Clark                                 ✅ Built
 Layer 6: Stage Lifecycle + App Dev Stages      ⬜
 Layer 7: Host Watchdog                         ⬜
 ```
