@@ -73,15 +73,35 @@ CLAUDE.md (thin, @-imports vault)
   → .claude/skills/ (on-demand, user-invoked)
 ```
 
+## IPC Protocol
+
+Typed Envelope filesystem IPC — all inter-component communication uses JSON files.
+Library: `lib/ipc/` (createEnvelope, writeMessage, readMessages, processMessage).
+Per-entity namespaces: `ipc/aioo-{entity}/{to-paw,from-paw}/`.
+Atomic writes (.tmp → .json), 1s polling, processed/ audit trail.
+Spec: `memory-vault/ai-workspace/Specifications/ipc-protocol.md`
+
+## Docker Compose Topology
+
+Per-entity networks (procenteo-net, inisio-net). Profile-based activation.
+No profile = Chronicle only. `--profile {entity}` adds AIOO + ai-gateway.
+`--profile {app}-app-{stage}` adds individual stage containers.
+Clark is NOT in compose — spawned by NanoClaw-PAW with `--network none`.
+Security: no docker.sock, no host ports, entity network isolation, vault r/o for Chronicle.
+Health checks on all services.
+
 ## Services
 
-- **Chronicle**: Always-on vault watcher + QMD hybrid search.
+- **Chronicle**: ✅ Running. Always-on vault watcher + QMD hybrid search.
   Watches memory-vault for file changes (chokidar → JSONL audit events).
   Indexes all .md files via QMD (FTS5 + sqlite-vec + GGUF reranker).
   Serves MCP HTTP on :8181 (Docker network only).
+  Dual-network (procenteo-net + inisio-net). Vault r/o with targeted Logs/ writable mounts.
   Per-entity collections. Named volume: memory-vault-index.
-- **ai-gateway**: Per-entity LLM proxy (LiteLLM). Routes to Gemini (AIOO brain)
-  and Claude (Agent SDK workers). Cost tracking per entity.
+- **ai-gateway**: ✅ Built. Per-entity LLM proxy (LiteLLM).
+  Routes to Gemini (AIOO brain) and Claude (Agent SDK workers).
+  Config: `config/ai-gateway-{entity}/config.yaml`. Per-entity API keys.
+  Cost tracking per entity (ephemeral — persistent DB planned).
   Spec: `memory-vault/ai-workspace/Specifications/ai-gateway.md`
 - **Context Extractor**: ⏸ Deferred. Future vault intelligence layer.
   Design after AIOO is built.
