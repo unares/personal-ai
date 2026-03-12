@@ -1,0 +1,6 @@
+{
+  "name": "@personal-ai/ipc",
+  "version": "0.5.4",
+  "private": true,
+  "main": "index.js"
+}
