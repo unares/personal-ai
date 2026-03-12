@@ -24,17 +24,10 @@ Related skill: `/architecture-design` (produces the specs this skill builds from
    - Current build state (what exists, what's pending)
    - Recommended next build step
    - "Ready to build {next component}?"
-7. Run the **github-status** agent (status-check mode):
 
-```
-Agent task: "Run in status-check mode. Show current git state, branch health,
-            version proposal from NORTHSTAR, and proposed actions."
-Agent prompt: .claude/skills/github-discipline/agents/github-status.md
-Model: sonnet
-```
-
-Present the agent's output before asking "Ready to build?" — the human may
-need to approve branch/version actions before work starts.
+> Git status is surfaced automatically by the global Git Session Awareness rule
+> (status-check mode triggers on session start with existing branch commits).
+> No explicit call needed here — it will run before you ask "Ready to build?".
 
 ## Build Process
 
@@ -145,16 +138,11 @@ When all components in the build order are built and validated:
    - Deviations from spec (with rationale)
    - ARCHITECTURE.md changes made
 4. Recommend what to verify manually (integration points, security checks)
-5. Run the **github-status** agent (handoff mode):
 
-```
-Agent task: "Run in handoff mode. Generate PR description and changelog draft
-            from commits since main. Propose merge, tag, and next branch actions."
-Agent prompt: .claude/skills/github-discipline/agents/github-status.md
-Model: sonnet
-```
-
-Present the agent's output. Await approval before executing any git actions.
+> Build complete = git handoff trigger. The global Git Session Awareness rule
+> will surface PR description, changelog draft, merge/tag/next-branch proposals
+> automatically. Signal completion ("build complete", "all validated", "ready to PR")
+> and it fires. Await approval before any git actions execute.
 
 ## Anti-Patterns During Build
 

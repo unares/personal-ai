@@ -7,8 +7,8 @@ and await human approval.
 ## Mode
 
 You are called with a mode in the task prompt:
-- **status-check**: start of a build session — show state, propose version + branch for upcoming work
-- **handoff**: end of a build session — generate PR description, changelog, merge/tag proposals, next branch
+- **status-check**: start of a build session — show state, orient on version + branch
+- **handoff**: end of a build session — generate PR description, changelog, merge/tag proposals
 
 Both modes share the same data-gathering and ASCII diagram steps.
 
@@ -30,9 +30,11 @@ git log $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD --oneline
 git log main..HEAD --oneline 2>/dev/null || true
 git log --format="%s" main..HEAD 2>/dev/null || true
 git stash list
+pwd
 ```
 
 Parse the output to determine:
+- Working directory (absolute path — needed for `code` commands)
 - Current branch name
 - Commits ahead of main (N)
 - Commits behind origin/main (M — if > 0, main has moved since branch was cut)
@@ -44,26 +46,7 @@ Parse the output to determine:
 
 ---
 
-## Step 2 — Read NORTHSTAR
-
-Detect entity: check ENTITY env var, or default to `ai-workspace`.
-NORTHSTAR path: `memory-vault/{entity}/{ENTITY}_NORTHSTAR.md`
-(e.g. `memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md`)
-
-Read the NORTHSTAR. Extract:
-1. **Current Focus** section — what is actively being built right now
-2. **This week / This month** — immediate horizon
-3. The NEXT work item implied by current focus (what comes after what's currently being built)
-
-Always output this at the end of your report:
-```
-code memory-vault/{entity}/{ENTITY}_NORTHSTAR.md
-```
-So the human can open it in VSCode to edit if your reading is wrong.
-
----
-
-## Step 3 — Draw ASCII Git Status Diagram
+## Step 2 — Draw ASCII Git Status Diagram
 
 ### Format rules (strict)
 - Time flows top → bottom (oldest at top, newest at bottom)
@@ -100,19 +83,22 @@ If working tree is dirty:
 
 ### Proposed Flow Diagram (both modes)
 
-Always show what the recommended next actions look like visually:
+Always show what the recommended next actions look like visually.
+For next branch: only include if a next branch name was passed in the calling context.
+If no next branch is known, show the merge + tag, then `...` with a note to decide next branch:
 
 ```
-main  ──●──────────────────────────●────────────────── main
-         ╲                          ↗ ╲
-          feat/v0.5.4 ─────────────╯   feat/v0.5.5-nanoclaw-paw ── ...
-                       (merge via PR)   (new branch)
+main  ──●──────────────────────────●──── main
+         ╲                          ↗
+          feat/v0.5.4 ─────────────╯
+                       (merge via PR)
                         tag: v0.5.4
+                        (next branch: TBD — decide after merge)
 ```
 
 ---
 
-## Step 4 — Branch Health Check
+## Step 3 — Branch Health Check
 
 Assess the current feature branch:
 
@@ -130,7 +116,7 @@ Output a one-line health verdict:
 
 ---
 
-## Step 5 — Commit Message Audit
+## Step 4 — Commit Message Audit
 
 Scan commits on this branch vs main. Flag any that don't follow:
 `{type}: {subject}` where type is one of: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`
@@ -147,9 +133,9 @@ COMMIT AUDIT
 
 ---
 
-## Step 6 — Version Derivation from NORTHSTAR
+## Step 5 — Version Derivation
 
-Based on NORTHSTAR reading and current branch, propose the next version.
+Based on commits on this branch, propose the version for this tag.
 
 ### Version bump rules
 - **patch** (x.y.Z): bug fixes, skill improvements, config changes, docs
@@ -157,31 +143,30 @@ Based on NORTHSTAR reading and current branch, propose the next version.
 - **major** (X.y.z): architectural redesign, breaking change across system
 
 Parse the current version from the last tag (e.g. `v0.5.3` → major=0, minor=5, patch=3).
-Derive the bump type from what was built in this session and what comes next.
+Derive the bump type from the commit messages on this branch (feat = minor, fix/chore = patch).
 
-### Branch name proposal (for next work)
-Read the NORTHSTAR "head" — the next work item after what's currently being built.
-Propose: `feat/v{X.Y.Z}-{kebab-case-description}`
+### Next branch
+Only propose a next branch name if it was explicitly provided in the calling context
+(e.g. passed by architecture-build or another skill). If not provided, omit the next branch
+from the proposal — do not guess or read NORTHSTAR.
 
 Output:
 ```
 VERSION PROPOSAL
   Last tag:      v0.5.3
   This branch:   feat/v0.5.4-architecture-build
-  Bump type:     minor (new AIOO Layer 3 built)
+  Bump type:     minor (feat commits: IPC library, AIOO daemon, AIOO brain)
   Proposed tag:  v0.5.4
 
-  Next work (from NORTHSTAR): NanoClaw-PAW
-  Next branch:   feat/v0.5.5-nanoclaw-paw
-
-  To adjust: code memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
+  Next branch:   [if provided in context] feat/v0.5.5-{name}
+                 [if not provided] TBD — decide after merge
 ```
 
 ---
 
-## Step 7 — Mode-Specific Output
+## Step 6 — Mode-Specific Output
 
-### Status-Check Mode (start of build)
+### Status-Check Mode (start of session)
 
 Output a **"Before You Build" checklist**:
 
@@ -190,7 +175,6 @@ BEFORE YOU BUILD
   [ ] Is origin/main up to date? (M commits behind: yes/no)
   [ ] Is this the right branch for this work? (current: feat/v0.5.4-...)
   [ ] Does the proposed version match your intent?
-  [ ] NORTHSTAR current focus matches what you're about to build?
 ```
 
 Then list proposed actions (numbered, approval required):
@@ -202,7 +186,7 @@ PROPOSED ACTIONS (approve each before I execute)
   3. No other changes needed — ready to build
 ```
 
-### Handoff Mode (end of build)
+### Handoff Mode (end of session)
 
 #### PR Description (draft)
 
@@ -241,25 +225,28 @@ Generate a PR description from commits since main diverged:
 - {infra change}: {one-line description}
 ```
 
-Check if `CHANGELOG.md` exists in the project root. If not, note it should be created.
-Output: `code CHANGELOG.md` (whether it exists or not).
+Check if `CHANGELOG.md` exists in the project root. Note whether it exists or needs creating.
 
 #### Proposed Actions (approval required, numbered)
 
 ```
 PROPOSED ACTIONS (tell me which to execute)
-  1. gh pr create --title "feat: {branch description}" --body "..."
-     (PR description drafted above)
+  1. [if dirty] git add {file} && git commit -m "chore: ..."
+     (commit uncommitted changes first)
 
-  2. git tag v{X.Y.Z} -m "v{X.Y.Z} — {one-line summary}"
-     (after PR merges to main)
+  2. gh pr create --title "feat: {branch description}" --body "..."
+     (PR description drafted above)
 
   3. [if CHANGELOG.md exists] Append changelog section to CHANGELOG.md
      [if not] Create CHANGELOG.md with this section
 
-  4. After merge: git checkout main && git pull
-     Then: git checkout -b feat/v{X.Y.Z+1}-{next-work}
-     (next branch: feat/v0.5.5-nanoclaw-paw)
+  4. git tag v{X.Y.Z} -m "v{X.Y.Z} — {one-line summary}"
+     (after PR merges to main — do not tag feature branch)
+
+  5. After merge + tag:
+     git checkout main && git pull
+     [if next branch known] git checkout -b feat/v{X.Y.Z+1}-{next-work}
+     [if not] Decide next branch name, then: git checkout -b feat/v{X.Y.Z+1}-{name}
 
   Approve: "do 1", "do 1 2 3", "do all", or "skip"
 ```
@@ -269,11 +256,13 @@ PROPOSED ACTIONS (tell me which to execute)
 ## Hard Rules
 
 - **Never execute git changes without explicit approval** — propose only
-- **Always output `code {path}`** for NORTHSTAR and CHANGELOG.md
 - **Never force push** — if suggested, warn instead
 - **Never propose committing to main directly**
 - **Tag only after merge to main** — never tag a feature branch commit
 - **ASCII diagrams are required** — never skip them, they are the primary output
+- **Never read NORTHSTAR** — use session context and commit messages only
+- **Always use absolute paths** for all `code` commands:
+  `code {working-directory}/{relative-path}` (e.g. `code /Users/michalbrojak/Documents/personal-ai/CHANGELOG.md`)
 
 ---
 
@@ -283,8 +272,7 @@ PROPOSED ACTIONS (tell me which to execute)
 2. Branch health verdict
 3. Commit audit
 4. Proposed Flow ASCII diagram
-5. Version proposal + next branch name
-6. `code {northstar path}`
-7. Mode-specific output (checklist or PR/changelog drafts)
-8. Numbered proposed actions
-9. `code CHANGELOG.md`
+5. Version proposal (+ next branch if known from context)
+6. Mode-specific output (checklist or PR/changelog drafts)
+7. Numbered proposed actions
+8. `code {absolute path to CHANGELOG.md}`
