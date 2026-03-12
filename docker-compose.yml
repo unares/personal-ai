@@ -1,85 +1,230 @@
-# Personal AI v0.4 — Compose Services
-# Always-on services: Chronicle
-# Isolated (not started, vault access removed): Context Extractor, LiteLLM Proxy
-# Agent containers spawned via launcher scripts:
-#   ./clark/clark.sh                       — spawn your Clark
-#   ./aioo/aioo.sh <entity>                — spawn an entity AIOO
-#   ./app-builder/app-builder.sh <entity> <app>  — spawn an App Builder
+# Personal AI Workspace — Docker Compose Topology
+# Spec: memory-vault/ai-workspace/Specifications/docker-compose-topology.md
 #
 # Usage:
-#   docker compose --profile seed up -d          # start always-on services
-#   docker compose --profile seed down           # stop always-on services
+#   docker compose up -d                                  # Chronicle only (always-on)
+#   docker compose --profile procenteo up -d              # + AIOO + ai-gateway for procenteo
+#   docker compose --profile procenteo-app-demo up -d     # + procenteo Demo stage container
+#   docker compose --profile inisio up -d                 # + AIOO + ai-gateway for inisio
+#
+# Prerequisites:
+#   ./setup/init-ipc.sh   (creates ipc/ and config/ directories)
+#   cp .env.example .env  (fill in API keys)
+#
+# Clark is NOT in compose — spawned by NanoClaw-PAW via:
+#   docker run --rm --network none ...
 
 services:
 
-  # ── Context Extractor ──────────────────────────────────────────────────────
-  # ISOLATED: not in seed profile, no vault mount. Code kept for redesign.
-  # To inspect: docker compose --profile inspect up context-extractor
-  context-extractor:
-    profiles: [inspect]
-    build:
-      context: ./context-extractor
-    container_name: context-extractor
-    networks:
-      - personal-ai-net
-    volumes:
-      - ./config.json:/app/config.json:ro
-    environment:
-      - CONFIG_PATH=/app/config.json
-      - CX_MODE=simple
-    restart: "no"
-
-  # ── Chronicle ─────────────────────────────────────────────────────────────
-  # Always-on vault watcher + QMD hybrid search index.
-  # Watches memory-vault for .md changes (chokidar → JSONL audit events).
-  # Serves MCP HTTP on :8181 for agent search (qmd_search, qmd_vsearch, qmd_query).
+  # ── Chronicle (always-on) ──────────────────────────────────────────
+  # Vault watcher + QMD hybrid search index.
+  # Watches memory-vault for .md changes → JSONL audit events.
+  # Serves MCP HTTP on :8181 (Docker network only, no host port).
   chronicle:
-    profiles: [seed]
     build:
       context: ./chronicle
     container_name: chronicle
     networks:
-      - personal-ai-net
+      - procenteo-net
+      - inisio-net
     volumes:
-      - memory-vault:/vault
+      - ./memory-vault:/vault:ro
+      - ./memory-vault/ai-workspace/Logs:/vault/ai-workspace/Logs
+      - ./memory-vault/procenteo/Logs:/vault/procenteo/Logs
+      - ./memory-vault/inisio/Logs:/vault/inisio/Logs
       - memory-vault-index:/data
       - ./config.json:/app/config.json:ro
     environment:
       - XDG_CACHE_HOME=/data
       - VAULT_PATH=/vault
       - CONFIG_PATH=/app/config.json
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8181"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
 
-  # ── LiteLLM Proxy ─────────────────────────────────────────────────────────
-  # Routes LLM requests: Gemini 3.1 Pro for planning, Claude for execution.
-  # NanoClaw agents connect via ANTHROPIC_BASE_URL=http://litellm-proxy:4000
-  litellm-proxy:
-    profiles: [seed]
+  # ── ai-gateway-procenteo ──────────────────────────────────────────
+  # Per-entity LLM proxy (LiteLLM). Routes Gemini + Claude calls.
+  # Cost tracking per entity. No host port exposed.
+  ai-gateway-procenteo:
+    profiles: [procenteo]
     image: ghcr.io/berriai/litellm:main-latest
-    container_name: litellm-proxy
+    container_name: ai-gateway-procenteo
     networks:
-      - personal-ai-net
-    ports:
-      - "4000:4000"
+      - procenteo-net
     volumes:
-      - ./litellm/litellm-config.yaml:/app/config.yaml
+      - ./config/ai-gateway-procenteo/config.yaml:/app/config.yaml:ro
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - LITELLM_MASTER_KEY=${LITELLM_MASTER_KEY:-sk-litellm-local}
+      - GEMINI_API_KEY=${PROCENTEO_GEMINI_API_KEY}
+      - ANTHROPIC_API_KEY=${PROCENTEO_ANTHROPIC_API_KEY}
+      - LITELLM_MASTER_KEY=${PROCENTEO_LITELLM_MASTER_KEY}
+    command: ["--config", "/app/config.yaml"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── ai-gateway-inisio ─────────────────────────────────────────────
+  ai-gateway-inisio:
+    profiles: [inisio]
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: ai-gateway-inisio
+    networks:
+      - inisio-net
+    volumes:
+      - ./config/ai-gateway-inisio/config.yaml:/app/config.yaml:ro
+    environment:
+      - GEMINI_API_KEY=${INISIO_GEMINI_API_KEY}
+      - ANTHROPIC_API_KEY=${INISIO_ANTHROPIC_API_KEY}
+      - LITELLM_MASTER_KEY=${INISIO_LITELLM_MASTER_KEY}
+    command: ["--config", "/app/config.yaml"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health/liveliness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── aioo-procenteo ────────────────────────────────────────────────
+  # AI Operating Officer for procenteo entity.
+  # Vault r/w, IPC r/w, ai-gateway access.
+  aioo-procenteo:
+    profiles: [procenteo]
+    build:
+      context: ./containers/aioo
+    container_name: aioo-procenteo
+    networks:
+      - procenteo-net
+    volumes:
+      - ./memory-vault/procenteo:/vault
+      - ./ipc/aioo-procenteo:/ipc
+      - ./lib/ipc:/app/lib/ipc:ro
+    environment:
+      - ENTITY=procenteo
+      - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/alive"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── aioo-inisio ───────────────────────────────────────────────────
+  aioo-inisio:
+    profiles: [inisio]
+    build:
+      context: ./containers/aioo
+    container_name: aioo-inisio
+    networks:
+      - inisio-net
+    volumes:
+      - ./memory-vault/inisio:/vault
+      - ./ipc/aioo-inisio:/ipc
+      - ./lib/ipc:/app/lib/ipc:ro
+    environment:
+      - ENTITY=inisio
+      - AI_GATEWAY_URL=http://ai-gateway-inisio:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/alive"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # ── Procenteo App Dev Stage Containers ────────────────────────────
+  # Placeholder images — replaced when stage containers are built.
+  procenteo-app-demo:
+    profiles: [procenteo-app-demo]
+    image: alpine:latest
+    container_name: procenteo-app-demo
+    networks:
+      - procenteo-net
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+  procenteo-app-testing:
+    profiles: [procenteo-app-testing]
+    image: alpine:latest
+    container_name: procenteo-app-testing
+    networks:
+      - procenteo-net
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+  procenteo-app-launch:
+    profiles: [procenteo-app-launch]
+    image: alpine:latest
+    container_name: procenteo-app-launch
+    networks:
+      - procenteo-net
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+  procenteo-app-scaling:
+    profiles: [procenteo-app-scaling]
+    image: alpine:latest
+    container_name: procenteo-app-scaling
+    networks:
+      - procenteo-net
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+  # ── Inisio App Dev Stage Containers ───────────────────────────────
+  inisio-app-demo:
+    profiles: [inisio-app-demo]
+    image: alpine:latest
+    container_name: inisio-app-demo
+    networks:
+      - inisio-net
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+  inisio-app-testing:
+    profiles: [inisio-app-testing]
+    image: alpine:latest
+    container_name: inisio-app-testing
+    networks:
+      - inisio-net
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+  inisio-app-launch:
+    profiles: [inisio-app-launch]
+    image: alpine:latest
+    container_name: inisio-app-launch
+    networks:
+      - inisio-net
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+
+  inisio-app-scaling:
+    profiles: [inisio-app-scaling]
+    image: alpine:latest
+    container_name: inisio-app-scaling
+    networks:
+      - inisio-net
+    command: ["sleep", "infinity"]
     restart: unless-stopped
 
 networks:
-  personal-ai-net:
+  procenteo-net:
     driver: bridge
-    name: personal-ai-net
+    name: procenteo-net
+  inisio-net:
+    driver: bridge
+    name: inisio-net
 
 volumes:
-  memory-vault:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${PWD}/memory-vault
   memory-vault-index:
     # QMD index (SQLite FTS5 + sqlite-vec) + GGUF model cache
