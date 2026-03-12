@@ -27,6 +27,11 @@ Report pass/fail per criterion with specific evidence (file paths, line numbers)
     - What condition makes this implementable (e.g. "requires Telegram channel config")
     - Whether it was logged as a build decision in `Logs/`
     If it wasn't logged, flag as NEEDS WORK — stubs must be traceable.
+12. **Cross-layer interface change detection** — check whether any function signatures,
+    exported types, or module APIs from a *prior* layer were modified during this build.
+    If yes, flag as WARN with: what changed, what layer originally built it, and whether
+    any other consumers exist. Cross-layer changes are silent architecture changes and
+    must be visible, not buried in a diff.
 
 ## Output Format
 
@@ -63,6 +68,11 @@ GITIGNORE CHECK
 LOCAL TEST RUNABILITY
   [PASS] tests run locally without errors
   [FAIL] {specific issue} — fix: {what needs to change}
+
+CROSS-LAYER CHANGES
+  [PASS]  no prior-layer interfaces modified
+  [WARN]  {function/type} in {file} (Layer N) — changed: {what changed}
+          consumers: {list other files that import it}
 
 VERDICT: {READY | NEEDS WORK}
 {If NEEDS WORK: prioritized list of issues to fix}

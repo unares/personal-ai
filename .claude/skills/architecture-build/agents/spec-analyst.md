@@ -15,8 +15,22 @@ Do NOT suggest implementation approaches — just report what must be true when 
 4. **Read the entry point** (e.g. `src/index.js`, `src/main.js`, or equivalent) to
    understand existing wiring patterns — cross-module refs, init order, ctx shape.
    This prevents flagging as "blockers" things that are already solved by existing patterns.
-5. Read the current stub/skeleton of the component being built (if it exists)
-6. Extract:
+5. **Prior-layer interface audit**: identify which functions, types, or modules built
+   in a previous layer this component depends on. For each one, note:
+   - Current signature / schema (read the actual source)
+   - Whether this build will need to change it (if yes: flag as a cross-layer interface change)
+   Cross-layer changes mid-build are silent architecture changes — they must be flagged,
+   not assumed. Example: a handler built in Layer N may need signature changes when the
+   Layer N+1 consumer is built.
+6. **Stale artifact audit**: for any pre-existing files in the build scope (Dockerfiles,
+   identity files, scripts, configs), classify each as:
+   - `keep` — still valid, no changes needed
+   - `update` — needs modification to match new design
+   - `rewrite` — v0.x artifact, replace entirely
+   - `delete` — superseded by new architecture
+   This prevents old artifacts from silently conflicting with new design.
+7. Read the current stub/skeleton of the component being built (if it exists)
+8. Extract:
 
 **Problem** (1-2 sentences from spec's Problem Statement)
 
@@ -37,22 +51,22 @@ Do NOT suggest implementation approaches — just report what must be true when 
 
 **Key Decisions** (from decisions.md — rationale the builder needs to know)
 
-7. **Cross-spec path consistency**: when this component references paths, ports, or env
+9. **Cross-spec path consistency**: when this component references paths, ports, or env
    vars that appear in another component's spec or identity file (e.g. a handler that
    mounts a path that the container's CLAUDE.md references), read both and verify they
    match. Cross-spec mismatches are common and invisible without this check.
    Flag any mismatch as a pre-build decision with both values shown.
 
-8. **Stub scope check**: if the Decomposition table (or handler module list) includes
-   items that require external setup before they can be fully implemented (e.g. channel
-   credentials, third-party services, infrastructure not yet built), classify each as:
-   - `full` — implementable in this build session
-   - `stub` — implement a placeholder, requires external condition to complete (name it)
-   - `deferred` — out of scope for this layer, tracked in build log
+10. **Stub scope check**: if the Decomposition table (or handler module list) includes
+    items that require external setup before they can be fully implemented (e.g. channel
+    credentials, third-party services, infrastructure not yet built), classify each as:
+    - `full` — implementable in this build session
+    - `stub` — implement a placeholder, requires external condition to complete (name it)
+    - `deferred` — out of scope for this layer, tracked in build log
 
-9. Identify gaps and ambiguities. For each one:
-   - Classify: **design gap** (needs architecture-design) vs **pre-build decision** (needs human agreement, builder can proceed after)
-   - Propose a default resolution with rationale (don't just list the problem)
+11. Identify gaps and ambiguities. For each one:
+    - Classify: **design gap** (needs architecture-design) vs **pre-build decision** (needs human agreement, builder can proceed after)
+    - Propose a default resolution with rationale (don't just list the problem)
 
 ## Multi-Module Layers
 

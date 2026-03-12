@@ -32,6 +32,9 @@ Forward-looking lens: AI Era patterns first, legacy patterns only when justified
 - **Persist decisions**: every architectural decision gets its own .md file
   (`Specifications/{component}-decisions.md`) with options considered, tradeoffs,
   rationale, and ASCII diagrams. Decisions are first-class artifacts, not chat history.
+  After recording a decision, **propagate it**: list every spec, ARCHITECTURE.md section,
+  and identity file that references the overridden item and confirm each is updated.
+  Missed propagation is the leading cause of build-time cross-spec mismatches.
 - Get explicit agreement before updating ARCHITECTURE.md
 - All tool/framework references stated as examples (e.g.), never as the only option
   Exception: Docker is a definite architectural choice
@@ -132,7 +135,24 @@ After architecture is agreed, each component gets spec-engineered using the
    (target: ≤ 5 upstream files modified). Avoid `<N lines diff` — it's unverifiable at design time.
 4. Decomposition (independently executable subtasks, <2h each)
    Include a `Scope` column for each subtask: `full | stub (name the required condition) | deferred`
+   **Cross-layer awareness**: if prior layers built components this layer depends on,
+   mark those steps as `prior-layer (built)` so the builder knows what already exists
+   and what is genuinely new work. Stale decompositions cause artifact confusion.
 5. Evaluation design (measurable tests with known-good outputs)
+
+**Container mount schema** (required for any component that runs as a Docker container):
+Specify mounts explicitly — not just "Distilled/ read-only" but the full triple:
+```
+host path            container path          mode
+memory-vault/{e}/Distilled  /vault/{e}/Distilled  ro
+```
+If access varies by role/human, show the full matrix. Underspecified mounts become
+build-time decisions that should have been design decisions.
+
+**Multi-value access patterns**: when a spec grants different access levels per
+role (e.g. one human gets all entities, others get one), the spec must define how
+the underlying data model handles the wider-access case. "String or array" is a
+schema decision — make it in the spec, not during build.
 
 Each component spec lives in `memory-vault/{entity}/Specifications/{component}.md`.
 Components with significant design decisions also get `{component}-decisions.md`.
