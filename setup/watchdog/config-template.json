@@ -1,0 +1,6 @@
+{
+  "provider": "telegram",
+  "endpoint": "https://api.telegram.org",
+  "chatId": "",
+  "description": "Direct API fallback for when NanoClaw-PAW is also down. Token in ~/.watchdog/emergency-api-key"
+}

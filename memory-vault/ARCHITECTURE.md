@@ -36,11 +36,18 @@ NanoClaw-PAW is the host process that connects them to humans and infrastructure
 - Tests: 56/56 pass (8 test files, local execution via `IPC_LIB_PATH` auto-detection).
 
 ### Clark (per human, lightweight)
-- Ephemeral container spawned by NanoClaw-PAW on message, dies after 30min idle
-- Vault access: Distilled/ + Memories/ (read-only, air-gapped, --network none)
-- Role: Help human think clearly — asks questions, doesn't prescribe
+- ✅ Built (Layer 5 complete). Lean container image (`clark:latest`):
+  node:20-alpine + Claude Code CLI. No embedded NanoClaw.
+  Spawned by NanoClaw-PAW clark-handler on message, dies after 30min idle.
+- Vault access: Distilled/ only (read-only, air-gapped, clark-net network).
+  Multi-entity mounts for ai-architect profile (all entities).
+  Co-founder profile gets single entity Distilled/ only.
+- No Chronicle, no ai-gateway, no AIOO network access.
+- Credential proxy via clark-net → host:3001.
 - Identity: `containers/clark/CLAUDE.md`
+- Settings: `containers/clark/settings.json` (no MCP servers, read-only permissions)
 - Spec: `memory-vault/ai-workspace/Specifications/clark.md`
+- Tests: 14 Clark handler + 215 upstream = 229/229 pass.
 
 ### NanoClaw-PAW (host process)
 - ✅ Built (Layer 4 complete). Git subtree from upstream NanoClaw at
@@ -102,12 +109,33 @@ Per-entity namespaces: `ipc/aioo-{entity}/{to-paw,from-paw}/`.
 Atomic writes (.tmp → .json), 1s polling, processed/ audit trail.
 Spec: `memory-vault/ai-workspace/Specifications/ipc-protocol.md`
 
+## App Workspaces
+
+Agent-produced code lives outside the vault in `app-workspaces/`:
+
+```
+app-workspaces/
+├── procenteo/
+│   ├── procenteo-app-demo/       ← PoC code
+│   ├── procenteo-app-testing/    ← MVP code
+│   ├── procenteo-app-launch/     ← Product code
+│   └── procenteo-app-scaling/    ← Distribution code
+└── inisio/
+    ├── inisio-app-demo/
+    └── ...
+```
+
+Mounted as `/workspace` (r/w) in stage containers. Vault mounted as `/vault` (r/o).
+Separation principle: vault = knowledge (.md only), workspace = code (any file type).
+Each workspace has a clear path to its own git repo when the app matures.
+Gitignored in the workspace repo — tracked in app-specific repos.
+
 ## Docker Compose Topology
 
 Per-entity networks (procenteo-net, inisio-net). Profile-based activation.
 No profile = Chronicle only. `--profile {entity}` adds AIOO + ai-gateway.
 `--profile {app}-app-{stage}` adds individual stage containers.
-Clark is NOT in compose — spawned by NanoClaw-PAW with `--network none`.
+Clark is NOT in compose — spawned by NanoClaw-PAW with `--network clark-net`.
 Security: no docker.sock, no host ports, entity network isolation, vault r/o for Chronicle.
 Health checks on all services.
 
@@ -124,6 +152,16 @@ Health checks on all services.
   Config: `config/ai-gateway-{entity}/config.yaml`. Per-entity API keys.
   Cost tracking per entity (ephemeral — persistent DB planned).
   Spec: `memory-vault/ai-workspace/Specifications/ai-gateway.md`
+- **Host Watchdog**: ✅ Built. Pure-bash cron script (`setup/watchdog/watchdog.sh`).
+  Monitors AIOO containers + NanoClaw-PAW every 60s via cron.
+  3 consecutive failures (3 min) triggers notification.
+  Primary: IPC typed envelope to `ipc/watchdog/to-paw/` (PAW routes to messaging).
+  Fallback: direct Telegram API via `~/.watchdog/emergency-api-key`.
+  15-min per-component cooldown. State in `/tmp/watchdog-state.json`.
+  Clark excluded (ephemeral, PAW-managed). Never attempts recovery.
+  PAW detection via PID file (`/tmp/nanoclaw-paw.pid`, written by `run.sh`).
+  Spec: `memory-vault/ai-workspace/Specifications/host-watchdog.md`
+  Tests: 15/15 pass.
 - **Context Extractor**: ⏸ Deferred. Future vault intelligence layer.
   Design after AIOO is built.
 
@@ -137,9 +175,9 @@ Layer 1: Docker Compose + Chronicle + ai-gateway  ✅ Built
 Layer 2: AIOO Daemon Skeleton                  ✅ Built
 Layer 3: AIOO Brain + HITL + Stage + Cost      ✅ Built
 Layer 4: NanoClaw-PAW                          ✅ Built
-Layer 5: Clark                                 ⬜ Next
-Layer 6: Stage Lifecycle + App Dev Stages      ⬜
-Layer 7: Host Watchdog                         ⬜
+Layer 5: Clark                                 ✅ Built
+Layer 6: Stage Lifecycle + App Dev Stages      ✅ Built
+Layer 7: Host Watchdog                         ✅ Built
 ```
 
 **Critical dependency**: Clark has NO independent lifecycle. NanoClaw-PAW spawns

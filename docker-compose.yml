@@ -14,6 +14,14 @@
 # Clark is NOT in compose — spawned by NanoClaw-PAW via:
 #   docker run --rm --network none ...
 
+# ── Shared config anchors ────────────────────────────────────────
+x-stage-healthcheck: &stage-healthcheck
+  test: ["CMD", "test", "-f", "/tmp/alive"]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+
 services:
 
   # ── Chronicle (always-on) ──────────────────────────────────────────
@@ -146,79 +154,178 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # ── Procenteo App Dev Stage Containers ────────────────────────────
-  # Placeholder images — replaced when stage containers are built.
+  # ── App Dev Stage Containers ──────────────────────────────────────
+  # Agent workspace containers. NanoClaw-PAW docker-execs Claude CLI
+  # agents into these. Vault = read context, workspace = write code.
+
+  # ── Procenteo stages ─────────────────────────────────────────────
   procenteo-app-demo:
     profiles: [procenteo-app-demo]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: demo
     container_name: procenteo-app-demo
     networks:
       - procenteo-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/procenteo:/vault:ro
+      - ./app-workspaces/procenteo/procenteo-app-demo:/workspace
+    environment:
+      - ENTITY=procenteo
+      - APP=procenteo
+      - STAGE=demo
+      - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
   procenteo-app-testing:
     profiles: [procenteo-app-testing]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: testing
     container_name: procenteo-app-testing
     networks:
       - procenteo-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/procenteo:/vault:ro
+      - ./app-workspaces/procenteo/procenteo-app-testing:/workspace
+    environment:
+      - ENTITY=procenteo
+      - APP=procenteo
+      - STAGE=testing
+      - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
   procenteo-app-launch:
     profiles: [procenteo-app-launch]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: launch
     container_name: procenteo-app-launch
     networks:
       - procenteo-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/procenteo:/vault:ro
+      - ./app-workspaces/procenteo/procenteo-app-launch:/workspace
+    environment:
+      - ENTITY=procenteo
+      - APP=procenteo
+      - STAGE=launch
+      - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
   procenteo-app-scaling:
     profiles: [procenteo-app-scaling]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: scaling
     container_name: procenteo-app-scaling
     networks:
       - procenteo-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/procenteo:/vault:ro
+      - ./app-workspaces/procenteo/procenteo-app-scaling:/workspace
+    environment:
+      - ENTITY=procenteo
+      - APP=procenteo
+      - STAGE=scaling
+      - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
-  # ── Inisio App Dev Stage Containers ───────────────────────────────
+  # ── Inisio stages ───────────────────────────────────────────────
   inisio-app-demo:
     profiles: [inisio-app-demo]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: demo
     container_name: inisio-app-demo
     networks:
       - inisio-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/inisio:/vault:ro
+      - ./app-workspaces/inisio/inisio-app-demo:/workspace
+    environment:
+      - ENTITY=inisio
+      - APP=inisio
+      - STAGE=demo
+      - AI_GATEWAY_URL=http://ai-gateway-inisio:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
   inisio-app-testing:
     profiles: [inisio-app-testing]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: testing
     container_name: inisio-app-testing
     networks:
       - inisio-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/inisio:/vault:ro
+      - ./app-workspaces/inisio/inisio-app-testing:/workspace
+    environment:
+      - ENTITY=inisio
+      - APP=inisio
+      - STAGE=testing
+      - AI_GATEWAY_URL=http://ai-gateway-inisio:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
   inisio-app-launch:
     profiles: [inisio-app-launch]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: launch
     container_name: inisio-app-launch
     networks:
       - inisio-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/inisio:/vault:ro
+      - ./app-workspaces/inisio/inisio-app-launch:/workspace
+    environment:
+      - ENTITY=inisio
+      - APP=inisio
+      - STAGE=launch
+      - AI_GATEWAY_URL=http://ai-gateway-inisio:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
   inisio-app-scaling:
     profiles: [inisio-app-scaling]
-    image: alpine:latest
+    build:
+      context: ./containers/app-dev-stage
+      args:
+        STAGE: scaling
     container_name: inisio-app-scaling
     networks:
       - inisio-net
-    command: ["sleep", "infinity"]
+    volumes:
+      - ./memory-vault/inisio:/vault:ro
+      - ./app-workspaces/inisio/inisio-app-scaling:/workspace
+    environment:
+      - ENTITY=inisio
+      - APP=inisio
+      - STAGE=scaling
+      - AI_GATEWAY_URL=http://ai-gateway-inisio:4000
+      - CHRONICLE_URL=http://chronicle:8181
+    healthcheck: *stage-healthcheck
     restart: unless-stopped
 
 networks:

@@ -75,6 +75,10 @@ function buildPollDirs(
   if (fs.existsSync(watchdogDir)) {
     dirs.push({ dir: watchdogDir, label: 'watchdog/pings' });
   }
+  const watchdogToPaw = path.join(workspaceRoot, 'ipc', 'watchdog', 'to-paw');
+  if (fs.existsSync(watchdogToPaw)) {
+    dirs.push({ dir: watchdogToPaw, label: 'watchdog/to-paw' });
+  }
   return dirs;
 }
 
