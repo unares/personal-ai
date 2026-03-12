@@ -16,14 +16,14 @@ AIOO runs as a Node.js daemon (src/index.js) with 8 modules:
 
 | Module | Status | Role |
 |--------|--------|------|
-| Event Loop | Active | Polls IPC, dispatches to handlers |
+| Event Loop | Active | Async IPC polling, dispatches to handlers |
 | IPC Handler | Active | Typed Envelope protocol via lib/ipc |
 | Task Graph Manager | Active | Task CRUD + state machine (vault/Tasks/) |
 | Health Monitor | Active | Heartbeat (/tmp/alive), self-checks |
-| Brain Client | Stub | Gemini 3.1 Pro via ai-gateway (Layer 3) |
-| HITL Manager | Stub | Three-tier human-in-the-loop (Layer 3) |
-| Stage Controller | Stub | Stage transition signals (Layer 3) |
-| Cost Tracker | Stub | Token cost tracking (Layer 3) |
+| Brain Client | Active | Gemini 3.1 Pro via ai-gateway (judge + classify) |
+| HITL Manager | Active | Three-tier HITL, 12 situation rules, escalation UP only |
+| Stage Controller | Active | Sequential stage validation, state persistence, vault logging |
+| Cost Tracker | Active | Per-stage + brain tokens, daily summaries, budget alerts |
 
 ## IPC Directories
 

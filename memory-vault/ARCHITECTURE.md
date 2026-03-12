@@ -19,15 +19,21 @@ Two companion AI roles: AIOO (operational brain) and Clark (clarity architect).
 NanoClaw-PAW is the host process that connects them to humans and infrastructure.
 
 ### AIOO (per app-factory entity)
-- ✅ Built (daemon skeleton). Node.js daemon with 8 modules: Event Loop, IPC Handler,
-  Task Graph Manager, Health Monitor (active) + Brain Client, HITL Manager,
-  Stage Controller, Cost Tracker (stubs — Layer 3).
-- Brain (Gemini 3.1 Pro via ai-gateway) not yet connected.
+- ✅ Built (Layer 3 complete). Node.js daemon with 8 modules, all active:
+  Event Loop (async), IPC Handler, Task Graph Manager, Health Monitor,
+  Brain Client (Gemini via ai-gateway), HITL Manager (3-tier rules + escalation),
+  Stage Controller (sequential validation + state persistence), Cost Tracker
+  (per-stage + amortized, daily summaries, budget alerts).
+- Brain: Gemini 3.1 Pro via ai-gateway. Model `gemini-planning` for judgment,
+  `gemini-classifier` for classification. Auth via `AI_GATEWAY_API_KEY` env var.
 - Spawns Agent SDK agents via NanoClaw-PAW into App Dev Stage containers.
-- Vault access: Full read-write for its entity. Tasks stored in `vault/Tasks/`.
-- Config: `config/aioo-{entity}.json` (poll interval, health interval).
+- Vault access: Full read-write for its entity. Tasks in `vault/Tasks/`,
+  cost data in `vault/Logs/costs/`, stage transitions in `vault/Logs/`.
+- Config: `config/aioo-{entity}.json` (poll/health intervals, brain model,
+  daily budget, HITL rules — 12 situation-to-tier mappings).
 - Identity: `containers/aioo/CLAUDE.md`
 - Spec: `memory-vault/ai-workspace/Specifications/aioo.md`
+- Tests: 56/56 pass (8 test files, local execution via `IPC_LIB_PATH` auto-detection).
 
 ### Clark (per human, lightweight)
 - Ephemeral container spawned by NanoClaw-PAW on message, dies after 30min idle

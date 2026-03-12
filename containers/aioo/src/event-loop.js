@@ -5,8 +5,8 @@ function createEventLoop(ctx, handlers) {
   let timer = null;
   let running = false;
 
-  function tick() {
-    if (running) return; // skip if previous tick still processing
+  async function tick() {
+    if (running) return;
     running = true;
     try {
       const messages = ctx.ipc.readIncoming();
@@ -14,7 +14,7 @@ function createEventLoop(ctx, handlers) {
         const handler = handlers[envelope.type];
         if (handler) {
           try {
-            handler(envelope);
+            await handler(envelope);
           } catch (err) {
             ctx.log.error('event-loop', `Handler error for ${envelope.type}`, err);
           }

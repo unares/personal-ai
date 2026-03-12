@@ -110,6 +110,7 @@ services:
     environment:
       - ENTITY=procenteo
       - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
+      - AI_GATEWAY_API_KEY=${PROCENTEO_LITELLM_MASTER_KEY}
       - CHRONICLE_URL=http://chronicle:8181
     healthcheck:
       test: ["CMD", "test", "-f", "/tmp/alive"]
@@ -135,6 +136,7 @@ services:
     environment:
       - ENTITY=inisio
       - AI_GATEWAY_URL=http://ai-gateway-inisio:4000
+      - AI_GATEWAY_API_KEY=${INISIO_LITELLM_MASTER_KEY}
       - CHRONICLE_URL=http://chronicle:8181
     healthcheck:
       test: ["CMD", "test", "-f", "/tmp/alive"]

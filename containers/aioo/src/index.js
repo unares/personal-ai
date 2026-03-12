@@ -42,7 +42,6 @@ const ipcInDir = '/ipc/from-paw';
 const ipcOutDir = '/ipc/to-paw';
 const vaultDir = '/vault';
 
-// Ensure directories
 ensureDir(path.join(ipcInDir, 'processed'));
 ensureDir(path.join(ipcOutDir, 'processed'));
 ensureDir(path.join(vaultDir, 'Tasks'));
@@ -52,30 +51,28 @@ log.info('daemon', `AI Gateway: ${process.env.AI_GATEWAY_URL || 'not set'}`);
 log.info('daemon', `Chronicle: ${process.env.CHRONICLE_URL || 'not set'}`);
 
 // ── Init Modules ─────────────────────────────────────────────────────
+// All modules attach to ctx for lazy cross-module references.
+// Module init runs before event loop starts, so lazy refs are safe.
 
 const ctx = { entity, config, ipcInDir, ipcOutDir, vaultDir, log };
 
-// IPC first (other modules use ctx.ipc.send)
-const ipc = ipcHandler.init(ctx);
-ctx.ipc = ipc;
-
-const health = healthMonitor.init(ctx);
-const tasks = taskGraph.init(ctx);
-const brain = brainClient.init(ctx);
-const hitl = hitlManager.init(ctx);
-const stage = stageController.init(ctx);
-const cost = costTracker.init(ctx);
+ctx.ipc = ipcHandler.init(ctx);
+ctx.health = healthMonitor.init(ctx);
+ctx.tasks = taskGraph.init(ctx);
+ctx.cost = costTracker.init(ctx);
+ctx.hitl = hitlManager.init(ctx);
+ctx.brain = brainClient.init(ctx);
+ctx.stage = stageController.init(ctx);
 
 // ── Message Handlers ─────────────────────────────────────────────────
 
 const handlers = {
   'agent-report': (env) => {
-    cost.handleAgentReport(env);
-    // Future: update task graph based on agent result
+    ctx.cost.handleAgentReport(env);
   },
-  'stage-ack': (env) => stage.handleStageAck(env),
-  'human-message': (env) => hitl.handleHumanMessage(env),
-  'health-ping': (env) => health.handlePing(env)
+  'stage-ack': (env) => ctx.stage.handleStageAck(env),
+  'human-message': (env) => ctx.hitl.handleHumanMessage(env),
+  'health-ping': (env) => ctx.health.handlePing(env)
 };
 
 // ── Event Loop ───────────────────────────────────────────────────────
@@ -90,8 +87,8 @@ log.info('daemon', `AIOO daemon running for entity: ${entity}`);
 function shutdown(signal) {
   log.info('daemon', `Received ${signal}, shutting down...`);
   loop.stop();
-  health.stop();
-  tasks.flush();
+  ctx.health.stop();
+  ctx.tasks.flush();
   log.info('daemon', 'AIOO daemon stopped');
   process.exit(0);
 }
