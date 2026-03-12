@@ -22,6 +22,11 @@ Report pass/fail per criterion with specific evidence (file paths, line numbers)
 10. **Verify tests run locally** — check that the test runner executes without
     errors (look for hardcoded container paths, missing env vars, broken requires).
     If tests can't run locally, flag it as a FAIL even if code looks correct.
+11. **Stub audit** — scan implementation for `logger.*pending`, `TODO`, `// stub`,
+    `// deferred`, or empty handler bodies. For each one, report as PARTIAL with:
+    - What condition makes this implementable (e.g. "requires Telegram channel config")
+    - Whether it was logged as a build decision in `Logs/`
+    If it wasn't logged, flag as NEEDS WORK — stubs must be traceable.
 
 ## Output Format
 

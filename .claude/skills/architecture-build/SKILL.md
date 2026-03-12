@@ -72,6 +72,13 @@ Build discipline:
 - One component at a time. Complete it before starting the next.
 - If a design issue surfaces during build, flag it — don't silently deviate.
   Major design issues may require handing back to `/architecture-design`.
+- **Module singleton pattern**: when building module-level caches or registries,
+  add a `_clearXxx()` / `force` flag test helper immediately. This prevents test
+  cross-contamination without changing production behaviour. Do this before writing tests.
+- **Stub decisions**: if a handler or module is deliberately stubbed (e.g. pending
+  external channel setup), log it as a build decision in `Logs/` with the explicit
+  condition for full implementation. A code comment is not enough — it must be
+  traceable so the next build session picks it up.
 
 ### 3. Validate (build-validator agent)
 

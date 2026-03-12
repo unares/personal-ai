@@ -37,7 +37,20 @@ Do NOT suggest implementation approaches — just report what must be true when 
 
 **Key Decisions** (from decisions.md — rationale the builder needs to know)
 
-7. Identify gaps and ambiguities. For each one:
+7. **Cross-spec path consistency**: when this component references paths, ports, or env
+   vars that appear in another component's spec or identity file (e.g. a handler that
+   mounts a path that the container's CLAUDE.md references), read both and verify they
+   match. Cross-spec mismatches are common and invisible without this check.
+   Flag any mismatch as a pre-build decision with both values shown.
+
+8. **Stub scope check**: if the Decomposition table (or handler module list) includes
+   items that require external setup before they can be fully implemented (e.g. channel
+   credentials, third-party services, infrastructure not yet built), classify each as:
+   - `full` — implementable in this build session
+   - `stub` — implement a placeholder, requires external condition to complete (name it)
+   - `deferred` — out of scope for this layer, tracked in build log
+
+9. Identify gaps and ambiguities. For each one:
    - Classify: **design gap** (needs architecture-design) vs **pre-build decision** (needs human agreement, builder can proceed after)
    - Propose a default resolution with rationale (don't just list the problem)
 
