@@ -14,3 +14,17 @@ Every profile settings.json must include:
 This prevents NanoClaw-PAW's own CLAUDE.md from loading when working on PAW files
 in the personal-ai workspace. NanoClaw is a git subtree at services/nanoclaw-paw/
 and has its own .claude/ context intended for NanoClaw operators, not workspace builders.
+
+## NanoClaw skills in /context — known limitation
+
+NanoClaw skills (add-telegram, setup, customize, etc.) appear in `/context` output
+because Claude Code auto-discovers `.claude/skills/` in all subdirectories (monorepo
+feature). There is no `skillsExcludes` setting to suppress this.
+
+**This is safe:** discovered skills ≠ available skills. Only skills listed in Claude's
+system-reminder (injected at session start) can be invoked via the Skill tool. NanoClaw
+skills are never in the system-reminder for workspace sessions — they are display noise
+only and cannot be called by Claude accidentally.
+
+**Human risk:** typing `/setup` or `/add-telegram` in the terminal will execute the
+NanoClaw skill since Claude Code resolves it from disk. Avoid this in workspace sessions.
