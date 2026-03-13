@@ -3,6 +3,10 @@ memory-vault/**
 
 # Track design artifacts and CLAUDE.md templates in git
 !memory-vault/ARCHITECTURE.md
+!memory-vault/MEMORY_VAULT.md
+!memory-vault/AGENT_WELCOME.md
+!memory-vault/CHRONICLE.md
+!memory-vault/MD_FILE_CONSTITUTION.md
 !memory-vault/ai-workspace/
 !memory-vault/ai-workspace/Specifications/
 !memory-vault/ai-workspace/Specifications/**
