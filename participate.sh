@@ -207,11 +207,11 @@ _activate_profile() {
 
 _activate_container_profile() {
   local role="${ROLE:-technical}"
-  local template="/vault/ai-workspace/Templates/Claude/${role}.md"
+  local template="/vault/ai-workspace/Claude/Templates/Profiles/${role}.md"
 
   if [ ! -f "$template" ]; then
     printf "  ${Y}Error:${R} Profile template not found: ${template}\n"
-    printf "  Expected at: /vault/ai-workspace/Templates/Claude/${role}.md\n\n"
+    printf "  Expected at: /vault/ai-workspace/Claude/Templates/Profiles/${role}.md\n\n"
     exit 1
   fi
 

@@ -82,7 +82,8 @@ memory-vault/{entity}/
 ├── Specifications/           ← 5-primitive component specs (agent-executable)
 ├── Research/                 ← research agent output
 ├── Narratives/               ← architectural narratives and context docs
-├── Templates/Claude/         ← CLAUDE.md stack for this entity
+├── Claude/                   ← Claude Code session context for this entity
+│   └── CLAUDE.md             ← project CLAUDE.md template (stage containers)
 ├── Raw/                      ← input (sessions, submissions)
 ├── Memories/                 ← Context Extractor formed memories
 ├── Distilled/                ← refined, classified knowledge

@@ -11,13 +11,13 @@
 ```
 ~/.claude/CLAUDE.md              ← profile-level (generic operating rules)
   source (host):    profiles/{technical|non-technical}/CLAUDE.md
-  source (container): /vault/ai-workspace/Templates/Claude/{role}.md
+  source (container): /vault/ai-workspace/Claude/Templates/Profiles/{role}.md
 
 personal-ai/CLAUDE.md            ← ai-workspace entity context
   @-imports: NORTHSTAR, GLOSSARY, ARCHITECTURE (memory-vault/ paths)
 
 app-workspaces/{entity}/{app}-app-{stage}/CLAUDE.md  ← stage container context
-  template: memory-vault/{entity}/Templates/Claude/CLAUDE.md
+  template: memory-vault/{entity}/Claude/CLAUDE.md
   @-imports: NORTHSTAR, GLOSSARY, ARCHITECTURE (/vault/ paths, container-relative)
 ```
 

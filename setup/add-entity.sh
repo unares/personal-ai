@@ -270,10 +270,9 @@ mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/AIOO"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/specification"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/shared-story"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Distilled/Archive"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Templates/Claude"
+mkdir -p "$VAULT_PATH/$PROJ_NAME/Claude"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Bin"
 mkdir -p "$VAULT_PATH/$PROJ_NAME/Logs"
-mkdir -p "$VAULT_PATH/$PROJ_NAME/Claude/Research"
 log_setup "ENTITY_CREATED" "$PROJ_NAME" 0 "$AIOO_NAME"
 printf "  ${G}✓${R} ${PROJ_NAME}/ vault created\n"
 
@@ -315,6 +314,46 @@ if [ ! -f "$VAULT_PATH/$PROJ_NAME/$ARCH_FILE" ]; then
     printf "# $(upper "$PROJ_NAME") — Architecture\n\n## System Context\n\nDeployment: Single VPS (Phase 1)\nEntity: ${PROJ_NAME}\n" > "$VAULT_PATH/$PROJ_NAME/$ARCH_FILE"
   fi
   printf "  ${G}✓${R} ${ARCH_FILE} seeded\n"
+fi
+
+# Seed Claude/CLAUDE.md for stage container sessions
+CLAUDE_TEMPLATE="$VAULT_PATH/ai-workspace/Claude/Templates/Entity/_NORTHSTAR.md"
+ENTITY_CLAUDE="$VAULT_PATH/$PROJ_NAME/Claude/CLAUDE.md"
+if [ ! -f "$ENTITY_CLAUDE" ]; then
+  cat > "$ENTITY_CLAUDE" << CLAUDEEOF
+# $(upper "$PROJ_NAME") — App Dev Stage Workspace
+
+A stage container workspace for building and iterating on the $(upper "$PROJ_NAME") app.
+
+## Entity Context
+
+Entity: $PROJ_NAME
+Vault: /vault/$PROJ_NAME/ (read-only)
+Workspace: /workspace (app code, read-write)
+Glossary: @/vault/$PROJ_NAME/$(upper "$PROJ_NAME")_GLOSSARY.md
+Vision: @/vault/$PROJ_NAME/$(upper "$PROJ_NAME")_NORTHSTAR.md
+Architecture: @/vault/ARCHITECTURE.md
+
+## Context
+
+This workspace contains $(upper "$PROJ_NAME") app code for the current App Dev Stage.
+Work happens here — in /workspace. Entity knowledge lives in /vault (read-only).
+Drop observations and notes to /vault/$PROJ_NAME/Raw/ for vault ingestion.
+
+## Where Files Live
+
+- \`/workspace/\` = app code (this directory), read-write
+- \`/vault/$PROJ_NAME/\` = entity knowledge, read-only
+- \`/vault/$PROJ_NAME/Raw/\` = drop zone for notes and submissions
+
+## Anti-Patterns
+
+- Don't write code outside /workspace
+- Don't modify vault files — use Raw/ for submissions only
+- Don't access other entities' vaults
+- Don't document features that don't exist yet
+CLAUDEEOF
+  printf "  ${G}✓${R} Claude/CLAUDE.md seeded\n"
 fi
 
 check_context "$PROJ_NAME"
