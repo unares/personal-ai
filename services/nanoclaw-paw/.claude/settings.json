@@ -1,1 +1,5 @@
-{}
+{
+  "claudeMdExcludes": [
+    "**/personal-ai/CLAUDE.md"
+  ]
+}
