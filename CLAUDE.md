@@ -4,9 +4,10 @@ A containerized multi-agent AI workspace where humans and companion AIs collabor
 
 ## Entity Context
 
-Default entity: ai-workspace
+Entity: ai-workspace
 Glossary: @memory-vault/ai-workspace/AI_WORKSPACE_GLOSSARY.md
 Vision: @memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
+Architecture: @memory-vault/ARCHITECTURE.md
 
 ## Stack
 
@@ -14,7 +15,7 @@ Vision: @memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
 - Claude Code CLI with profiles (technical, non-technical)
 - Memory vault per entity (`memory-vault/{entity}/`)
 - Context Extractor (watches Raw/ → Memories/ → Distilled/)
-- NanoClaw (container orchestrator inside agent containers)
+- NanoClaw (messaging gateway and ephemeral container router)
 
 ## Agent Roles
 
@@ -30,11 +31,8 @@ Project context: this file (mounted read-only at `/workspace/CLAUDE.md`).
 
 - `project/` = code + config (CLAUDE.md, .claude/, containers/, setup/, docker-compose.yml)
 - `memory-vault/` = all knowledge (NORTHSTARs, GLOSSARYs, Distilled/, Raw/, Logs/)
+- `app-workspaces/{entity}/{app}-app-{stage}/` = app code per entity and App Dev Stage
 - Knowledge .md docs live in vault. @-import them from this file.
-
-## Architecture Reference
-
-@memory-vault/ARCHITECTURE.md
 
 ## Anti-Patterns
 

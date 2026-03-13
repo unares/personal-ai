@@ -6,6 +6,26 @@
 - To switch profiles: exit and relaunch with ./participate.sh
 - Profiles cannot be switched mid-session (CLAUDE.md is loaded at start)
 
+## CLAUDE.md Stack
+
+```
+~/.claude/CLAUDE.md              ← profile-level (generic operating rules)
+  source (host):    profiles/{technical|non-technical}/CLAUDE.md
+  source (container): /vault/ai-workspace/Templates/Claude/{role}.md
+
+personal-ai/CLAUDE.md            ← ai-workspace entity context
+  @-imports: NORTHSTAR, GLOSSARY, ARCHITECTURE (memory-vault/ paths)
+
+app-workspaces/{entity}/{app}-app-{stage}/CLAUDE.md  ← stage container context
+  template: memory-vault/{entity}/Templates/Claude/CLAUDE.md
+  @-imports: NORTHSTAR, GLOSSARY, ARCHITECTURE (/vault/ paths, container-relative)
+```
+
+Launch restrictions:
+- technical:     allowed from personal-ai/ or app-workspaces/
+- non-technical: allowed from app-workspaces/ only (enforced in participate.sh)
+- container:     profile template read from /vault/ai-workspace/Templates/Claude/
+
 ## Required in every profile's settings.json
 Every profile settings.json must include:
 ```json

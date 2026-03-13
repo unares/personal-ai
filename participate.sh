@@ -179,6 +179,18 @@ _activate_profile() {
     " 2>/dev/null || cp "$dir/settings.json" "$HOME/.claude/settings.json"
   fi
 
+  # Non-technical: restrict to app-workspaces/ only (not allowed from workspace root)
+  if [ "$name" = "non-technical" ] && [ ! -f "/.dockerenv" ]; then
+    local cwd; cwd="$(pwd)"
+    case "$cwd" in
+      */app-workspaces/*) ;;
+      *)
+        printf "  ${Y}Restricted:${R} Non-technical profile can only be launched from an app-workspaces/ directory.\n\n"
+        exit 1
+        ;;
+    esac
+  fi
+
   # Inject profile CLAUDE.md as global identity
   if [ -f "$dir/CLAUDE.md" ]; then
     cp "$dir/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
@@ -193,7 +205,28 @@ _activate_profile() {
   printf "  ${G}✓${R} Profile: ${B}${label}${R}  (human: ${HUMAN_NAME}, entity: ${ENTITY})\n\n"
 }
 
-if [ -n "$PROFILE_FLAG" ]; then
+_activate_container_profile() {
+  local role="${ROLE:-technical}"
+  local template="/vault/ai-workspace/Templates/Claude/${role}.md"
+
+  if [ ! -f "$template" ]; then
+    printf "  ${Y}Error:${R} Profile template not found: ${template}\n"
+    printf "  Expected at: /vault/ai-workspace/Templates/Claude/${role}.md\n\n"
+    exit 1
+  fi
+
+  mkdir -p "$HOME/.claude"
+  cp "$template" "$HOME/.claude/CLAUDE.md"
+
+  SELECTED_PROFILE="$role"
+  export PROFILE_NAME="$role"
+  printf "  ${G}✓${R} Profile: ${B}${role}${R}  (human: ${HUMAN_NAME}, entity: ${ENTITY}, container mode)\n\n"
+}
+
+if [ -f "/.dockerenv" ]; then
+  # Container mode — read profile template from vault, skip profiles/ dir
+  _activate_container_profile
+elif [ -n "$PROFILE_FLAG" ]; then
   # Direct flag — skip interactive picker
   _activate_profile "$PROFILE_FLAG"
 elif [ -d "$PROFILES_DIR" ] && command -v node > /dev/null 2>&1; then

@@ -1,13 +1,29 @@
 # Runtime generated — never commit these
 memory-vault/**
 
-# Track ai-workspace design artifacts in git
+# Track design artifacts and CLAUDE.md templates in git
 !memory-vault/ARCHITECTURE.md
 !memory-vault/ai-workspace/
 !memory-vault/ai-workspace/Specifications/
 !memory-vault/ai-workspace/Specifications/**
 !memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
 !memory-vault/ai-workspace/AI_WORKSPACE_GLOSSARY.md
+!memory-vault/ai-workspace/Templates/
+!memory-vault/ai-workspace/Templates/Claude/
+!memory-vault/ai-workspace/Templates/Claude/technical.md
+!memory-vault/ai-workspace/Templates/Claude/non-technical.md
+!memory-vault/procenteo/
+!memory-vault/procenteo/Templates/
+!memory-vault/procenteo/Templates/Claude/
+!memory-vault/procenteo/Templates/Claude/CLAUDE.md
+!memory-vault/procenteo/PROCENTEO_NORTHSTAR.md
+!memory-vault/procenteo/PROCENTEO_GLOSSARY.md
+!memory-vault/inisio/
+!memory-vault/inisio/Templates/
+!memory-vault/inisio/Templates/Claude/
+!memory-vault/inisio/Templates/Claude/CLAUDE.md
+!memory-vault/inisio/INISIO_NORTHSTAR.md
+!memory-vault/inisio/INISIO_GLOSSARY.md
 instances/
 config.json
 /config/
