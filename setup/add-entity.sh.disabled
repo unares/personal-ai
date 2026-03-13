@@ -1,5 +1,8 @@
 #!/bin/bash
 # Personal AI — Add Entity
+# DISABLED: For future development once entities beyond procenteo and inisio
+# will be added. Lessons from activating those two will inform a better version.
+# To re-enable: rename to add-entity.sh
 # Usage: ./add-entity.sh
 set -euo pipefail
 

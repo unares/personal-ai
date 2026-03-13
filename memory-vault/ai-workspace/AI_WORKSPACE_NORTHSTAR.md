@@ -34,7 +34,7 @@ Why now: Claude Opus 4.6 changed everything. Software is solved. The progress ma
 
 ## Current Focus
 
-This week: Layer 4 build — NanoClaw-PAW (messaging gateway, credential proxy, persistent container routing). Layers 0–3 complete. Context Extractor deferred for now.
+This week: Entity activation — bring procenteo and inisio AIOOs online with Telegram messaging (Micro-HITL) via NanoClaw-PAW.
 
 This month (March 2026): launch procenteo and inisio MVPs for customer testing. Path: NanoClaw-PAW → Clark → Stage Lifecycle → app containers → Context Extractor → launch.
 
