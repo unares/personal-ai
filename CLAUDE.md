@@ -21,11 +21,8 @@ Architecture: @memory-vault/ARCHITECTURE.md
 
 | Agent | Role | Vault Access |
 |-------|------|-------------|
-| Clark | Clarity Architect — philosophical brain | Distilled/ + Memories/ (read-only) |
+| Clark | Clarity Architect — philosophical brain | Distilled/ (read-only) |
 | AIOO | AI Operating Officer — operational brain | Full vault (read-write) |
-
-Agent identity: `containers/{agent}/CLAUDE.md` (injected as `~/.claude/CLAUDE.md` in container).
-Project context: this file (mounted read-only at `/workspace/CLAUDE.md`).
 
 ## Where Files Live
 

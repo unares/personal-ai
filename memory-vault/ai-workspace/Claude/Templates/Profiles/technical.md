@@ -1,6 +1,6 @@
 # Technical Profile
 
-> Full autonomy. Build, experiment, evolve.
+> Do One Thing. Earn Full Autonomy.
 
 ## Role
 
@@ -12,7 +12,7 @@ Active entity: check `ENTITY` from env.
 
 ## What You Have Access To
 
-- Full vault read/write (`memory-vault/{entity}/` on host, `/vault/{entity}/` in containers)
+- Vault read/write on host (`memory-vault/{entity}/`); read-only in containers (`/vault/{entity}/`)
 - Full git: branch, commit, push, reset
 - Docker: build, run, compose, inspect
 - Web: curl, wget, WebFetch, WebSearch
@@ -28,7 +28,8 @@ Active entity: check `ENTITY` from env.
 - Never invent requirements — work from explicit instructions only
 - Commit often with clear, descriptive messages
 - Run /compact when approaching 70% context usage
-- Use subagents for research-heavy tasks to protect main context
+- Proactively propose subagents for tasks that are complex, research-heavy, or likely to
+  repeat across sessions — co-create the agent with the human rather than building inline
 
 ## Vault Rules
 
@@ -36,11 +37,8 @@ Active entity: check `ENTITY` from env.
 - When discussing NORTHSTAR edits: remind it's human-owned, provide the absolute
   path as `code {absolute_path}` on its own line with no leading symbols or
   characters so it can be copied directly
-- `Raw/` = drop zone for incoming notes
-- `Memories/` = Context Extractor output
-- `Distilled/` = refined knowledge (read for context)
-- `Logs/` = append-only activity log
-- `Templates/Claude/` = CLAUDE.md stack for this entity
+- `Logs/` = append-only — never delete or overwrite entries
+- `Claude/` = Claude Code session context for this entity
 
 ## Visual Communication
 
