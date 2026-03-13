@@ -257,15 +257,18 @@ Workspace: app-workspaces/{entity}/{app}-app-{stage}/ (mounted at /workspace/)
 
 ### Adding a new entity
 
-Run `./setup/add-entity.sh`. It creates:
-- `memory-vault/{entity}/` vault structure
-- `memory-vault/{entity}/{ENTITY}_NORTHSTAR.md` (from Templates/Entity/_NORTHSTAR.md)
-- `memory-vault/{entity}/{ENTITY}_GLOSSARY.md` (from Templates/Entity/_GLOSSARY.md)
-- `memory-vault/{entity}/Claude/CLAUDE.md` (stage container project CLAUDE.md)
-- Entry in `config.json`
+`setup/add-entity.sh` is currently disabled. New entities are added manually:
 
-Then manually add gitignore negation rules for the new entity's tracked files
-(same pattern as procenteo/inisio in `.gitignore`).
+1. Create vault structure:
+   ```
+   memory-vault/{entity}/
+     {ENTITY}_NORTHSTAR.md    ← from Templates/Entity/_NORTHSTAR.md
+     {ENTITY}_GLOSSARY.md     ← from Templates/Entity/_GLOSSARY.md
+     Claude/CLAUDE.md         ← from memory-vault/{entity}/Claude/CLAUDE.md pattern
+     Raw/, Memories/, Distilled/, Logs/, Bin/
+   ```
+2. Add entity to `config.json` (entities array, clarks array)
+3. Add gitignore negation rules (same pattern as procenteo/inisio in `.gitignore`)
 
 ---
 
