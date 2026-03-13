@@ -10,8 +10,9 @@
 
 ```
 ~/.claude/CLAUDE.md              ← profile-level (generic operating rules)
-  source (host):    profiles/{technical|non-technical}/CLAUDE.md
-  source (container): /vault/ai-workspace/Claude/Templates/Profiles/{role}.md
+  single source: memory-vault/ai-workspace/Claude/Templates/Profiles/{role}.md
+  host:          participate.sh copies from memory-vault/ directly
+  container:     participate.sh reads from /vault/ai-workspace/Claude/Templates/Profiles/
 
 personal-ai/CLAUDE.md            ← ai-workspace entity context
   @-imports: NORTHSTAR, GLOSSARY, ARCHITECTURE (memory-vault/ paths)

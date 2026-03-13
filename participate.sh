@@ -191,9 +191,10 @@ _activate_profile() {
     esac
   fi
 
-  # Inject profile CLAUDE.md as global identity
-  if [ -f "$dir/CLAUDE.md" ]; then
-    cp "$dir/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+  # Inject profile CLAUDE.md as global identity (single source: vault)
+  local vault_template="$SCRIPT_DIR/memory-vault/ai-workspace/Claude/Templates/Profiles/${name}.md"
+  if [ -f "$vault_template" ]; then
+    cp "$vault_template" "$HOME/.claude/CLAUDE.md"
   fi
 
   SELECTED_PROFILE="$name"

@@ -49,28 +49,23 @@ launch by `participate.sh`.
 
 | Profile | Who | Launch restriction | Source |
 |---------|-----|--------------------|--------|
-| technical | Michal | personal-ai/ or app-workspaces/ | profiles/technical/CLAUDE.md |
-| non-technical | Co-founders | app-workspaces/ only | profiles/non-technical/CLAUDE.md |
+| technical | Michal | personal-ai/ or app-workspaces/ | memory-vault/ai-workspace/Claude/Templates/Profiles/technical.md |
+| non-technical | Co-founders | app-workspaces/ only | memory-vault/ai-workspace/Claude/Templates/Profiles/non-technical.md |
 
 Currently identical in content — non-technical will diverge as the system matures.
 Restriction is enforced in `participate.sh`, not in the CLAUDE.md content.
 
-**Container mode**: profiles/ is not mounted in stage containers. `participate.sh`
-detects `/.dockerenv` and reads the profile from:
-`/vault/ai-workspace/Claude/Templates/Profiles/{ROLE}.md`
-
-### Profile Template Sources
+### Single source of truth
 
 ```
-profiles/technical/CLAUDE.md                                  ← host sessions
-profiles/non-technical/CLAUDE.md                              ← host sessions
 memory-vault/ai-workspace/Claude/Templates/Profiles/
-  technical.md                                                ← container sessions
-  non-technical.md                                            ← container sessions
+  technical.md      ← used by both host and container sessions
+  non-technical.md  ← used by both host and container sessions
 ```
 
-Keep these in sync manually — they should be identical content. The vault copies
-exist because `/profiles/` is not mounted in stage containers.
+`participate.sh` reads directly from `memory-vault/` on the host, and from
+`/vault/` in containers. No copies, no sync required. `profiles/{name}/CLAUDE.md`
+files no longer exist — only `settings.json` and `profile.json` remain in `profiles/`.
 
 ---
 
