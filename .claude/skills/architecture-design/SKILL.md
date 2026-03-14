@@ -11,12 +11,9 @@ Forward-looking lens: AI Era patterns first, legacy patterns only when justified
 ## On Load Protocol
 
 1. Detect context: workspace root, entity container, or app container
-2. Resolve ARCHITECTURE.md (most specific wins):
-   - Current working directory
-   - memory-vault/{ENTITY}/ (from ENTITY env var)
-   - memory-vault/ (workspace root)
-   - None found: tell the user, offer to create from template
-3. Read ARCHITECTURE.md. Check for System Context section.
+2. Read SYSTEM_ARCHITECTURE.md from `memory-vault/` — it contains the
+   Perspective Map (which architecture files exist and who reads them)
+3. Check Perspective Map for completeness against known components.
 4. Read .claude/skills/architecture-design/reference.md for pattern awareness
 5. Assess current architecture against the 4 scored dimensions
 6. Present to the user:
@@ -30,7 +27,7 @@ Forward-looking lens: AI Era patterns first, legacy patterns only when justified
 - Surface the AI Era alternative before defaulting to a legacy pattern
 - Offer 2-3 options with tradeoff table before recommending
 - **Persist decisions**: every architectural decision gets its own .md file
-  (`Specifications/{component}-decisions.md`) with options considered, tradeoffs,
+  (`Specifications/Planned/{component}-decisions.md`) with options considered, tradeoffs,
   rationale, and ASCII diagrams. Decisions are first-class artifacts, not chat history.
   After recording a decision, **propagate it**: list every spec, ARCHITECTURE.md section,
   and identity file that references the overridden item and confirm each is updated.
@@ -38,6 +35,9 @@ Forward-looking lens: AI Era patterns first, legacy patterns only when justified
 - Get explicit agreement before updating ARCHITECTURE.md
 - All tool/framework references stated as examples (e.g.), never as the only option
   Exception: Docker is a definite architectural choice
+- **Shortest-path recommendation**: when presenting multiple design decisions, always
+  close with a one-line summary of the recommended choice for each decision (e.g.,
+  "Shortest path: A, A, A, C") so the human can approve all at once if they agree
 - **Cross-spec consistency**: when two components reference the same path, port, or
   env var (e.g. a handler mounts a path that another component's spec defines),
   verify both specs agree before finalizing either. Cross-spec mismatches are common
@@ -113,15 +113,69 @@ Phase triggers (brief, for awareness):
 - Phase 2: DB contention, SPOF pain, or ops time > hosting savings
 - Phase 3: multi-team, GPU needs, or app containers moving to own VPS
 
-## ARCHITECTURE.md Ownership
+## Architecture File Ownership
 
-This skill owns ARCHITECTURE.md for the resolved context.
+This skill owns all architecture perspective files:
+- `SYSTEM_ARCHITECTURE.md` — full system view (Heavy-HITL, Unares)
+- `OPERATIONAL_ARCHITECTURE.md` — AIOO's operational world
+- `APP_DEV_ARCHITECTURE.md` — inside App Dev Stage containers
+- `HIGH_LEVEL_ARCHITECTURE.md` — strategic overview (Clark)
 
-- After design agreement: update ARCHITECTURE.md with the agreed decisions
-- Record what changed and why (brief decision log at the bottom)
-- If created from template: fill the System Context section with actual values
-- If the file has a System Context section: respect deployment constraints
-  and compatibility needs described there
+The Perspective Map in SYSTEM_ARCHITECTURE.md is the single source of truth
+for which file goes where.
+
+- After design agreement: update affected architecture files (consult
+  Perspective Map to determine which files a change impacts)
+- When a design change crosses perspective boundaries, update ALL affected
+  architecture files — not just the one for the current consumer
+- Record what changed and why in each updated file
+
+## Perspective Framing
+
+The **Agent's World Model** is the persistent structural context loaded every
+session — CLAUDE.md stack, architecture files, identity files. It defines WHO
+the agent is and WHAT exists around it. **Task context** (brain prompts, spawn
+instructions, IPC messages) is assembled per-invocation and defines WHAT TO DO.
+
+**Perspective Framing** is the practice of scoping the Agent's World Model to
+each consumer's operational perspective. Each consumer loads exactly one
+architecture file. The perspective follows the location (WHERE), not the
+user (WHO).
+
+| Perspective  | File                        | Consumers                               |
+|-------------|-----------------------------|-----------------------------------------|
+| System      | SYSTEM_ARCHITECTURE.md       | Heavy-HITL (project root), Unares       |
+| Operational | OPERATIONAL_ARCHITECTURE.md  | AIOO daemon, spawned agents in AIOO     |
+| Stage       | APP_DEV_ARCHITECTURE.md      | App Dev Stage containers, Heavy-HITL in stages |
+| Strategic   | HIGH_LEVEL_ARCHITECTURE.md   | Clark (all humans)                      |
+
+Global CLAUDE.md (`~/.claude/CLAUDE.md`) is perspective-agnostic — applies to
+all sessions regardless of perspective. Consider it when updating the Agent's
+World Model to ensure compatibility.
+
+### Context Budget Discipline
+
+When writing to any file in the Agent's World Model (architecture, identity, CLAUDE.md):
+- Check line count against target: architecture ~100-150, identity ~60, CLAUDE.md ~40
+- If file exceeds target, flag to the human with proposed simplifications
+- Never auto-slim — always propose changes for human approval
+- Removal is harder than addition: every line in the World Model is loaded
+  every session. Be rigorous about what earns its place.
+
+### Cross-Perspective Propagation
+
+When a design change affects infrastructure visible from multiple perspectives:
+1. Consult the Perspective Map in SYSTEM_ARCHITECTURE.md
+2. Identify all architecture files that reference the changed element
+3. Propose updates to each affected file
+4. Verify consistency across files before finalizing
+
+### Component Perspective Assignment
+
+Every spec for a container or agent must declare which perspective it operates
+under. This determines which architecture file its CLAUDE.md will @-import.
+Add to spec's Constraint Architecture → Must-Do:
+  "CLAUDE.md @-imports {PERSPECTIVE}_ARCHITECTURE.md (Perspective Map)"
 
 ## Specification Engineering
 
@@ -192,8 +246,25 @@ role (e.g. one human gets all entities, others get one), the spec must define ho
 the underlying data model handles the wider-access case. "String or array" is a
 schema decision — make it in the spec, not during build.
 
-Each component spec lives in `memory-vault/{entity}/Specifications/{component}.md`.
-Components with significant design decisions also get `{component}-decisions.md`.
+## Specifications Directory Structure
+
+```
+Specifications/
+├── jtbd-specification-engineering.md  ← methodology (root level)
+├── Built/     ← delivered specs — living docs, updated when design changes
+├── Planned/   ← specs for upcoming work — new specs go here
+└── Rejected/  ← rejected spec chunks — filenames match Built/ counterpart
+```
+
+- New specs go to `Specifications/Planned/{component}.md`
+- After successful build and validation, specs move from Planned/ → Built/
+- When design changes reject part of a built spec, the rejected chunk goes to
+  `Rejected/{component}-{description}.md` for learning reference
+- Built/ specs are living documents — update them when the design evolves
+- Components with significant design decisions also get `{component}-decisions.md`
+- Cross-spec consistency checks must scan BOTH Built/ and Planned/
+- **After writing any spec or decisions file**: always display `code {absolute_path}`
+  on its own line for each file written, so the human can open it in VSCode immediately
 
 The spec phase is methodical and sequential:
 - One component at a time
@@ -220,8 +291,8 @@ Before handing off, launch the **spec-reviewer** agent against all specs in the 
 Read agent prompt from: `.claude/skills/architecture-design/agents/spec-reviewer.md`
 
 ```
-Agent task: "Review all specs in memory-vault/{entity}/Specifications/ that are
-            in the agreed build order. Full set mode."
+Agent task: "Review all specs in memory-vault/{entity}/Specifications/Planned/ that are
+            in the agreed build order. Cross-reference against Built/ specs. Full set mode."
 Model: opus (high-effort review — always use Opus for spec-reviewer)
 ```
 
@@ -233,8 +304,8 @@ Interpret the verdict:
 ### Handoff
 
 Deliverables that must exist before handoff:
-- ARCHITECTURE.md (updated with agreed design)
-- Specifications/*.md (one per component, 5 primitives each)
+- Architecture files updated (consult Perspective Map for which files changed)
+- Specifications/Planned/*.md (one per component, 5 primitives each)
 - Decision files for components with significant choices
 - Agreed build order
 - Spec review: all specs READY
@@ -247,6 +318,6 @@ in a new session to start building. It will pick up from the specs and build ord
 - No code until architecture is agreed
 - No building without agreed build order (architecture-build enforces this)
 - No jargon without definition on first use
-- No proceeding if ARCHITECTURE.md location is ambiguous — confirm with user
-- No assumptions about which ARCHITECTURE.md to use
+- No proceeding if architecture file scope is ambiguous — consult Perspective Map
+- No writing to an architecture file without checking cross-perspective propagation
 - No tool/framework presented as the only option (except Docker)

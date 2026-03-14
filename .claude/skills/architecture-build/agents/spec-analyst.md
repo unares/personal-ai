@@ -9,9 +9,11 @@ Do NOT suggest implementation approaches — just report what must be true when 
 
 ## Process
 
-1. Read the primary spec file for the component
-2. Read any dependency specs referenced in it (check References section)
-3. Read the relevant decision file if one exists ({component}-decisions.md)
+1. Read the primary spec file for the component (in Specifications/Planned/)
+2. Read any dependency specs referenced in it (check References section — these
+   may be in Specifications/Built/ for already-delivered components)
+3. Read the relevant decision file if one exists ({component}-decisions.md,
+   in same directory as the spec: Planned/ or Built/)
 4. **Read the entry point** (e.g. `src/index.js`, `src/main.js`, or equivalent) to
    understand existing wiring patterns — cross-module refs, init order, ctx shape.
    This prevents flagging as "blockers" things that are already solved by existing patterns.

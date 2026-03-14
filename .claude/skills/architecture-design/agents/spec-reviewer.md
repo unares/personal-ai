@@ -52,6 +52,10 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
    subtasks should be marked `prior-layer (built)`. Unmarked: NEEDS WORK.
 6. Evaluation design: each test must have an expected result verifiable without asking the
    spec author. Vague expected result ("should work correctly"): NEEDS WORK.
+6a. Perspective assignment: if this component runs as a container or agent,
+    verify the spec declares which architecture file its CLAUDE.md should
+    @-import (in Must-Do or Data Residency). Check against the Perspective Map
+    in SYSTEM_ARCHITECTURE.md. Missing: NEEDS WORK.
 
 ### Phase 2: Container Spec Fields (skip if not a Docker container)
 
@@ -63,6 +67,9 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
      D3a: if spec says `--network none` AND component needs credential proxy or any
      outbound connection: BLOCKER (impossible constraint).
    - D4 User / home directory. Missing: NEEDS WORK.
+     D4a: if mount paths in Data Residency or mount schema use `~/.claude/` instead
+     of an absolute path, flag NEEDS WORK — `~` is ambiguous without an explicit
+     container user. Require: "Container user: `{user}` (home `{/home/user}/`)".
    - D5 Identity file inventory: what CLAUDE.md and settings.json must/must-not contain
      (not just "it has a CLAUDE.md" — actual required content). Missing: NEEDS WORK.
    - D6 Credential proxy pattern: ANTHROPIC_BASE_URL + placeholder key. Missing if
@@ -83,6 +90,15 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
      without specifying what directory it maps to) is an implicit design decision.
      Flag as: NEEDS WORK — "undefined reference: '{term}' used at line N without
      definition. Becomes a build-time decision if not resolved."
+11c. **IPC schema extension check**: if this spec uses an existing IPC message type
+     (e.g., `human-reply`, `human-message`) with payload fields that differ from
+     the built IPC protocol spec, the spec MUST include an "IPC Schema Extension"
+     section documenting the old and new payload shapes, and which component writes
+     each new field. Missing: NEEDS WORK — "IPC payload schema extended without
+     documentation: {type} has {old_fields} in built spec, {new_fields} here."
+11d. **ENV: prefix resolution**: if spec uses `ENV:` prefix in config values
+     (e.g., `"ENV:TELEGRAM_USER_MICHAL"` in routing.json), the resolution mechanism
+     must be defined in this spec or in a referenced built spec. Missing: NEEDS WORK.
 11b. **Data residency check**: if this component produces or consumes data and runs as
      a container, verify a Data Residency table exists. If missing: NEEDS WORK.
      If present, verify vault mounts are read-only and non-.md output has its own
@@ -99,6 +115,13 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
     - E5 IPC directory paths
     - E6 Port numbers
     - E7 Decision references: decisions.md exists, referenced decisions have Status: Decided
+    - E8 Propagation completeness for renames: if a spec renames a file, directory,
+      network name, or image name, grep the built specs (not the codebase — that's
+      a build job) for the old name. If the decisions.md propagation list omits
+      a built spec that references the old name: NEEDS WORK.
+    - E9 Intra-layer build order: if multiple planned specs are in the same layer,
+      verify at least one spec documents the build sequence between them.
+      Missing: NEEDS WORK.
     Runtime-blocking mismatch: BLOCKER. Cosmetic mismatch: NEEDS WORK.
 
 ### Phase 5: Decisions File Quality
@@ -169,4 +192,6 @@ VERDICT: BLOCKED
 ## Invocation Modes
 
 - **Single spec**: Phases 1-3 + 5. Phase 4 limited to specs in the References section.
-- **Full set**: All phases. Phase 4 covers the entire Specifications/ directory.
+- **Full set**: All phases. Phase 4 covers both Specifications/Planned/ and
+  Specifications/Built/ directories (cross-spec consistency requires checking
+  new specs against existing built components).

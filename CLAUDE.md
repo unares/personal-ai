@@ -7,7 +7,7 @@ A containerized multi-agent AI workspace where humans and companion AIs collabor
 Entity: ai-workspace
 Glossary: @memory-vault/ai-workspace/AI_WORKSPACE_GLOSSARY.md
 Vision: @memory-vault/ai-workspace/AI_WORKSPACE_NORTHSTAR.md
-Architecture: @memory-vault/ARCHITECTURE.md
+Architecture: @memory-vault/SYSTEM_ARCHITECTURE.md
 
 ## Stack
 
@@ -23,6 +23,7 @@ Architecture: @memory-vault/ARCHITECTURE.md
 |-------|------|-------------|
 | Clark | Clarity Architect — philosophical brain | Distilled/ (read-only) |
 | AIOO | AI Operating Officer — operational brain | Full vault (read-write) |
+| Unares | Workspace Observer — system admin | Full vault (read-only) |
 
 ## Where Files Live
 

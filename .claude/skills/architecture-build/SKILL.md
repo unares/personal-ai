@@ -13,13 +13,15 @@ Related skill: `/architecture-design` (produces the specs this skill builds from
 ## On Load Protocol
 
 1. Detect entity context (from ENTITY env var or working directory)
-2. Read ARCHITECTURE.md for structural overview
-3. Scan `memory-vault/{entity}/Specifications/` for available specs
-4. Read the **Build Order** section in ARCHITECTURE.md — this is the authoritative
+2. Read SYSTEM_ARCHITECTURE.md for structural overview and Perspective Map
+3. Scan `memory-vault/{entity}/Specifications/Planned/` for specs to build
+4. Scan `memory-vault/{entity}/Specifications/Built/` for existing component specs
+   (these are living reference docs for cross-spec consistency during build)
+5. Read the **Build Order** section in ARCHITECTURE.md — this is the authoritative
    build sequence. Follow it exactly. Do not derive or propose an alternative order.
    - If no Build Order section exists: derive one from spec dependencies and present
      for agreement before proceeding
-5. Assess current build state: what's been built, what's next
+6. Assess current build state: what's been built, what's next
 6. Present to the user:
    - Specs found (list with one-line descriptions)
    - Current build state (what exists, what's pending)
@@ -48,6 +50,18 @@ Model: opus (high-effort analysis — always use Opus 4.6 for spec-analyst)
 The agent returns a focused build brief: acceptance criteria, constraints,
 interfaces, evaluation tests. This protects the main context from full spec
 reading overhead.
+
+**Built component modification**: when the spec modifies a built component (renames
+a file, changes an IPC schema, adds mounts to docker-compose, updates a handler),
+the spec-analyst MUST read the actual source code — not just the built spec — before
+producing the build brief. The build brief must confirm:
+- The file exists at the path the spec expects
+- All importers of the old name (for renames — grep the codebase before touching)
+- Current state of the built code before the modification
+
+For rename operations specifically: instruct the spec-analyst to grep for the old
+name across the project before building. Incomplete renames are a common build failure.
+Document every file touched in the build log.
 
 **Multi-module layers**: When building multiple tightly-coupled modules together,
 instruct the spec-analyst to produce a Cross-Module Dependency Map first, then
@@ -89,6 +103,10 @@ Build discipline:
   external channel setup), log it as a build decision in `Logs/` with the explicit
   condition for full implementation. A code comment is not enough — it must be
   traceable so the next build session picks it up.
+- **Perspective framing**: when building a container's CLAUDE.md, verify the
+  @-import for architecture matches the Perspective Map in SYSTEM_ARCHITECTURE.md.
+  Each container @-imports exactly one architecture file. Consult the map —
+  don't guess which perspective applies.
 
 ### 3. Validate (build-validator agent)
 
@@ -180,3 +198,5 @@ When all components in the build order are built and validated:
 - No architectural decisions during build — hand back to architecture-design
 - No skipping components in the build order without explicit agreement
 - No updating Specifications/ files during build (those are design artifacts)
+- After build validation passes: move spec from Planned/ → Built/ (living doc)
+- If build reveals rejected design chunks: record in Rejected/ with matching filename
