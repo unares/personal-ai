@@ -34,9 +34,9 @@ Why now: Claude Opus 4.6 changed everything. Software is solved. The progress ma
 
 ## Current Focus
 
-This week: Entity activation — bring procenteo and inisio AIOOs online with Telegram messaging (Micro-HITL) via NanoClaw-PAW.
+This week: Entity activation — bring procenteo and inisio AIOOs online with Telegram messaging (Micro-HITL) via NanoClaw-PAW. Set up 6 Telegram bots (Unares admin, 3 Clarks, 2 entity group chats). Define SOUL.md (shared AI identity), per-entity AIOO identity scoping, and dual-mode credential architecture (subscription for human-led, API key for autonomous).
 
-This month (March 2026): launch procenteo and inisio MVPs for customer testing. Path: NanoClaw-PAW → Clark → Stage Lifecycle → app containers → Context Extractor → launch.
+This month (March 2026): Entity activation → first AIOO-human conversations on Telegram → procenteo and inisio MVPs. Path: Telegram channel → AIOO identity → SOUL.md → Unares admin bot → autonomous mode via task graph + JTBD specification → app container work begins.
 
 ## Team
 
@@ -61,3 +61,5 @@ Claude Code setup is solid: CLAUDE.md stack, profiles, skills (architecture-desi
 Remaining gaps: Light-HITL and Micro-HITL channels (not built yet).
 
 Hardware: MacBook Air 16GB — sufficient for now, VPS when ready.
+
+Dual credential mode: Claude CLI subscription for human-operated sessions (Heavy-HITL, participate.sh, teaching the system). Anthropic API key per entity for autonomous AIOO-orchestrated work (Agent SDK, task graph). First demos/MVPs are human-led to establish operating principles per App Dev Stage.

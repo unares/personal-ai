@@ -9,7 +9,9 @@
 | Personal AI Workspace | The full system name | "PAI", any abbreviation |
 | Meta-entity | ai-workspace — proxy of the system, used for evolving it | "default entity" |
 | App-factory entity | Entities that use the system to build apps (e.g. procenteo, inisio) | "app entity", "project" |
-| Companion AI | AI agents that work with humans | "bot", "assistant" |
+| Companion AI | AI agents that communicate with humans conversationally via messaging channels (Telegram, WhatsApp, Discord). Includes AIOO, Clark, Unares | "bot", "assistant", "chatbot" |
+| SOUL.md | Shared personality and philosophy anchor for all companion AIs at vault root | "personality file", "tone guide" |
+| Identity file | Companion-specific identity definition ({COMPANION}_IDENTITY.md) at vault root | "profile", "persona" |
 | Vault | The memory-vault directory per entity | "database", "store" |
 | Northstar | {ENTITY}_NORTHSTAR.md — human-owned vision | "roadmap", "plan" |
 | App Factory | The sequential 4-stage pipeline for building apps | "build pipeline" |
@@ -35,6 +37,7 @@
 |-------|-----------|------|-------|
 | Clark | Clarity Architect | Per-human philosophical brain, think partner | One per human (clark-michal, clark-mateusz, clark-andras) |
 | AIOO | AI Operating Officer | Per-entity operational brain, execution driver | One per app-factory entity (aioo-procenteo, aioo-inisio) |
+| Unares | Workspace Observer | System-wide visibility, NanoClaw management | One instance, ai-architect profile only (Michal) |
 
 ## App Naming Convention
 
