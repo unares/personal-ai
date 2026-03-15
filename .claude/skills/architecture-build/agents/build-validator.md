@@ -20,28 +20,13 @@ Report pass/fail per criterion with specific evidence (file paths, line numbers)
 9. **Run `git check-ignore -v {file}` on all new or modified config files** —
    flag any that are gitignored so the human knows what won't be committed
 10. **Verify tests run locally** — check that the test runner executes without
-    errors (look for hardcoded container paths, missing env vars, broken requires).
-    If tests can't run locally, flag it as a FAIL even if code looks correct.
-11. **Stub audit** — scan implementation for `logger.*pending`, `TODO`, `// stub`,
-    `// deferred`, or empty handler bodies. For each one, report as PARTIAL with:
-    - What condition makes this implementable (e.g. "requires Telegram channel config")
-    - Whether it was logged as a build decision in `Logs/`
-    If it wasn't logged, flag as NEEDS WORK — stubs must be traceable.
-12. **Cross-layer interface change detection** — check whether any function signatures,
-    exported types, or module APIs from a *prior* layer were modified during this build.
-    If yes, flag as WARN with: what changed, what layer originally built it, and whether
-    any other consumers exist. Cross-layer changes are silent architecture changes and
-    must be visible, not buried in a diff.
-13. **Cross-platform bash compatibility** — for any bash scripts in the implementation:
-    - Check `date` usage: macOS `-v-NM` relative syntax needs a Linux `-d` fallback
-    - Check `stat` usage: macOS `-f "%Lp"` needs a Linux `-c "%a"` fallback
-    - Verify fallback pattern uses `2>/dev/null ||` chaining (not if/else platform detection)
-    - Flag any platform-specific command without a fallback as FAIL
-14. **Runtime artifact gitignore** — for any new directories written at runtime
-    (log files, state files, PID files within the project root):
-    - Run `git check-ignore -v {path}` on the directory
-    - Flag any runtime artifact directory not gitignored as FAIL (not WARN)
-    - Standard: `/logs/`, `/tmp/` within project should be gitignored
+    errors. If tests can't run locally, flag as FAIL even if code looks correct.
+11. **Stub audit** — scan for `TODO`, `// stub`, `// deferred`, empty handlers.
+    Report as PARTIAL with condition for completion and whether logged in `Logs/`.
+12. **Interface Contract compliance** — verify implementation matches the spec's
+    Interface Contract: mounts, env vars, IPC schemas, runtime files, platform
+    fallbacks. Check `git check-ignore -v` on runtime artifact paths — ungitignored
+    runtime files in project root are FAIL. Flag cross-layer interface changes as WARN.
 
 ## Output Format
 
@@ -73,16 +58,15 @@ SIZE COMPLIANCE
 
 GITIGNORE CHECK
   [PASS/WARN] {file} — tracked / gitignored (pattern: {pattern})
-  Note any gitignored config files that contain important schema changes.
 
 LOCAL TEST RUNABILITY
   [PASS] tests run locally without errors
   [FAIL] {specific issue} — fix: {what needs to change}
 
-CROSS-LAYER CHANGES
-  [PASS]  no prior-layer interfaces modified
-  [WARN]  {function/type} in {file} (Layer N) — changed: {what changed}
-          consumers: {list other files that import it}
+INTERFACE CONTRACT COMPLIANCE
+  [PASS]  implementation matches spec's Interface Contract
+  [WARN]  cross-layer change: {function} in {file} — {what changed}
+  [FAIL]  runtime artifact not gitignored: {path}
 
 VERDICT: {READY | NEEDS WORK}
 {If NEEDS WORK: prioritized list of issues to fix}

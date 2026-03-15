@@ -85,28 +85,10 @@ Build discipline:
 - Functions < 30 lines. Files < 300 lines.
 - One component at a time. Complete it before starting the next.
 - If a design issue surfaces during build, flag it — don't silently deviate.
-  Major design issues may require handing back to `/architecture-design`.
-- **Module singleton pattern**: when building module-level caches or registries,
-  add a `_clearXxx()` / `force` flag test helper immediately. This prevents test
-  cross-contamination without changing production behaviour. Do this before writing tests.
-- **Bash script testability**: when building bash scripts, add the sourcing guard
-  and env var overrides **before writing any logic** — retrofitting is painful:
-  ```bash
-  VAR="${VAR:-default_value}"   # all config via env vars with defaults
-  # ... function definitions ...
-  if [ "${SCRIPT_SOURCED:-}" != "1" ]; then main "$@"; fi
-  ```
-  Tests source the script with `SCRIPT_SOURCED=1` and override vars via env.
-  Mock docker/curl/etc. as bash function overrides in the test file.
-  Use `${!#}` to get the last argument in a mock (handles flags before the target).
-- **Stub decisions**: if a handler or module is deliberately stubbed (e.g. pending
-  external channel setup), log it as a build decision in `Logs/` with the explicit
-  condition for full implementation. A code comment is not enough — it must be
-  traceable so the next build session picks it up.
-- **Perspective framing**: when building a container's CLAUDE.md, verify the
-  @-import for architecture matches the Perspective Map in SYSTEM_ARCHITECTURE.md.
-  Each container @-imports exactly one architecture file. Consult the map —
-  don't guess which perspective applies.
+- Module-level caches/registries: add `_clearXxx()` test helper immediately.
+- Bash scripts: sourcing guard + env var defaults before any logic.
+- Stubs: log in `Logs/` with condition for completion. Code comments are not enough.
+- Container CLAUDE.md: verify @-import matches Perspective Map in SYSTEM_ARCHITECTURE.md.
 
 ### 3. Validate (build-validator agent)
 

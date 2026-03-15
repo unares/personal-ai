@@ -29,6 +29,7 @@
 | Heavy-HITL | Substantial actions requiring human participation via Claude Code CLI, 10 min+ | — |
 | HRoT | Human Return on Time | — |
 | RoT | Return on Tokens — LLM cost efficiency per entity | — |
+| Interface Contract | Per-spec table declaring everything a component reads, writes, and connects to (filesystem, network, protocol, platform). Design-time declaration replaces build-time discovery. | "mount schema", "data residency" (these are categories within the contract) |
 | Context Extractor | Service that watches Raw/ → Distilled/ | "parser", "processor" |
 
 ## Agent Names

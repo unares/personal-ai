@@ -31,7 +31,7 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
 
 ## Severity Levels
 
-- **BLOCKER**: impossible constraints, missing ACs, missing mount schema for containers,
+- **BLOCKER**: impossible constraints, missing ACs, missing Interface Contract,
   cross-spec mismatches that cause runtime failures. BLOCKED specs do not get handed off.
 - **NEEDS WORK**: incomplete decisions.md, stale decomposition, missing evaluation paths,
   under-specified identity files. Fix before build starts.
@@ -54,55 +54,32 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
    spec author. Vague expected result ("should work correctly"): NEEDS WORK.
 6a. Perspective assignment: if this component runs as a container or agent,
     verify the spec declares which architecture file its CLAUDE.md should
-    @-import (in Must-Do or Data Residency). Check against the Perspective Map
+    @-import (in Must-Do or Interface Contract). Check against the Perspective Map
     in SYSTEM_ARCHITECTURE.md. Missing: NEEDS WORK.
 
-### Phase 2: Container Spec Fields (skip if not a Docker container)
+### Phase 2: Interface Contract (all components)
 
-7. Read ARCHITECTURE.md to determine if this component runs as a container.
-8. If container, check 6 mandatory fields:
-   - D1 Image strategy: name, base image, what's installed. Missing: NEEDS WORK.
-   - D2 Mount schema table: host path / container path / mode per mount. Missing: BLOCKER.
-   - D3 Network configuration. Missing: NEEDS WORK.
-     D3a: if spec says `--network none` AND component needs credential proxy or any
-     outbound connection: BLOCKER (impossible constraint).
-   - D4 User / home directory. Missing: NEEDS WORK.
-     D4a: if mount paths in Data Residency or mount schema use `~/.claude/` instead
-     of an absolute path, flag NEEDS WORK — `~` is ambiguous without an explicit
-     container user. Require: "Container user: `{user}` (home `{/home/user}/`)".
-   - D5 Identity file inventory: what CLAUDE.md and settings.json must/must-not contain
-     (not just "it has a CLAUDE.md" — actual required content). Missing: NEEDS WORK.
-   - D6 Credential proxy pattern: ANTHROPIC_BASE_URL + placeholder key. Missing if
-     component calls an LLM: NEEDS WORK.
+7. Check the spec's Interface Contract table:
+   - Present and covers all categories (filesystem, network, protocol, platform): PASS.
+   - Missing entirely: BLOCKER.
+   - Missing categories for interfaces the spec clearly uses: NEEDS WORK.
+8. For containers specifically, verify the contract covers: image, mounts, network,
+   user/home, identity files, credential proxy. Impossible constraints (e.g.
+   `--network none` + credential proxy): BLOCKER.
+   Vault mounted as r/w for a component that produces code: BLOCKER.
 
 ### Phase 3: Internal Consistency
 
-9. Cross-section scan: flag where one section contradicts another within the same spec.
-   Contradiction: BLOCKER.
-10. Decomposition vs. build state: read ARCHITECTURE.md. If decomposition lists subtasks
-    for components already built in prior layers without marking them: NEEDS WORK.
-11. Evaluation vs. spec: check that evaluation tests reference paths, schemas, and commands
-    consistent with the spec's own constraints. Stale test references: NEEDS WORK.
-11a. **Undefined reference scan**: extract all named concepts, paths, and terms used in
-     the spec. For each one, verify it is either: (a) defined in this spec, (b) defined
-     in a referenced spec, (c) in the entity GLOSSARY, or (d) a standard term.
-     A term that appears once, undefined, with no path or schema (e.g. "app workspace"
-     without specifying what directory it maps to) is an implicit design decision.
-     Flag as: NEEDS WORK — "undefined reference: '{term}' used at line N without
-     definition. Becomes a build-time decision if not resolved."
-11c. **IPC schema extension check**: if this spec uses an existing IPC message type
-     (e.g., `human-reply`, `human-message`) with payload fields that differ from
-     the built IPC protocol spec, the spec MUST include an "IPC Schema Extension"
-     section documenting the old and new payload shapes, and which component writes
-     each new field. Missing: NEEDS WORK — "IPC payload schema extended without
-     documentation: {type} has {old_fields} in built spec, {new_fields} here."
-11d. **ENV: prefix resolution**: if spec uses `ENV:` prefix in config values
-     (e.g., `"ENV:TELEGRAM_USER_MICHAL"` in routing.json), the resolution mechanism
-     must be defined in this spec or in a referenced built spec. Missing: NEEDS WORK.
-11b. **Data residency check**: if this component produces or consumes data and runs as
-     a container, verify a Data Residency table exists. If missing: NEEDS WORK.
-     If present, verify vault mounts are read-only and non-.md output has its own
-     mount path. Vault mounted as r/w for a component that produces code: BLOCKER.
+9. Cross-section scan: flag where one section contradicts another. BLOCKER.
+10. Decomposition vs. build state: subtasks for prior-layer components must be marked
+    `prior-layer (built)`. Unmarked: NEEDS WORK.
+    Subtasks with `Change: rename` must state blast radius (file count). Missing: NEEDS WORK.
+11. Evaluation vs. spec: tests must reference paths and schemas consistent with the
+    Interface Contract. Stale test references: NEEDS WORK.
+12. Interface Contract consistency: verify every interface in the contract (IPC schemas,
+    env vars, mount paths, config schemas) is defined in this spec or a referenced spec.
+    Undeclared interfaces that the spec clearly uses: NEEDS WORK.
+    IPC payload extensions must document old vs new fields: NEEDS WORK if missing.
 
 ### Phase 4: Cross-Spec Consistency (full set mode — run once across all specs)
 
@@ -127,41 +104,34 @@ the spec. Report what is missing, contradictory, or stale — the designer fixes
 ### Phase 5: Decisions File Quality
 
 13. If {component}-decisions.md exists, verify each decision has:
-    - Question framing (the choice that was made)
-    - 2+ options with tradeoff comparison
-    - Propagation list ("What This Changes" — every file/section that references the decision)
-    - Status: Decided
-    Missing propagation list: NEEDS WORK. Undecided status on a spec-referenced decision: BLOCKER.
-14. If no decisions.md: check whether the spec contains design choices that warrant one
-    (any constraint change, "Options Considered" language, cross-component impact).
-    If yes: NEEDS WORK — "decisions file missing, N decisions should be captured".
+    - Question framing, 2+ options, propagation list, Status: Decided.
+    Missing propagation list: NEEDS WORK. Undecided status: BLOCKER.
+14. If no decisions.md but spec contains design choices (constraint changes,
+    cross-component impact): NEEDS WORK.
 
 ## Output Format
 
 ```
 SPEC: {path}
 COMPONENT: {name}
-TYPE: {container | library | service | config}
 
 PRIMITIVES
   [PASS]        1. Problem Statement
   [BLOCKER]     2. Acceptance Criteria — 2 sentences found, need exactly 3
   [PASS]        3. Constraint Architecture
-  [NEEDS WORK]  4. Decomposition — missing Scope column
+  [NEEDS WORK]  4. Decomposition — missing Change column
   [PASS]        5. Evaluation Design
 
-CONTAINER FIELDS
-  [PASS]        D1 Image strategy
-  [BLOCKER]     D2 Mount schema — no mount table found
-  [NEEDS WORK]  D5 Identity files — CLAUDE.md contents unspecified
+INTERFACE CONTRACT
+  [PASS]        Contract present, all categories covered
+  [BLOCKER]     Missing contract / vault mounted rw for code output
 
 INTERNAL CONSISTENCY
-  [PASS]        No cross-section contradictions
-  [NEEDS WORK]  Decomposition stale — steps 1-3 built in Layer 4, not annotated
+  [PASS]        No contradictions
+  [NEEDS WORK]  Rename subtask missing blast radius
 
 CROSS-SPEC CONSISTENCY
-  [BLOCKER]     E2 Mount path mismatch — handler mounts /vault/Distilled,
-                spec references /vault/{entity}/Distilled (nanoclaw-paw.md:L68 vs clark.md:L13)
+  [BLOCKER]     Mount path mismatch — handler vs container spec
   [PASS]        E1, E3–E7
 
 DECISIONS
@@ -169,7 +139,7 @@ DECISIONS
 
 VERDICT: BLOCKED
   1. [BLOCKER] Acceptance Criteria: only 2 sentences
-  2. [BLOCKER] Mount schema missing (D2)
+  2. [BLOCKER] Interface Contract missing
   3. [BLOCKER] Mount path cross-spec mismatch (E2)
   Fix BLOCKERs and re-run before handoff.
 ```

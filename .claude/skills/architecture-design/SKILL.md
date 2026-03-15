@@ -188,63 +188,30 @@ After architecture is agreed, each component gets spec-engineered using the
    Fork-based components: use **upstream touchpoint count** as the fork health preference
    (target: ≤ 5 upstream files modified). Avoid `<N lines diff` — it's unverifiable at design time.
 4. Decomposition (independently executable subtasks, <2h each)
-   Include a `Scope` column for each subtask: `full | stub (name the required condition) | deferred`
-   **Cross-layer awareness**: if prior layers built components this layer depends on,
-   mark those steps as `prior-layer (built)` so the builder knows what already exists
-   and what is genuinely new work. Stale decompositions cause artifact confusion.
+   Include a `Scope` column: `full | stub (condition) | deferred`
+   Include a `Change` column: `create | modify | rename`. For `modify` and `rename`,
+   state what exists today. For renames, state the blast radius (file count).
+   Mark prior-layer dependencies as `prior-layer (built)`.
 5. Evaluation design (measurable tests with known-good outputs)
 
-**Container mount schema** (required for any component that runs as a Docker container):
-Specify mounts explicitly — not just "Distilled/ read-only" but the full triple:
-```
-host path            container path          mode
-memory-vault/{e}/Distilled  /vault/{e}/Distilled  ro
-```
-If access varies by role/human, show the full matrix. Underspecified mounts become
-build-time decisions that should have been design decisions.
+**Interface Contract** (required for every spec):
 
-**Data residency** (required for any component that produces or consumes data):
-Every spec must include a Data Residency table that answers: where does input come
-from, where does output go, and what file types are allowed in each location?
-```
-| Data Type      | Host Path            | Container Path | Mode | File Types |
-|----------------|----------------------|----------------|------|------------|
-| Entity context | memory-vault/{e}     | /vault         | ro   | .md only   |
-| App code       | app-workspaces/{e}/  | /workspace     | rw   | any        |
-```
-Vault constraint: `memory-vault/` is `.md files only` — knowledge, not code.
-If a component produces non-.md output (code, binaries, configs), the spec must
-define a separate host directory for that output. Mounting vault as r/w for code
-output is a design error.
+A single table declaring everything the component reads, writes, and connects to.
+If it's not in the contract, the component doesn't touch it.
 
-The Data Residency table prevents the most common build-time gap: "the spec says
-what the component does but not where its output lives."
+| Category | What to declare |
+|----------|----------------|
+| Filesystem | Mounts (host:container:mode), runtime state/logs/PID files, config files |
+| Network | Docker networks, ports, env vars, credential proxy |
+| Protocol | IPC message types + payload fields, config schemas |
+| Platform | Target OS, commands needing dual-path fallbacks (date, stat) |
 
-**Runtime artifact locations** (required for any host-process or script component):
-Any component that writes state, logs, or PID files must specify these in the spec —
-not leave them for the builder to decide:
-- State files: where they live, what format, lost-on-reboot acceptable?
-- Log files: path within project (`logs/`), rotation policy if any
-- PID files: path (convention: `/tmp/{component}.pid`)
-- Gitignore implications: any file in the project root written at runtime
-  must be explicitly listed in the spec as "gitignored" or "tracked"
+Rules: vault mounts always `:ro`, `.md only`. Non-.md output (code, binaries)
+gets its own mount. Runtime files in project root must state gitignore status.
+If access varies by role, show the full matrix.
 
-Example spec language: "State stored at `/tmp/watchdog-state.json` (ephemeral, lost on reboot — intentional). Logs at `logs/watchdog.log` (gitignored). PID at `/tmp/nanoclaw-paw.pid` (gitignored)."
-
-Leaving these decisions to the builder creates PBDs that should have been design decisions.
-
-**Platform-specific commands** (required for any bash script spec):
-If the spec calls for a bash script, state the target platform(s) explicitly and
-flag any commands that differ between macOS and Linux:
-- `date` relative time: macOS `-v-NM` vs Linux `-d "N minutes ago"`
-- `stat` permissions: macOS `-f "%Lp"` vs Linux `-c "%a"`
-The spec should either restrict platform or require dual-path fallbacks. Leaving
-this unspecified produces PBDs and test failures during build.
-
-**Multi-value access patterns**: when a spec grants different access levels per
-role (e.g. one human gets all entities, others get one), the spec must define how
-the underlying data model handles the wider-access case. "String or array" is a
-schema decision — make it in the spec, not during build.
+The Interface Contract replaces build-time interface discovery with design-time
+interface declaration. Agents verify the contract — they don't rediscover it.
 
 ## Specifications Directory Structure
 
@@ -307,6 +274,9 @@ Deliverables that must exist before handoff:
 - Architecture files updated (consult Perspective Map for which files changed)
 - Specifications/Planned/*.md (one per component, 5 primitives each)
 - Decision files for components with significant choices
+- Accepted drafts persisted: any file drafted and accepted during design (identity
+  files, CLAUDE.md drafts, config templates) must be written to its target path.
+  A spec that references "content from design session" without persisting it is a gap.
 - Agreed build order
 - Spec review: all specs READY
 
