@@ -7,7 +7,8 @@
  * - 30min idle timeout → auto-removed
  * - Credential proxy via ephemeral-companion-net → host:3001
  */
-import { execSync } from 'child_process';
+import { exec, execSync } from 'child_process';
+import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 
@@ -22,6 +23,8 @@ import {
   registerInstance,
   removeInstance,
 } from './ephemeral-companion.js';
+
+const execAsync = promisify(exec);
 
 export function buildUnaresArgs(
   containerName: string,
@@ -89,13 +92,13 @@ export async function sendToUnares(
   const containerName = getOrSpawnUnares(workspaceRoot);
   try {
     const escaped = message.replace(/'/g, "'\\''");
-    const output = execSync(
-      `docker exec ${containerName} claude --dangerously-skip-permissions --message '${escaped}'`,
-      { encoding: 'utf-8', timeout: 120000 },
+    const { stdout } = await execAsync(
+      `docker exec ${containerName} claude --dangerously-skip-permissions --model claude-sonnet-4-6 --print '${escaped}'`,
+      { encoding: 'utf-8', timeout: 300000 },
     );
-    return output.trim();
+    return stdout.trim();
   } catch (err) {
     logger.error({ containerName, err }, 'Failed to exec Unares');
-    return 'Unares is unavailable';
+    return 'Unares is temporarily unavailable. Please try again.';
   }
 }

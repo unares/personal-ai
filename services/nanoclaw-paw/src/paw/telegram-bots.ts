@@ -88,6 +88,12 @@ function splitMessage(text: string): string[] {
 function setupDmHandler(
   bot: Bot, routeName: string, route: PawRoutingEntry, workspaceRoot: string,
 ): void {
+  // /start must be registered before message:text (Grammy processes in order)
+  bot.command('start', async (ctx) => {
+    const label = route.target === 'clark' ? 'Clark (Clarity Architect)' : 'Unares (Workspace Observer)';
+    await ctx.reply(`${label} ready. Send a message to begin.`);
+  });
+
   bot.on('message:text', async (ctx) => {
     const userId = ctx.from?.id;
     if (!userId || !isUserAllowed(userId, route)) {
@@ -110,11 +116,6 @@ function setupDmHandler(
     for (const chunk of splitMessage(response)) {
       await ctx.reply(chunk);
     }
-  });
-
-  bot.command('start', async (ctx) => {
-    const label = route.target === 'clark' ? 'Clark (Clarity Architect)' : 'Unares (Workspace Observer)';
-    await ctx.reply(`${label} ready. Send a message to begin.`);
   });
 }
 
