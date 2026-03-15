@@ -10,6 +10,10 @@ memory-vault/**
 !memory-vault/AGENT_WELCOME.md
 !memory-vault/CHRONICLE.md
 !memory-vault/MD_FILE_CONSTITUTION.md
+!memory-vault/SOUL.md
+!memory-vault/AIOO_IDENTITY.md
+!memory-vault/CLARK_IDENTITY.md
+!memory-vault/UNARES_IDENTITY.md
 !memory-vault/ai-workspace/
 !memory-vault/ai-workspace/Specifications/
 !memory-vault/ai-workspace/Specifications/**

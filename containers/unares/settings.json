@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/claude-code-settings.json",
+  "env": {
+    "ROLE": "unares",
+    "ROLE_LABEL": "Workspace Observer"
+  },
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Bash(ls*)",
+      "Bash(cat*)",
+      "Bash(find*)",
+      "Bash(grep*)",
+      "Bash(echo*)",
+      "Bash(pwd*)"
+    ],
+    "deny": [
+      "Edit(**)",
+      "Write(**)",
+      "Bash(rm*)",
+      "Bash(git*)",
+      "Bash(npm*)",
+      "Bash(node*)",
+      "Bash(sudo*)",
+      "Bash(curl*)",
+      "Bash(wget*)",
+      "Bash(docker*)"
+    ]
+  }
+}

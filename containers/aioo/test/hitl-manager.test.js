@@ -121,6 +121,19 @@ test('handleHumanMessage returns acknowledged', () => {
   cleanup(tmp);
 });
 
+test('request echoes chatId and channel from last human-message', () => {
+  const { ctx, sent, tmp } = makeTmpCtx();
+  const hitl = hitlManager.init(ctx);
+  hitl.handleHumanMessage({
+    from: 'nanoclaw-paw',
+    payload: { channel: 'telegram-aioo-procenteo', human: 'michal', text: 'Go', chatId: '12345678' }
+  });
+  hitl.request('micro', 'Acknowledged', null);
+  assert.strictEqual(sent[0].payload.channel, 'telegram-aioo-procenteo');
+  assert.strictEqual(sent[0].payload.chatId, '12345678');
+  cleanup(tmp);
+});
+
 // ── Runner ───────────────────────────────────────────────────────────
 
 async function run() {

@@ -42,7 +42,7 @@ Agent onboarding template. Hydrated by container launcher scripts via sed. Does 
 
 ## Interfaces
 - **Read by**: Every agent at session start (mounted as /AGENT_WELCOME.md)
-- **Written by**: Container launcher scripts (containers/aioo/aioo.sh, containers/clark/clark.sh) hydrate the template
+- **Written by**: Container launcher scripts (containers/aioo/aioo.sh, containers/ephemeral-companion/clark.sh) hydrate the template
 - **Depends on**: NORTHSTAR, Distilled/, container launcher scripts
 
 ## Document History

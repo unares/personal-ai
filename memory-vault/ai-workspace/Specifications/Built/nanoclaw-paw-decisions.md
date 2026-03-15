@@ -60,7 +60,7 @@ Anthropic-only for Phase 1.
 **Scope clarification:** Two credential isolation layers exist:
 - **ai-gateway (LiteLLM):** For containers on entity networks (AIOO, stage containers).
   Handles LLM routing, model aliasing, cost tracking. Keys: Gemini, Claude, per-entity.
-- **Credential proxy (NanoClaw pattern):** For Clark on clark-net (can't reach ai-gateway).
+- **Credential proxy (NanoClaw pattern):** For Clark on ephemeral-companion-net (can't reach ai-gateway).
   Simple HTTP header injection. Keys: Anthropic only.
 
 The credential proxy pattern IS extensible to other APIs and per-entity credentials,
@@ -71,12 +71,12 @@ credential isolation for everything on entity networks. No duplication needed.
 
 ## P4: Clark Network Model
 
-**Decision:** Option B — Infrastructure air-gap. Clark runs on `clark-net`.
+**Decision:** Option B — Infrastructure air-gap. Clark runs on `ephemeral-companion-net`.
 
 **Full decision documented in:** `clark-decisions.md` (decision D1).
 
 **Summary:** `--network none` was a spec bug — blocks credential proxy (Clark can't
-call Anthropic API). `clark-net` provides internet access for credential proxy while
+call Anthropic API). `ephemeral-companion-net` provides internet access for credential proxy while
 maintaining air-gap from entity networks (procenteo-net, inisio-net). PAW relays
 human messages via filesystem IPC. Clark is a self-contained thinking agent.
 

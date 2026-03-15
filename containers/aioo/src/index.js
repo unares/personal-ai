@@ -8,7 +8,7 @@ const { createEventLoop } = require('./event-loop');
 const ipcHandler = require('./ipc-handler');
 const taskGraph = require('./task-graph');
 const healthMonitor = require('./health-monitor');
-const brainClient = require('./brain-client');
+const brainClient = require('./aioo-brain-client');
 const hitlManager = require('./hitl-manager');
 const stageController = require('./stage-controller');
 const costTracker = require('./cost-tracker');
@@ -72,7 +72,11 @@ const handlers = {
   },
   'stage-ack': (env) => ctx.stage.handleStageAck(env),
   'human-message': (env) => ctx.hitl.handleHumanMessage(env),
-  'health-ping': (env) => ctx.health.handlePing(env)
+  'health-ping': (env) => ctx.health.handlePing(env),
+  'debug-prompt': (env) => {
+    const info = ctx.brain.getPromptInfo();
+    ctx.ipc.send('debug-prompt-response', env.from, info, env.id);
+  }
 };
 
 // ── Event Loop ───────────────────────────────────────────────────────

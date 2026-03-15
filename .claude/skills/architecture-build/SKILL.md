@@ -191,6 +191,39 @@ When all components in the build order are built and validated:
 4. **Silent Deviation**: changing an interface, skipping a constraint, or using a
    different approach without flagging it. Every deviation needs human agreement.
 
+## Rejected/ Feedback Loop
+
+During build, when the spec-analyst, builder, or build-validator finds spec issues
+(gaps, inconsistencies, wrong assumptions), record them in
+`Specifications/Rejected/{spec-name}.md` — same filename as the source spec.
+
+Purpose: post-build review to improve architecture-design and its agents.
+This creates a traceable improvement trail for spec-engineering.
+
+### When to write to Rejected/
+
+- Spec says "from design session" but the artifact doesn't exist
+- Spec contradicts built reality (paths, schemas, interfaces)
+- Spec makes unstated assumptions that caused a build problem
+- Missing acceptance criteria or evaluation tests discovered during build
+- Cross-spec inconsistencies caught during build but not during design
+
+### Entry format
+
+```markdown
+## {ISO timestamp} — {Category}: {one-line summary}
+
+**Issue:** {what's wrong}
+**Severity:** gap | inconsistency | assumption
+**Responsible agent:** architecture-design | spec-reviewer | verification-agent
+**Why this is an issue:** {impact on build}
+**What was done:** {fix/mitigation applied}
+**Should have caught:** {what check or prompt addition would have prevented this}
+```
+
+Append new entries to the same file as issues are discovered — don't wait until
+the end of the session. Context compression may lose details.
+
 ## Hard Stops
 
 - No code without reading the spec first (use spec-analyst agent)

@@ -19,6 +19,7 @@ const TIER_RANK = { micro: 1, light: 2, heavy: 3 };
 
 function init(ctx) {
   const rules = { ...DEFAULT_RULES, ...(ctx.config.hitlRules || {}) };
+  let lastContext = { channel: null, chatId: null };
 
   function selectTier(situation) {
     return rules[situation] || 'micro';
@@ -34,7 +35,9 @@ function init(ctx) {
     const payload = {
       text: `[${ctx.entity}] ${message}`,
       hitlTier: tier,
-      taskId: taskId || null
+      taskId: taskId || null,
+      channel: lastContext.channel,
+      chatId: lastContext.chatId
     };
 
     ctx.ipc.send('human-reply', 'nanoclaw-paw', payload);
@@ -49,7 +52,8 @@ function init(ctx) {
   }
 
   function handleHumanMessage(envelope) {
-    const { channel, human, text } = envelope.payload;
+    const { channel, human, text, chatId } = envelope.payload;
+    lastContext = { channel: channel || null, chatId: chatId || null };
     ctx.log.info('hitl', `From ${human || envelope.from}: "${text}"`);
     return { acknowledged: true, channel, text };
   }

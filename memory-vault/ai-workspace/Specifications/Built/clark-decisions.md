@@ -20,7 +20,7 @@ True --network none         Infrastructure air-gap      Full independence
 ────────────────────        ────────────────────        ────────────────────
 PAW does the thinking       Clark thinks (own API)      Clark thinks + messages
 Clark = vault reader only   PAW relays messages         PAW not involved
-No container LLM calls      clark-net (internet only)   clark-net (internet only)
+No container LLM calls      ephemeral-companion-net (internet only)   ephemeral-companion-net (internet only)
                             No Docker-internal routes   Own NanoClaw instance
 ```
 
@@ -38,7 +38,7 @@ No container LLM calls      clark-net (internet only)   clark-net (internet only
 Clark needs network access to think (call Anthropic API). Option B delivers AIOO
 isolation with minimal complexity:
 
-- `clark-net` Docker network: internet access, no routes to `procenteo-net`/`inisio-net`
+- `ephemeral-companion-net` Docker network: internet access, no routes to `procenteo-net`/`inisio-net`
 - Clark calls Anthropic API through credential proxy (existing security pattern)
 - NanoClaw-PAW relays human messages via filesystem IPC (single messaging layer)
 - Distilled/ mounted read-only (unchanged)
@@ -51,10 +51,10 @@ infrastructure for no additional security benefit.
 ### What This Changes
 
 - Clark spec: AC2 updated (network isolation = no entity nets, not no network)
-- Clark spec: must-do constraint added (run on clark-net)
-- Docker Compose topology: `docker run` command updated from `--network none` to `--network clark-net`
+- Clark spec: must-do constraint added (run on ephemeral-companion-net)
+- Docker Compose topology: `docker run` command updated from `--network none` to `--network ephemeral-companion-net`
 - Security patterns: network isolation table updated with Clark's actual access
-- NanoClaw-PAW: creates `clark-net` at startup if it doesn't exist
+- NanoClaw-PAW: creates `ephemeral-companion-net` at startup if it doesn't exist
 
 ### Principle
 

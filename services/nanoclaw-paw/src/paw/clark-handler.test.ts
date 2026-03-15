@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-// Mock child_process before importing clark-handler
+// Mock child_process before importing handlers
 vi.mock('child_process', () => ({
   execSync: vi.fn(),
 }));
@@ -18,19 +18,43 @@ vi.mock('../logger.js', () => ({
 }));
 
 import { execSync } from 'child_process';
+import { getOrSpawnClark, recordActivity } from './clark-handler.js';
 import {
-  ensureClarkNetwork,
-  getOrSpawnClark,
-  getActiveClarkInstances,
-  stopAllClark,
-  recordActivity,
-  _clearInstances,
+  ensureEphemeralCompanionNetwork,
+  getActiveInstances,
+  stopAllCompanions,
   startIdleChecker,
   stopIdleChecker,
-} from './clark-handler.js';
+  _clearInstances,
+} from './ephemeral-companion.js';
 import type { PawRoutingEntry } from './config.js';
 
 const mockedExecSync = vi.mocked(execSync);
+
+describe('ephemeral-companion shared', () => {
+  beforeEach(() => {
+    _clearInstances();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    stopIdleChecker();
+  });
+
+  it('ensureEphemeralCompanionNetwork calls docker network create', () => {
+    mockedExecSync.mockReturnValue(Buffer.from(''));
+    ensureEphemeralCompanionNetwork();
+    expect(mockedExecSync).toHaveBeenCalledWith(
+      expect.stringContaining('docker network create ephemeral-companion-net'),
+      expect.any(Object),
+    );
+  });
+
+  it('startIdleChecker / stopIdleChecker run without error', () => {
+    startIdleChecker();
+    stopIdleChecker();
+  });
+});
 
 describe('clark-handler', () => {
   let tmpDir: string;
@@ -40,12 +64,12 @@ describe('clark-handler', () => {
     vi.clearAllMocks();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clark-test-'));
 
-    // Create containers/clark/ with identity files
-    const clarkDir = path.join(tmpDir, 'containers', 'clark');
-    fs.mkdirSync(clarkDir, { recursive: true });
-    fs.writeFileSync(path.join(clarkDir, 'CLAUDE.md'), '# Clark');
+    // Create containers/ephemeral-companion/ with identity files
+    const companionDir = path.join(tmpDir, 'containers', 'ephemeral-companion');
+    fs.mkdirSync(companionDir, { recursive: true });
+    fs.writeFileSync(path.join(companionDir, 'CLAUDE.md'), '# Clark');
     fs.writeFileSync(
-      path.join(clarkDir, 'settings.json'),
+      path.join(companionDir, 'settings.json'),
       JSON.stringify({ env: { ROLE: 'clark' } }),
     );
   });
@@ -53,17 +77,6 @@ describe('clark-handler', () => {
   afterEach(() => {
     stopIdleChecker();
     fs.rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  describe('ensureClarkNetwork', () => {
-    it('calls docker network create', () => {
-      mockedExecSync.mockReturnValue(Buffer.from(''));
-      ensureClarkNetwork();
-      expect(mockedExecSync).toHaveBeenCalledWith(
-        expect.stringContaining('docker network create clark-net'),
-        expect.any(Object),
-      );
-    });
   });
 
   describe('getOrSpawnClark', () => {
@@ -84,11 +97,11 @@ describe('clark-handler', () => {
       const name = getOrSpawnClark('mateusz', singleRoute, tmpDir);
 
       expect(name).toMatch(/^clark-mateusz-\d+$/);
-      expect(getActiveClarkInstances()).toHaveLength(1);
+      expect(getActiveInstances()).toHaveLength(1);
 
       const dockerCmd = mockedExecSync.mock.calls[0][0] as string;
-      expect(dockerCmd).toContain('--network clark-net');
-      expect(dockerCmd).toContain('clark:latest');
+      expect(dockerCmd).toContain('--network ephemeral-companion-net');
+      expect(dockerCmd).toContain('ephemeral-companion:latest');
       expect(dockerCmd).toContain('HUMAN_NAME=mateusz');
       expect(dockerCmd).toContain('ANTHROPIC_BASE_URL=http://host.docker.internal:3001');
       expect(dockerCmd).toContain('ANTHROPIC_API_KEY=placeholder');
@@ -124,11 +137,9 @@ describe('clark-handler', () => {
     });
 
     it('reuses existing container if alive', () => {
-      // First spawn
       mockedExecSync.mockReturnValue(Buffer.from(''));
       const name1 = getOrSpawnClark('mateusz', singleRoute, tmpDir);
 
-      // isContainerAlive check — mock returns 'running' for inspect calls
       mockedExecSync.mockImplementation((cmd: unknown) => {
         const cmdStr = String(cmd);
         if (cmdStr.includes('docker inspect')) return Buffer.from("'running'\n");
@@ -137,7 +148,7 @@ describe('clark-handler', () => {
       const name2 = getOrSpawnClark('mateusz', singleRoute, tmpDir);
 
       expect(name2).toBe(name1);
-      expect(getActiveClarkInstances()).toHaveLength(1);
+      expect(getActiveInstances()).toHaveLength(1);
     });
 
     it('sets ENTITY env to comma-separated list for multi-entity', () => {
@@ -163,6 +174,39 @@ describe('clark-handler', () => {
       const dockerCmd = mockedExecSync.mock.calls[0][0] as string;
       expect(dockerCmd).not.toContain('Memories');
     });
+
+    it('mounts SOUL.md when present', () => {
+      const vaultDir = path.join(tmpDir, 'memory-vault');
+      fs.mkdirSync(vaultDir, { recursive: true });
+      fs.writeFileSync(path.join(vaultDir, 'SOUL.md'), '# SOUL');
+
+      mockedExecSync.mockReturnValue(Buffer.from(''));
+      getOrSpawnClark('mateusz', singleRoute, tmpDir);
+
+      const dockerCmd = mockedExecSync.mock.calls[0][0] as string;
+      expect(dockerCmd).toContain('/vault/SOUL.md:ro');
+    });
+
+    it('mounts CLARK_IDENTITY.md when present', () => {
+      const vaultDir = path.join(tmpDir, 'memory-vault');
+      fs.mkdirSync(vaultDir, { recursive: true });
+      fs.writeFileSync(path.join(vaultDir, 'CLARK_IDENTITY.md'), '# Clark Identity');
+
+      mockedExecSync.mockReturnValue(Buffer.from(''));
+      getOrSpawnClark('mateusz', singleRoute, tmpDir);
+
+      const dockerCmd = mockedExecSync.mock.calls[0][0] as string;
+      expect(dockerCmd).toContain('/vault/CLARK_IDENTITY.md:ro');
+    });
+
+    it('skips identity mounts when files missing', () => {
+      mockedExecSync.mockReturnValue(Buffer.from(''));
+      getOrSpawnClark('mateusz', singleRoute, tmpDir);
+
+      const dockerCmd = mockedExecSync.mock.calls[0][0] as string;
+      expect(dockerCmd).not.toContain('SOUL.md');
+      expect(dockerCmd).not.toContain('CLARK_IDENTITY.md');
+    });
   });
 
   describe('recordActivity', () => {
@@ -173,33 +217,25 @@ describe('clark-handler', () => {
       };
       getOrSpawnClark('mateusz', route, tmpDir);
 
-      const before = getActiveClarkInstances()[0].lastActivity;
-      // Small delay to ensure timestamp differs
+      const before = getActiveInstances()[0].lastActivity;
       recordActivity('mateusz');
-      const after = getActiveClarkInstances()[0].lastActivity;
+      const after = getActiveInstances()[0].lastActivity;
 
       expect(after).toBeGreaterThanOrEqual(before);
     });
   });
 
-  describe('stopAllClark', () => {
-    it('stops all active Clark containers', () => {
+  describe('stopAllCompanions', () => {
+    it('stops all active companion containers', () => {
       mockedExecSync.mockReturnValue(Buffer.from(''));
       const route: PawRoutingEntry = {
         target: 'clark', entity: 'procenteo', human: 'mateusz',
       };
       getOrSpawnClark('mateusz', route, tmpDir);
-      expect(getActiveClarkInstances()).toHaveLength(1);
+      expect(getActiveInstances()).toHaveLength(1);
 
-      stopAllClark();
-      expect(getActiveClarkInstances()).toHaveLength(0);
-    });
-  });
-
-  describe('startIdleChecker / stopIdleChecker', () => {
-    it('starts and stops without error', () => {
-      startIdleChecker();
-      stopIdleChecker();
+      stopAllCompanions();
+      expect(getActiveInstances()).toHaveLength(0);
     });
   });
 });

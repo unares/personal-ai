@@ -20,11 +20,16 @@ import {
 import { handleStageSignal } from './stage-handler.js';
 import { handleSpawnAgent } from './agent-spawn-handler.js';
 import {
-  ensureClarkNetwork,
+  ensureEphemeralCompanionNetwork,
   startIdleChecker,
-  stopAllClark,
+  stopAllCompanions,
   stopIdleChecker,
-} from './clark-handler.js';
+} from './ephemeral-companion.js';
+import {
+  handleHumanReply,
+  startTelegramBots,
+  stopTelegramBots,
+} from './telegram-bots.js';
 
 let registryTimer: ReturnType<typeof setInterval> | null = null;
 let startTime: number;
@@ -35,12 +40,7 @@ function buildIpcHandlers(workspaceRoot: string): Record<string, MessageHandler>
       handleStageSignal(envelope, workspaceRoot),
     'spawn-agent': (envelope) =>
       handleSpawnAgent(envelope, workspaceRoot),
-    'human-reply': async (envelope) => {
-      logger.info(
-        { type: envelope.type, to: envelope.payload.channel },
-        'Human-reply IPC received (messaging handler pending)',
-      );
-    },
+    'human-reply': (envelope) => handleHumanReply(envelope),
     'health-ping': async (envelope) => {
       const uptime = Math.floor((Date.now() - startTime) / 1000);
       await writeHealthPong(workspaceRoot, 'ok', uptime, envelope.id);
@@ -58,8 +58,8 @@ export async function initPaw(): Promise<void> {
 
   logger.info({ workspaceRoot, entities }, 'Initializing NanoClaw-PAW');
 
-  loadRoutingConfig(workspaceRoot);
-  ensureClarkNetwork();
+  const config = loadRoutingConfig(workspaceRoot);
+  ensureEphemeralCompanionNetwork();
   refreshRegistry(workspaceRoot);
 
   registryTimer = setInterval(
@@ -74,6 +74,8 @@ export async function initPaw(): Promise<void> {
     handlers: buildIpcHandlers(workspaceRoot),
   });
 
+  await startTelegramBots(config, workspaceRoot);
+
   logger.info('NanoClaw-PAW extensions initialized');
 }
 
@@ -81,17 +83,19 @@ export async function initPaw(): Promise<void> {
  * Graceful shutdown of PAW extensions.
  */
 export async function shutdownPaw(): Promise<void> {
+  await stopTelegramBots();
   if (registryTimer) {
     clearInterval(registryTimer);
     registryTimer = null;
   }
   stopIdleChecker();
-  stopAllClark();
+  stopAllCompanions();
   logger.info('NanoClaw-PAW extensions shut down');
 }
 
 // Re-export for external use
-export { getOrSpawnClark, recordActivity } from './clark-handler.js';
+export { getOrSpawnClark, recordActivity, sendToClark } from './clark-handler.js';
+export { getOrSpawnUnares, sendToUnares } from './unares-handler.js';
 export {
   getAiooContainer,
   getAllPersistent,
@@ -99,3 +103,4 @@ export {
 } from './persistent-registry.js';
 export { writeToAioo } from './ipc-poller.js';
 export { loadRoutingConfig } from './config.js';
+export { getBotForRoute } from './telegram-bots.js';

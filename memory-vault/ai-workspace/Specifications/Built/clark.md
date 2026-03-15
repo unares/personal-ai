@@ -29,7 +29,7 @@ uncontaminated by AIOO's operational state or decisions.
 2. Clark's container has zero network access to any AIOO container,
    ai-gateway, Chronicle, or entity network — verified by network
    isolation test from inside the container (`ping aioo-procenteo` fails).
-   Clark connects only to the credential proxy via `clark-net`.
+   Clark connects only to the credential proxy via `ephemeral-companion-net`.
 3. Clark can read Distilled/ vault content (read-only) to ground
    conversations in the entity's refined knowledge.
 
@@ -39,7 +39,7 @@ uncontaminated by AIOO's operational state or decisions.
 - Use vanilla NanoClaw (upstream, unmodified) for container lifecycle
 - Separate messaging channel per human (clark-michal, clark-mateusz, clark-andras)
 - Mount Distilled/ read-only (per human's entity access)
-- Run on `clark-net` Docker network (internet access for credential proxy,
+- Run on `ephemeral-companion-net` Docker network (internet access for credential proxy,
   no routes to entity networks). See `clark-decisions.md` decision D1.
 
 **Must not do:**
@@ -61,7 +61,7 @@ uncontaminated by AIOO's operational state or decisions.
 | Subtask | Description |
 |---------|-------------|
 | 1. Fork NanoClaw | Create PAW fork (shared with AIOO messaging) |
-| 2. Clark identity | Write Clark's CLAUDE.md (containers/clark/CLAUDE.md) |
+| 2. Clark identity | Write Clark's CLAUDE.md (containers/ephemeral-companion/CLAUDE.md) |
 | 3. Vault mounts | Configure Distilled/ read-only per human's entity access |
 | 4. Channel setup | Configure dedicated messaging channel per human |
 | 5. Network isolation | Ensure no network route to AIOO containers |
@@ -72,7 +72,7 @@ uncontaminated by AIOO's operational state or decisions.
 | Test | Expected Result |
 |------|-----------------|
 | Message on clark-michal channel | Clark spawns, responds with context from Distilled/ |
-| `docker exec clark-michal ping aioo-procenteo` | Connection refused / no route (clark-net has no route to entity nets) |
+| `docker exec clark-michal ping aioo-procenteo` | Connection refused / no route (ephemeral-companion-net has no route to entity nets) |
 | `docker exec clark-michal ls /vault/` | Only Distilled/ visible |
 | Clark asks about AIOO state | Clark responds "I don't have access to that" |
 | 30-min idle | Clark container auto-removed |

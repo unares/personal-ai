@@ -1,10 +1,10 @@
-# Clark — Lean Clarity Architect Container
-# Spawned by NanoClaw-PAW clark-handler. No embedded NanoClaw.
-# Air-gapped from entity networks (clark-net only).
+# Ephemeral Companion Container (Clark + Unares)
+# Spawned by NanoClaw-PAW handlers. No embedded NanoClaw.
+# Air-gapped from entity networks (ephemeral-companion-net only).
 
 FROM node:20-alpine
 
-# System dependencies (no docker-cli — Clark cannot spawn containers)
+# System dependencies (no docker-cli — companions cannot spawn containers)
 RUN apk add --no-cache bash git
 
 # Create non-root user
@@ -17,8 +17,8 @@ RUN npm install -g @anthropic-ai/claude-code
 RUN mkdir -p /home/clark/.claude /vault \
     && chown -R clark:clark /home/clark /vault
 
-# Clark identity + settings (mounted at runtime by clark-handler.ts,
-# but baked-in as defaults for standalone testing)
+# Identity + settings (mounted at runtime by companion handlers,
+# baked-in as defaults for standalone testing)
 COPY settings.json /home/clark/.claude/settings.json
 COPY CLAUDE.md /home/clark/.claude/CLAUDE.md
 RUN chown -R clark:clark /home/clark/.claude

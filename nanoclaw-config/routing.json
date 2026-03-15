@@ -3,27 +3,64 @@
     "clark-michal": {
       "target": "clark",
       "entity": ["ai-workspace", "procenteo", "inisio"],
-      "human": "michal"
+      "human": "michal",
+      "telegram": {
+        "botTokenEnv": "TELEGRAM_CLARK_MICHAL_TOKEN",
+        "mode": "dm",
+        "allowedUsers": ["ENV:TELEGRAM_USER_MICHAL"]
+      }
     },
     "clark-mateusz": {
       "target": "clark",
       "entity": "procenteo",
-      "human": "mateusz"
+      "human": "mateusz",
+      "telegram": {
+        "botTokenEnv": "TELEGRAM_CLARK_MATEUSZ_TOKEN",
+        "mode": "dm",
+        "allowedUsers": ["ENV:TELEGRAM_USER_MATEUSZ"]
+      }
     },
     "clark-andras": {
       "target": "clark",
       "entity": "inisio",
-      "human": "andras"
+      "human": "andras",
+      "telegram": {
+        "botTokenEnv": "TELEGRAM_CLARK_ANDRAS_TOKEN",
+        "mode": "dm",
+        "allowedUsers": ["ENV:TELEGRAM_USER_ANDRAS"]
+      }
     },
     "aioo-procenteo": {
       "target": "aioo",
       "entity": "procenteo",
-      "human": "michal"
+      "human": "michal",
+      "telegram": {
+        "botTokenEnv": "TELEGRAM_AIOO_PROCENTEO_TOKEN",
+        "mode": "group",
+        "trigger": "@aioo",
+        "allowedUsers": ["ENV:TELEGRAM_USER_MICHAL", "ENV:TELEGRAM_USER_MATEUSZ"]
+      }
     },
     "aioo-inisio": {
       "target": "aioo",
       "entity": "inisio",
-      "human": "michal"
+      "human": "michal",
+      "telegram": {
+        "botTokenEnv": "TELEGRAM_AIOO_INISIO_TOKEN",
+        "mode": "group",
+        "trigger": "@aioo",
+        "allowedUsers": ["ENV:TELEGRAM_USER_MICHAL", "ENV:TELEGRAM_USER_ANDRAS"]
+      }
+    },
+    "unares": {
+      "target": "unares",
+      "entity": ["ai-workspace", "procenteo", "inisio"],
+      "human": "michal",
+      "telegram": {
+        "botTokenEnv": "TELEGRAM_UNARES_TOKEN",
+        "mode": "dm",
+        "allowedUsers": ["ENV:TELEGRAM_USER_MICHAL"]
+      }
     }
   }
 }

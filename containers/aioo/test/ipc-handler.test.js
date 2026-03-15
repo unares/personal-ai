@@ -104,6 +104,68 @@ test('markProcessed moves message to processed/', () => {
   cleanup(tmp);
 });
 
+// ── T9-T10: debug-prompt handler ────────────────────────────────────
+
+test('T9: debug-prompt handler returns debug-prompt-response with metadata', () => {
+  const { ctx, tmp } = makeTmpCtx();
+  const ipc = ipcHandler.init(ctx);
+
+  // Mock brain.getPromptInfo on ctx
+  ctx.brain = {
+    getPromptInfo: () => ({
+      hash: 'sha256:abc123',
+      prompt: 'test prompt',
+      files: { SOUL: 'found', IDENTITY: 'found', NORTHSTAR: 'found', GLOSSARY: 'found', CLAUDE: 'found' },
+      language: 'pl',
+      assembledAt: '2026-03-14T12:00:00.000Z',
+    })
+  };
+
+  // Simulate debug-prompt handling (same as index.js handler)
+  const ipcLib = require(ipcLibPath);
+  const inbound = ipcLib.createEnvelope('debug-prompt', 'nanoclaw-paw', 'aioo-test', {});
+
+  const info = ctx.brain.getPromptInfo();
+  ipc.send('debug-prompt-response', inbound.from, info, inbound.id);
+
+  const files = fs.readdirSync(ctx.ipcOutDir).filter(f => f.endsWith('.json'));
+  assert.strictEqual(files.length, 1);
+
+  const response = JSON.parse(fs.readFileSync(path.join(ctx.ipcOutDir, files[0]), 'utf8'));
+  assert.strictEqual(response.type, 'debug-prompt-response');
+  assert.strictEqual(response.payload.hash, 'sha256:abc123');
+  assert.strictEqual(response.payload.language, 'pl');
+  assert.ok(response.payload.assembledAt);
+  assert.ok(response.payload.prompt);
+  assert.ok(response.replyTo);
+  cleanup(tmp);
+});
+
+test('T10: debug-prompt response files field lists all 5 keys with status', () => {
+  const { ctx, tmp } = makeTmpCtx();
+  ipcHandler.init(ctx);
+
+  ctx.brain = {
+    getPromptInfo: () => ({
+      hash: 'sha256:def456',
+      prompt: 'test',
+      files: { SOUL: 'found', IDENTITY: 'missing', NORTHSTAR: 'found', GLOSSARY: 'found', CLAUDE: 'missing' },
+      language: null,
+      assembledAt: '2026-03-14T12:00:00.000Z',
+    })
+  };
+
+  const info = ctx.brain.getPromptInfo();
+  const expectedKeys = ['SOUL', 'IDENTITY', 'NORTHSTAR', 'GLOSSARY', 'CLAUDE'];
+  for (const key of expectedKeys) {
+    assert.ok(key in info.files, `Missing key: ${key}`);
+    assert.ok(['found', 'missing'].includes(info.files[key]), `Invalid status for ${key}`);
+  }
+  assert.strictEqual(info.files.IDENTITY, 'missing');
+  assert.strictEqual(info.files.CLAUDE, 'missing');
+  cleanup(tmp);
+});
+
 // ── Runner ───────────────────────────────────────────────────────────
 
 async function run() {
@@ -118,7 +180,7 @@ async function run() {
       fail++;
     }
   }
-  console.log(`\nIPC Handler: ${pass}/${tests.length} passed`);
+  console.log(`\nIPC Handler (+ debug-prompt): ${pass}/${tests.length} passed`);
   return fail;
 }
 

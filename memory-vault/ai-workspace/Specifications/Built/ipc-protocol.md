@@ -123,24 +123,35 @@ Six fields. Fixed structure. The `type` field determines what `payload` contains
 
 | Type | From → To | Payload | Purpose |
 |------|-----------|---------|---------|
-| `human-message` | PAW → AIOO | `{channel, human, text}` | Human sent message via messaging |
-| `human-reply` | AIOO → PAW | `{channel, text, hitlTier}` | AIOO response to human |
+| `human-message` | PAW → AIOO | `{channel, human, text, chatId, messageId}` | Human sent message via messaging |
+| `human-reply` | AIOO → PAW | `{channel, text, hitlTier, chatId, inlineKeyboard?}` | AIOO response to human |
 
 ```json
-// human-message payload
+// human-message payload (Telegram extended)
 {
-  "channel": "whatsapp-michal",
+  "channel": "telegram-aioo-procenteo",
   "human": "michal",
-  "text": "Yes, proceed to Stage 2"
+  "text": "Yes, proceed to Stage 2",
+  "chatId": "-1001234567890",
+  "messageId": "42"
 }
 
-// human-reply payload
+// human-reply payload (Telegram extended, with Micro-HITL inline keyboard)
 {
-  "channel": "whatsapp-michal",
-  "text": "[procenteo] Starting Stage 2 transition...",
-  "hitlTier": "micro"
+  "channel": "telegram-aioo-procenteo",
+  "text": "[procenteo] Stage 1 → Stage 2?",
+  "hitlTier": "micro",
+  "chatId": "-1001234567890",
+  "inlineKeyboard": [
+    [{ "text": "YES", "callback_data": "hitl:stage-transition:yes" }],
+    [{ "text": "NO", "callback_data": "hitl:stage-transition:no" }]
+  ]
 }
 ```
+
+- `chatId` — Telegram chat ID (numeric string). AIOO must echo from `human-message` back in `human-reply`.
+- `messageId` — Telegram message ID. Used for inline keyboard `replyTo`.
+- `inlineKeyboard` — optional array of button rows for Micro-HITL.
 
 ##### Stage Transitions
 
@@ -181,6 +192,30 @@ Note: brain-request/response may use in-process function calls rather
 than filesystem IPC (they're internal to AIOO). Listed here for
 completeness. If AIOO's Brain becomes a separate process in future,
 it uses the same envelope format.
+
+##### Diagnostics
+
+| Type | From → To | Payload | Purpose |
+|------|-----------|---------|---------|
+| `debug-prompt` | PAW → AIOO | `{}` | Request assembled identity prompt |
+| `debug-prompt-response` | AIOO → PAW | `{hash, prompt, files, language, assembledAt}` | Full prompt with metadata |
+
+```json
+// debug-prompt-response payload
+{
+  "hash": "sha256:a1b2c3...64chars",
+  "prompt": "# Shared Personality\n\n...",
+  "files": {
+    "SOUL": "found",
+    "IDENTITY": "found",
+    "NORTHSTAR": "found",
+    "GLOSSARY": "found",
+    "CLAUDE": "found"
+  },
+  "language": "pl",
+  "assembledAt": "2026-03-14T12:00:00.000Z"
+}
+```
 
 ##### System
 

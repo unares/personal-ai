@@ -11,8 +11,8 @@
 #   ./setup/init-ipc.sh   (creates ipc/ and config/ directories)
 #   cp .env.example .env  (fill in API keys)
 #
-# Clark is NOT in compose — spawned by NanoClaw-PAW via:
-#   docker run --rm --network none ...
+# Clark and Unares are NOT in compose — spawned by NanoClaw-PAW via:
+#   docker run --rm --network ephemeral-companion-net ...
 
 # ── Shared config anchors ────────────────────────────────────────
 x-stage-healthcheck: &stage-healthcheck
@@ -115,6 +115,9 @@ services:
       - ./ipc/aioo-procenteo:/ipc
       - ./lib/ipc:/app/lib/ipc:ro
       - ./config/aioo-procenteo.json:/config/aioo.json:ro
+      - ./memory-vault/SOUL.md:/identity/SOUL.md:ro
+      - ./memory-vault/AIOO_IDENTITY.md:/identity/AIOO_IDENTITY.md:ro
+      - ./containers/aioo/CLAUDE.md:/identity/CLAUDE.md:ro
     environment:
       - ENTITY=procenteo
       - AI_GATEWAY_URL=http://ai-gateway-procenteo:4000
@@ -141,6 +144,9 @@ services:
       - ./ipc/aioo-inisio:/ipc
       - ./lib/ipc:/app/lib/ipc:ro
       - ./config/aioo-inisio.json:/config/aioo.json:ro
+      - ./memory-vault/SOUL.md:/identity/SOUL.md:ro
+      - ./memory-vault/AIOO_IDENTITY.md:/identity/AIOO_IDENTITY.md:ro
+      - ./containers/aioo/CLAUDE.md:/identity/CLAUDE.md:ro
     environment:
       - ENTITY=inisio
       - AI_GATEWAY_URL=http://ai-gateway-inisio:4000

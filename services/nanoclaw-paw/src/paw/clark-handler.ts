@@ -2,113 +2,51 @@
  * Clark Handler for NanoClaw-PAW.
  *
  * Manages ephemeral Clark containers:
- * - Spawns on message via docker run --rm --network clark-net
+ * - Spawns on message via docker run --rm --network ephemeral-companion-net
  * - Mounts Distilled/ read-only per entity (air-gapped from AIOO/entity networks)
  * - 30min idle timeout → auto-removed
- * - Credential proxy via clark-net → host:3001
+ * - Credential proxy via ephemeral-companion-net → host:3001
  */
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
 import { logger } from '../logger.js';
-import { CLARK_IDLE_TIMEOUT, CLARK_NETWORK, normalizeEntities } from './config.js';
+import { normalizeEntities } from './config.js';
 import type { PawRoutingEntry } from './config.js';
+import {
+  appendCompanionEnv,
+  baseCompanionArgs,
+  getInstance,
+  isContainerAlive,
+  mountIfExists,
+  registerInstance,
+  removeInstance,
+} from './ephemeral-companion.js';
 
-const CLARK_IMAGE = 'clark:latest';
-
-interface ClarkInstance {
-  containerName: string;
-  human: string;
-  entities: string[];
-  lastActivity: number;
-}
-
-const activeInstances = new Map<string, ClarkInstance>();
-let idleCheckTimer: ReturnType<typeof setInterval> | null = null;
-
-export function ensureClarkNetwork(): void {
-  try {
-    execSync(`docker network create ${CLARK_NETWORK} 2>/dev/null || true`, {
-      timeout: 10000,
-    });
-    logger.info({ network: CLARK_NETWORK }, 'Clark network ensured');
-  } catch (err) {
-    logger.error({ err }, 'Failed to create Clark network');
-  }
-}
-
-export function startIdleChecker(): void {
-  if (idleCheckTimer) return;
-  idleCheckTimer = setInterval(checkIdleContainers, 60000);
-}
-
-export function stopIdleChecker(): void {
-  if (idleCheckTimer) {
-    clearInterval(idleCheckTimer);
-    idleCheckTimer = null;
-  }
-}
-
-function isContainerAlive(name: string): boolean {
-  try {
-    const status = execSync(
-      `docker inspect --format='{{.State.Status}}' ${name} 2>/dev/null`,
-      { encoding: 'utf-8', timeout: 5000 },
-    ).trim();
-    return status === 'running';
-  } catch {
-    return false;
-  }
-}
-
-function buildClarkArgs(
+export function buildClarkArgs(
   containerName: string,
   human: string,
   entities: string[],
   workspaceRoot: string,
 ): string[] {
-  const clarkIdentity = path.join(
-    workspaceRoot, 'containers', 'clark', 'CLAUDE.md',
-  );
-  const clarkSettings = path.join(
-    workspaceRoot, 'containers', 'clark', 'settings.json',
-  );
+  const companionDir = path.join(workspaceRoot, 'containers', 'ephemeral-companion');
+  const args = baseCompanionArgs(containerName);
 
-  const args = [
-    'run', '-d', '--rm',
-    '--name', containerName,
-    '--network', CLARK_NETWORK,
-  ];
+  // Identity
+  mountIfExists(args, path.join(companionDir, 'CLAUDE.md'), '/home/clark/.claude/CLAUDE.md');
+  mountIfExists(args, path.join(companionDir, 'settings.json'), '/home/clark/.claude/settings.json');
+  mountIfExists(args, path.join(workspaceRoot, 'memory-vault', 'SOUL.md'), '/vault/SOUL.md');
+  mountIfExists(args, path.join(workspaceRoot, 'memory-vault', 'CLARK_IDENTITY.md'), '/vault/CLARK_IDENTITY.md');
 
-  // Mount Clark identity files
-  if (fs.existsSync(clarkIdentity)) {
-    args.push('-v', `${clarkIdentity}:/home/clark/.claude/CLAUDE.md:ro`);
-  }
-  if (fs.existsSync(clarkSettings)) {
-    args.push('-v', `${clarkSettings}:/home/clark/.claude/settings.json:ro`);
-  }
-
-  // Mount Distilled/ per entity (PBD-2: multi-entity support)
+  // Distilled/ per entity (air-gapped from AIOO)
   for (const entity of entities) {
-    const distilledDir = path.join(
-      workspaceRoot, 'memory-vault', entity, 'Distilled',
-    );
-    if (!fs.existsSync(distilledDir)) {
-      fs.mkdirSync(distilledDir, { recursive: true });
-    }
+    const distilledDir = path.join(workspaceRoot, 'memory-vault', entity, 'Distilled');
+    if (!fs.existsSync(distilledDir)) fs.mkdirSync(distilledDir, { recursive: true });
     args.push('-v', `${distilledDir}:/vault/${entity}/Distilled:ro`);
   }
 
-  // Environment
-  args.push(
-    '-e', `HUMAN_NAME=${human}`,
-    '-e', `ENTITY=${entities.join(',')}`,
-    '-e', 'CLARK_MODE=true',
-    '-e', 'ANTHROPIC_BASE_URL=http://host.docker.internal:3001',
-    '-e', 'ANTHROPIC_API_KEY=placeholder',
-    CLARK_IMAGE,
-  );
+  appendCompanionEnv(args, 'clark', human, entities.join(','));
 
   return args;
 }
@@ -125,7 +63,7 @@ function spawnClarkContainer(
     logger.info({ containerName, human, entities }, 'Clark container spawned');
   } catch (err) {
     logger.error({ containerName, human, err }, 'Failed to spawn Clark');
-    activeInstances.delete(`clark-${human}`);
+    removeInstance(`clark-${human}`);
   }
 }
 
@@ -135,7 +73,7 @@ export function getOrSpawnClark(
   workspaceRoot: string,
 ): string {
   const key = `clark-${human}`;
-  const existing = activeInstances.get(key);
+  const existing = getInstance(key);
   const entities = normalizeEntities(route);
 
   if (existing && isContainerAlive(existing.containerName)) {
@@ -145,43 +83,33 @@ export function getOrSpawnClark(
 
   const containerName = `clark-${human}-${Date.now()}`;
   spawnClarkContainer(containerName, human, entities, workspaceRoot);
-  activeInstances.set(key, {
-    containerName, human, entities, lastActivity: Date.now(),
+  registerInstance(key, {
+    containerName, role: 'clark', human, lastActivity: Date.now(),
   });
   return containerName;
 }
 
+export async function sendToClark(
+  message: string,
+  human: string,
+  route: PawRoutingEntry,
+  workspaceRoot: string,
+): Promise<string> {
+  const containerName = getOrSpawnClark(human, route, workspaceRoot);
+  try {
+    const escaped = message.replace(/'/g, "'\\''");
+    const output = execSync(
+      `docker exec ${containerName} claude --dangerously-skip-permissions --message '${escaped}'`,
+      { encoding: 'utf-8', timeout: 120000 },
+    );
+    return output.trim();
+  } catch (err) {
+    logger.error({ containerName, human, err }, 'Failed to exec Clark');
+    return 'Clark is unavailable';
+  }
+}
+
 export function recordActivity(human: string): void {
-  const instance = activeInstances.get(`clark-${human}`);
+  const instance = getInstance(`clark-${human}`);
   if (instance) instance.lastActivity = Date.now();
-}
-
-function checkIdleContainers(): void {
-  const now = Date.now();
-  for (const [key, instance] of activeInstances) {
-    if (now - instance.lastActivity > CLARK_IDLE_TIMEOUT) {
-      logger.info({ containerName: instance.containerName }, 'Clark idle timeout');
-      try { execSync(`docker stop ${instance.containerName}`, { timeout: 15000 }); } catch { /* ok */ }
-      activeInstances.delete(key);
-    } else if (!isContainerAlive(instance.containerName)) {
-      activeInstances.delete(key);
-    }
-  }
-}
-
-export function stopAllClark(): void {
-  for (const [key, instance] of activeInstances) {
-    try { execSync(`docker stop ${instance.containerName}`, { timeout: 15000 }); } catch { /* ok */ }
-    activeInstances.delete(key);
-  }
-  stopIdleChecker();
-}
-
-export function getActiveClarkInstances(): ClarkInstance[] {
-  return [...activeInstances.values()];
-}
-
-/** Test helper: clear active instances registry. */
-export function _clearInstances(): void {
-  activeInstances.clear();
 }

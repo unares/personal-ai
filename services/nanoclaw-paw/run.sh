@@ -16,6 +16,15 @@ PID_FILE="/tmp/nanoclaw-paw.pid"
 echo "[nanoclaw-paw] Starting from ${SCRIPT_DIR}"
 echo "[nanoclaw-paw] Workspace root: ${PAW_WORKSPACE_ROOT}"
 
+# Load .env if present
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/.env"
+  set +a
+  echo "[nanoclaw-paw] .env loaded"
+fi
+
 cleanup() {
   rm -f "$PID_FILE"
 }

@@ -131,7 +131,8 @@ NanoClaw-PAW is a single host process with four handler modules:
 NanoClaw-PAW (host process)
 ├── Messaging handler      → WhatsApp/Telegram/Discord routing
 ├── Agent spawn handler    → Agent SDK agents in stage containers
-├── Clark handler          → Ephemeral container lifecycle
+├── Clark handler          → Ephemeral companion container lifecycle (Clark)
+├── Unares handler         → Ephemeral companion container lifecycle (Unares)
 └── Stage handler          → Docker Compose profile transitions
 ```
 

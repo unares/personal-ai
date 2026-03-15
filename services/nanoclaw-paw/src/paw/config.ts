@@ -22,19 +22,27 @@ export const STAGE_HEALTH_CHECK_INTERVAL = 5000;
 /** Persistent registry refresh interval (30s) */
 export const REGISTRY_REFRESH_INTERVAL = 30000;
 
-/** Clark idle timeout (30 min) */
-export const CLARK_IDLE_TIMEOUT = parseInt(
-  process.env.PAW_CLARK_IDLE_TIMEOUT || '1800000',
+/** Ephemeral companion idle timeout (30 min) */
+export const EPHEMERAL_COMPANION_IDLE_TIMEOUT = parseInt(
+  process.env.PAW_COMPANION_IDLE_TIMEOUT || '1800000',
   10,
 );
 
-/** Clark Docker network */
-export const CLARK_NETWORK = 'clark-net';
+/** Ephemeral companion Docker network */
+export const EPHEMERAL_COMPANION_NETWORK = 'ephemeral-companion-net';
+
+export interface TelegramConfig {
+  botTokenEnv: string;
+  mode: 'dm' | 'group';
+  trigger?: string;
+  allowedUsers: string[];
+}
 
 export interface PawRoutingEntry {
-  target: 'clark' | 'aioo';
+  target: 'clark' | 'aioo' | 'unares';
   entity: string | string[];
   human: string;
+  telegram?: TelegramConfig;
 }
 
 /** Normalize entity to array (supports single string or array in routing config). */
@@ -46,11 +54,32 @@ export interface PawRoutingConfig {
   routes: Record<string, PawRoutingEntry>;
 }
 
+/** Resolve ENV: prefixed values in routing config. */
+function resolveEnvValue(value: string): string | null {
+  if (!value.startsWith('ENV:')) return value;
+  const envKey = value.slice(4);
+  const resolved = process.env[envKey];
+  if (!resolved) {
+    logger.warn({ envKey }, 'Unresolved ENV: reference in routing config');
+    return null;
+  }
+  return resolved;
+}
+
+function resolveEnvValues(config: PawRoutingConfig): void {
+  for (const [name, route] of Object.entries(config.routes)) {
+    if (!route.telegram?.allowedUsers) continue;
+    route.telegram.allowedUsers = route.telegram.allowedUsers
+      .map(resolveEnvValue)
+      .filter((v): v is string => v !== null);
+  }
+}
+
 let routingConfig: PawRoutingConfig | null = null;
 
 /**
  * Load routing config from nanoclaw-config/routing.json.
- * Maps channel IDs to Clark or AIOO targets.
+ * Resolves ENV: prefixed values in allowedUsers arrays.
  */
 export function loadRoutingConfig(workspaceRoot: string, force = false): PawRoutingConfig {
   if (routingConfig && !force) return routingConfig;
@@ -64,6 +93,7 @@ export function loadRoutingConfig(workspaceRoot: string, force = false): PawRout
   try {
     const content = fs.readFileSync(configPath, 'utf-8');
     routingConfig = JSON.parse(content) as PawRoutingConfig;
+    resolveEnvValues(routingConfig);
     logger.info(
       { routes: Object.keys(routingConfig.routes).length },
       'PAW routing config loaded',
@@ -84,11 +114,9 @@ export function loadRoutingConfig(workspaceRoot: string, force = false): PawRout
  * PAW lives at services/nanoclaw-paw/ — workspace root is two levels up.
  */
 export function resolveWorkspaceRoot(): string {
-  // Check env override first
   if (process.env.PAW_WORKSPACE_ROOT) {
     return process.env.PAW_WORKSPACE_ROOT;
   }
-  // Default: two levels up from services/nanoclaw-paw/
   return path.resolve(process.cwd(), '..', '..');
 }
 

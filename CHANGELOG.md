@@ -6,7 +6,7 @@ All notable changes to Personal AI Workspace.
 
 ### Added
 - Layer 4: NanoClaw-PAW — persistent container routing, Clark lifecycle
-  management, credential proxy, clark-net isolation (`services/nanoclaw-paw/`)
+  management, credential proxy, ephemeral-companion-net isolation (`services/nanoclaw-paw/`)
 - Layer 3: AIOO Brain Client (Gemini 3.1 Pro via ai-gateway), HITL Manager
   (3-tier rules, 12 situation mappings, escalation), Stage Controller
   (sequential validation, state persistence), Cost Tracker (per-stage +
@@ -27,7 +27,7 @@ All notable changes to Personal AI Workspace.
 ### Changed
 - AIOO event loop made async throughout
 - AIOO config expanded: brain model, daily budget, 12 HITL situation rules
-- Specs updated: clark.md (clark-net), nanoclaw-paw.md (persistent routing decisions)
+- Specs updated: clark.md (ephemeral-companion-net), nanoclaw-paw.md (persistent routing decisions)
 - ARCHITECTURE.md: Layer 4 marked complete, Layers 5+6 unblocked
 - spec-analyst and build-validator agents pinned to Opus 4.6
 - github-discipline decoupled from architecture-build (independent skill)

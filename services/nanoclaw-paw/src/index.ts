@@ -538,8 +538,12 @@ async function main(): Promise<void> {
     await channel.connect();
   }
   if (channels.length === 0) {
-    logger.fatal('No channels connected');
-    process.exit(1);
+    if (process.env.PAW_WORKSPACE_ROOT) {
+      logger.info('No upstream channels — running in PAW-only mode');
+    } else {
+      logger.fatal('No channels connected');
+      process.exit(1);
+    }
   }
 
   // Initialize PAW extensions (persistent registry, workspace IPC, stage handler, Clark)

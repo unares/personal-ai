@@ -205,9 +205,9 @@ Credential proxy (port 3001) ensures API keys never enter the container directly
 
 PAW spawns Clark containers on message via `docker run --rm`:
 ```
-containers/clark/ → clark:latest image → ~/.claude/CLAUDE.md = clark identity
+containers/ephemeral-companion/ → ephemeral-companion:latest image → ~/.claude/CLAUDE.md = clark identity
 ```
-Clark containers connect via `clark-net` (air-gapped from entity networks).
+Clark containers connect via `ephemeral-companion-net` (air-gapped from entity networks).
 30-min idle timeout. PAW manages the full lifecycle.
 
 ### NanoClaw's own Claude context
